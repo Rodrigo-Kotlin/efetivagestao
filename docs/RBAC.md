@@ -54,6 +54,11 @@ Permission (permissions)
 | pricing.catalog.edit | Editar Item do Catálogo | Catálogo |
 | pricing.catalog.archive | Arquivar Item do Catálogo | Catálogo |
 | pricing.catalog.manage_categories | Gerenciar Categorias | Catálogo |
+| pricing.supplier.view | Visualizar Fornecedores | Fornecedores |
+| pricing.supplier.create | Criar Fornecedor | Fornecedores |
+| pricing.supplier.edit | Editar Fornecedor | Fornecedores |
+| pricing.supplier.delete | Excluir Fornecedor | Fornecedores |
+| pricing.supplier.map | Mapear Itens de Fornecedor | Fornecedores |
 | pricing.cost.view | Visualizar Custos | Custos (futuro) |
 | pricing.price.publish | Publicar Preços | Preços (futuro) |
 

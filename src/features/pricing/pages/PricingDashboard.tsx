@@ -19,7 +19,8 @@ const futureModules: FutureModule[] = [
   {
     title: "Fornecedores",
     description: "Mapeamento e gestão de fornecedores.",
-    status: "coming-soon",
+    status: "available",
+    path: "/pricing/suppliers",
   },
   {
     title: "Custos",

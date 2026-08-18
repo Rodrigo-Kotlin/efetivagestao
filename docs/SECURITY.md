@@ -40,6 +40,9 @@ RLS está habilitado em todas as tabelas:
 | role_permissions | Segue lógica da role |
 | membership_roles | Segue lógica da membership |
 | audit_logs | Membro da organização ou actor |
+| companies | Membro da organização pode ver/inserir/editar/excluir |
+| supplier_profiles | Membro da organização pode ver/inserir/editar/excluir |
+| supplier_catalog_items | Membro da organização pode ver/inserir/editar/excluir |
 
 ## Secrets
 

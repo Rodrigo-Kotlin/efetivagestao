@@ -185,6 +185,78 @@
 **Unique:** (catalog_item_id, normalized_name)
 **Triggers:** Item same-org check.
 
+## Tabelas (PRC-02 — Fornecedores e Mapeamentos)
+
+### companies
+| Coluna | Tipo | Constraints |
+|--------|------|------------|
+| id | uuid | PK, default uuid_generate_v4() |
+| organization_id | uuid | FK → organizations, NOT NULL |
+| legal_name | text | NOT NULL |
+| legal_name_normalized | text | NOT NULL |
+| trade_name | text | nullable |
+| tax_id | text | nullable |
+| status | text | NOT NULL, default 'active', CHECK (active/inactive/blocked) |
+| created_by | uuid | FK → auth.users, NOT NULL |
+| created_at | timestamptz | NOT NULL |
+| updated_by | uuid | FK → auth.users, NOT NULL |
+| updated_at | timestamptz | NOT NULL, trigger |
+
+**Unique:** (organization_id, tax_id) WHERE tax_id IS NOT NULL AND status = 'active'
+**Triggers:** Audit (INSERT/UPDATE/DELETE), updated_at.
+
+### supplier_profiles
+| Coluna | Tipo | Constraints |
+|--------|------|------------|
+| company_id | uuid | PK, FK → companies(id), ON DELETE CASCADE |
+| organization_id | uuid | FK → organizations(id), NOT NULL |
+| supplier_category | text | NOT NULL, CHECK (5 values) |
+| status | text | NOT NULL, default 'active', CHECK (active/inactive/blocked) |
+| contract_reference | text | nullable |
+| payment_terms | text | nullable |
+| notes | text | nullable |
+| created_by | uuid | FK → auth.users, NOT NULL |
+| created_at | timestamptz | NOT NULL |
+| updated_by | uuid | FK → auth.users, NOT NULL |
+| updated_at | timestamptz | NOT NULL, trigger |
+
+**Triggers:** Organization matches company check, audit, updated_at.
+
+### supplier_catalog_items
+| Coluna | Tipo | Constraints |
+|--------|------|------------|
+| id | uuid | PK, default uuid_generate_v4() |
+| organization_id | uuid | FK → organizations, NOT NULL |
+| supplier_company_id | uuid | FK → companies, NOT NULL |
+| catalog_item_id | uuid | FK → catalog_items, NOT NULL |
+| external_code | text | nullable |
+| external_name | text | NOT NULL |
+| external_name_normalized | text | NOT NULL |
+| external_unit | text | nullable |
+| is_preferred | boolean | NOT NULL, default false |
+| status | text | NOT NULL, default 'active', CHECK (active/inactive) |
+| valid_from | date | nullable |
+| valid_to | date | nullable |
+| notes | text | nullable |
+| created_by | uuid | FK → auth.users, NOT NULL |
+| created_at | timestamptz | NOT NULL |
+| updated_by | uuid | FK → auth.users, NOT NULL |
+| updated_at | timestamptz | NOT NULL, trigger |
+
+**Unique:** (supplier_company_id, catalog_item_id, external_unit) WHERE status = 'active'
+**Check:** valid_to > valid_from (both not null)
+**Check:** external_unit NOT NULL WHEN is_preferred = true
+**Triggers:** Company same-org check, catalog item same-org check, unique preferred per supplier+item, audit, updated_at.
+
+### Extensão de catalog_item_aliases (PRC-02)
+| Coluna adicional | Tipo | Constraints |
+|------------------|------|------------|
+| source_company_id | uuid | nullable, FK → companies |
+| supplier_catalog_item_id | uuid | nullable, FK → supplier_catalog_items |
+| external_code | text | nullable |
+
+**Triggers:** `fn_alias_supplier_source_integrity` valida integridade; proteção de exclusão de mapeamento com alias vinculado.
+
 ## Migrations
 
 | # | Arquivo | Descrição |
@@ -199,6 +271,11 @@
 | 008 | 008_catalog_rls | RLS policies para tabelas do catálogo + has_permission() helper |
 | 009 | 009_catalog_code_generation | Sequências + fn_catalog_next_code() para geração segura de código |
 | 010 | 010_catalog_rbac | Permissões catálogo + seeds para roles admin/manager/operator/viewer |
+| 011 | 011_companies | companies — entidade base para fornecedores |
+| 012 | 012_supplier_profiles | supplier_profiles — extensão de company para role de fornecedor |
+| 013 | 013_supplier_catalog_items | supplier_catalog_items — mapeamentos fornecedor↔item + constraints |
+| 014 | 014_supplier_rls | RLS policies para companies, supplier_profiles, supplier_catalog_items |
+| 015 | 015_supplier_rbac | RBAC + audit triggers + alias extension + RPCs + log_audit() |
 
 ## Geração de Tipos TypeScript
 

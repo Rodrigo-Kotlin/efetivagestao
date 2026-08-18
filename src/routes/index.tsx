@@ -9,6 +9,10 @@ import { CatalogNewPage } from "@/features/pricing/pages/CatalogNewPage";
 import { CatalogDetailPage } from "@/features/pricing/pages/CatalogDetailPage";
 import { CatalogEditPage } from "@/features/pricing/pages/CatalogEditPage";
 import { CategoriesPage } from "@/features/pricing/pages/CategoriesPage";
+import { SuppliersPage } from "@/features/pricing/suppliers/pages/SuppliersPage";
+import { SupplierNewPage } from "@/features/pricing/suppliers/pages/SupplierNewPage";
+import { SupplierDetailPage } from "@/features/pricing/suppliers/pages/SupplierDetailPage";
+import { SupplierEditPage } from "@/features/pricing/suppliers/pages/SupplierEditPage";
 
 export const router = createBrowserRouter([
   {
@@ -48,6 +52,22 @@ export const router = createBrowserRouter([
           {
             path: "/pricing/categories",
             element: <CategoriesPage />,
+          },
+          {
+            path: "/pricing/suppliers",
+            element: <SuppliersPage />,
+          },
+          {
+            path: "/pricing/suppliers/new",
+            element: <SupplierNewPage />,
+          },
+          {
+            path: "/pricing/suppliers/:id",
+            element: <SupplierDetailPage />,
+          },
+          {
+            path: "/pricing/suppliers/:id/edit",
+            element: <SupplierEditPage />,
           },
         ],
       },

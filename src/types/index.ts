@@ -72,6 +72,7 @@ export const ALIAS_SOURCE_TYPES = [
   { value: "manual", label: "Manual" },
   { value: "legacy", label: "Legado" },
   { value: "internal", label: "Interno" },
+  { value: "supplier", label: "Fornecedor" },
 ] as const;
 
 export type AliasSourceType = (typeof ALIAS_SOURCE_TYPES)[number]["value"];
@@ -117,4 +118,97 @@ export const CATALOG_PERMISSIONS = [
   "pricing.catalog.edit",
   "pricing.catalog.archive",
   "pricing.catalog.manage_categories",
+] as const;
+
+// ============================================================
+// Company types
+// ============================================================
+export type Company = Database["public"]["Tables"]["companies"]["Row"];
+export type CompanyInsert = Database["public"]["Tables"]["companies"]["Insert"];
+export type CompanyUpdate = Database["public"]["Tables"]["companies"]["Update"];
+
+// ============================================================
+// Supplier types
+// ============================================================
+export type SupplierProfile = Database["public"]["Tables"]["supplier_profiles"]["Row"];
+export type SupplierProfileInsert = Database["public"]["Tables"]["supplier_profiles"]["Insert"];
+export type SupplierProfileUpdate = Database["public"]["Tables"]["supplier_profiles"]["Update"];
+
+export type SupplierCatalogItem = Database["public"]["Tables"]["supplier_catalog_items"]["Row"];
+export type SupplierCatalogItemInsert = Database["public"]["Tables"]["supplier_catalog_items"]["Insert"];
+export type SupplierCatalogItemUpdate = Database["public"]["Tables"]["supplier_catalog_items"]["Update"];
+
+// ============================================================
+// Supplier composite types
+// ============================================================
+export type SupplierWithCompany = SupplierProfile & {
+  company: Company;
+};
+
+export type SupplierMappingWithCatalogItem = SupplierCatalogItem & {
+  catalog_item: CatalogItem;
+  company: Company;
+};
+
+export type SupplierStats = {
+  total_active: number;
+  total_inactive: number;
+  total_blocked: number;
+  total_mappings_active: number;
+  items_without_supplier: number;
+};
+
+// ============================================================
+// Supplier domain constants
+// ============================================================
+export const SUPPLIER_CATEGORIES = [
+  { value: "laboratory", label: "Laboratório" },
+  { value: "imaging", label: "Imagem" },
+  { value: "clinic", label: "Clínica" },
+  { value: "professional_service", label: "Serviço Profissional" },
+  { value: "other", label: "Outro" },
+] as const;
+
+export type SupplierCategory = (typeof SUPPLIER_CATEGORIES)[number]["value"];
+
+export const SUPPLIER_STATUSES = [
+  { value: "active", label: "Ativo", color: "#10B981" },
+  { value: "inactive", label: "Inativo", color: "#6B7280" },
+  { value: "blocked", label: "Bloqueado", color: "#EF4444" },
+] as const;
+
+export type SupplierStatus = (typeof SUPPLIER_STATUSES)[number]["value"];
+
+export const MAPPING_STATUSES = [
+  { value: "active", label: "Ativo", color: "#10B981" },
+  { value: "inactive", label: "Inativo", color: "#6B7280" },
+  { value: "discontinued", label: "Descontinuado", color: "#9CA3AF" },
+] as const;
+
+export type MappingStatus = (typeof MAPPING_STATUSES)[number]["value"];
+
+export const COMPANY_STATUSES = [
+  { value: "active", label: "Ativo", color: "#10B981" },
+  { value: "inactive", label: "Inativo", color: "#6B7280" },
+  { value: "archived", label: "Arquivado", color: "#9CA3AF" },
+] as const;
+
+export type CompanyStatus = (typeof COMPANY_STATUSES)[number]["value"];
+
+// ============================================================
+// Permission constants
+// ============================================================
+export const SUPPLIER_PERMISSIONS = [
+  "pricing.supplier.view",
+  "pricing.supplier.create",
+  "pricing.supplier.edit",
+  "pricing.supplier.archive",
+  "pricing.supplier.manage_mappings",
+] as const;
+
+export const COMPANY_PERMISSIONS = [
+  "core.company.view",
+  "core.company.create",
+  "core.company.edit",
+  "core.company.archive",
 ] as const;

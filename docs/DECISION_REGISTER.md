@@ -132,3 +132,24 @@
 - Anon key segura: exposta apenas no browser, não em repositório
 - Database password nunca commitada; usada apenas via CLI local
 - CI usa GitHub Actions Variables (não Secrets) para `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (valores públicos para o browser)
+
+## DEC-019 — Empresas como Entidade Base dos Fornecedores
+
+**Data:** 2026-08-18
+**Decisão:** Tabela `companies` é a entidade base; fornecedor é uma empresa com `supplier_profile` associado.
+**Contexto:** PRC-02 — Fornecedores e Mapeamentos. Uma empresa pode ser fornecedor ou não; o perfil de fornecedor é uma extensão opcional com categoria, contrato e pagamento.
+**Consequência:** `companies` armazena dados cadastrais (razão social, CNPJ); `supplier_profiles` extende com role de fornecedor; `supplier_catalog_items` mapeia itens do catálogo ao código externo do fornecedor.
+
+## DEC-020 — Mapeamento Fornecedor↔Item via RPC
+
+**Data:** 2026-08-18
+**Decisão:** Criação e preferência de mapeamentos via funções RPC (`fn_create_supplier_mapping`, `fn_set_preferred_mapping`) em vez de inserts diretos.
+**Contexto:** Mapeamentos têm regras de negócio complexas: máximo um preferido por fornecedor+item, unicidade por fornecedor+item+unidade, vigências não sobrepostas. RPCs garantem atomicidade e validação server-side.
+**Consequência:** UI chama RPCs; funções executam com privilégio DEFINER para contornar RLS em inserts transacionais; auditoria automática via triggers.
+
+## DEC-021 — Aliases de Catálogo Estendidos para Fornecedores
+
+**Data:** 2026-08-18
+**Decisão:** Extensão de `catalog_item_aliases` com colunas `source_company_id`, `supplier_catalog_item_id` e `external_code`.
+**Contexto:** PRC-02 — aliases podem originar-se de fornecedores (via mapeamento), não apenas de migração manual ou legado. Colunas nullable mantêm retrocompatibilidade.
+**Consequência:** Função `fn_alias_supplier_source_integrity` valida integridade; trigger impede exclusão de mapeamento com alias vinculado; 3 novos valores de `source_type` ('supplier_*, 'supplier_unknown').
