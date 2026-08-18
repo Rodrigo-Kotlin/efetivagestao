@@ -25,7 +25,8 @@ const futureModules: FutureModule[] = [
   {
     title: "Custos",
     description: "Custos de exames e serviços por fornecedor.",
-    status: "coming-soon",
+    status: "available",
+    path: "/pricing/costs",
   },
   {
     title: "Formação de Preço",

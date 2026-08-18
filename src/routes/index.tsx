@@ -13,6 +13,11 @@ import { SuppliersPage } from "@/features/pricing/suppliers/pages/SuppliersPage"
 import { SupplierNewPage } from "@/features/pricing/suppliers/pages/SupplierNewPage";
 import { SupplierDetailPage } from "@/features/pricing/suppliers/pages/SupplierDetailPage";
 import { SupplierEditPage } from "@/features/pricing/suppliers/pages/SupplierEditPage";
+import { CostsPage } from "@/features/pricing/costs/pages/CostsPage";
+import { CostNewPage } from "@/features/pricing/costs/pages/CostNewPage";
+import { CostDetailPage } from "@/features/pricing/costs/pages/CostDetailPage";
+import { VersionDetailPage } from "@/features/pricing/costs/pages/VersionDetailPage";
+import { VersionNewPage } from "@/features/pricing/costs/pages/VersionNewPage";
 
 export const router = createBrowserRouter([
   {
@@ -68,6 +73,26 @@ export const router = createBrowserRouter([
           {
             path: "/pricing/suppliers/:id/edit",
             element: <SupplierEditPage />,
+          },
+          {
+            path: "/pricing/costs",
+            element: <CostsPage />,
+          },
+          {
+            path: "/pricing/costs/new",
+            element: <CostNewPage />,
+          },
+          {
+            path: "/pricing/costs/:id",
+            element: <CostDetailPage />,
+          },
+          {
+            path: "/pricing/costs/:id/versions/new",
+            element: <VersionNewPage />,
+          },
+          {
+            path: "/pricing/costs/versions/:id",
+            element: <VersionDetailPage />,
           },
         ],
       },

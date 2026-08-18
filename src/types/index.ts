@@ -196,6 +196,72 @@ export const COMPANY_STATUSES = [
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number]["value"];
 
 // ============================================================
+// Cost Table types
+// ============================================================
+export type CostTable = Database["public"]["Tables"]["supplier_cost_tables"]["Row"];
+export type CostTableInsert = Database["public"]["Tables"]["supplier_cost_tables"]["Insert"];
+export type CostTableUpdate = Database["public"]["Tables"]["supplier_cost_tables"]["Update"];
+
+export type CostTableVersion = Database["public"]["Tables"]["supplier_cost_table_versions"]["Row"];
+export type CostTableVersionInsert = Database["public"]["Tables"]["supplier_cost_table_versions"]["Insert"];
+export type CostTableVersionUpdate = Database["public"]["Tables"]["supplier_cost_table_versions"]["Update"];
+
+export type CostItem = Database["public"]["Tables"]["supplier_cost_items"]["Row"];
+export type CostItemInsert = Database["public"]["Tables"]["supplier_cost_items"]["Insert"];
+export type CostItemUpdate = Database["public"]["Tables"]["supplier_cost_items"]["Update"];
+
+// ============================================================
+// Cost composite types
+// ============================================================
+export type CostTableWithSupplier = CostTable & {
+  supplier: SupplierWithCompany;
+  versions?: CostTableVersion[];
+};
+
+export type CostTableVersionWithItems = CostTableVersion & {
+  items: CostItem[];
+  cost_table: CostTableWithSupplier;
+};
+
+export type CostItemWithDetails = CostItem & {
+  catalog_item: CatalogItem;
+  supplier_catalog_item?: SupplierCatalogItem;
+};
+
+// ============================================================
+// Cost domain constants
+// ============================================================
+export const COST_TABLE_STATUSES = [
+  { value: "active", label: "Ativo", color: "#10B981" },
+  { value: "inactive", label: "Inativo", color: "#6B7280" },
+  { value: "archived", label: "Arquivado", color: "#9CA3AF" },
+] as const;
+
+export type CostTableStatus = (typeof COST_TABLE_STATUSES)[number]["value"];
+
+export const VERSION_STATUSES = [
+  { value: "draft", label: "Rascunho", color: "#F59E0B" },
+  { value: "under_review", label: "Em Revisão", color: "#3B82F6" },
+  { value: "approved", label: "Aprovado", color: "#8B5CF6" },
+  { value: "active", label: "Ativo", color: "#10B981" },
+  { value: "scheduled", label: "Agendado", color: "#06B6D4" },
+  { value: "expired", label: "Expirado", color: "#6B7280" },
+] as const;
+
+export type VersionStatus = (typeof VERSION_STATUSES)[number]["value"];
+
+export const COST_ITEM_STATUSES = [
+  { value: "provided", label: "Fornecido", color: "#10B981" },
+  { value: "not_provided", label: "Não Fornecido", color: "#6B7280" },
+  { value: "not_applicable", label: "Não Aplicável", color: "#9CA3AF" },
+  { value: "awaiting_quote", label: "Aguardando Cotação", color: "#F59E0B" },
+  { value: "confirmed_zero", label: "Confirmado Zero", color: "#3B82F6" },
+  { value: "discontinued", label: "Descontinuado", color: "#EF4444" },
+] as const;
+
+export type CostItemStatus = (typeof COST_ITEM_STATUSES)[number]["value"];
+
+// ============================================================
 // Permission constants
 // ============================================================
 export const SUPPLIER_PERMISSIONS = [
@@ -211,4 +277,129 @@ export const COMPANY_PERMISSIONS = [
   "core.company.create",
   "core.company.edit",
   "core.company.archive",
+] as const;
+
+// ============================================================
+// PRC-03: Cost Table standalone interfaces & extended statuses
+// ============================================================
+
+export type CostVersionStatus = 'draft' | 'under_review' | 'approved' | 'scheduled' | 'active' | 'superseded' | 'cancelled';
+
+export interface SupplierCostTable {
+  id: string;
+  organization_id: string;
+  supplier_company_id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  status: CostTableStatus;
+  created_by: string;
+  created_at: string;
+  updated_by: string;
+  updated_at: string;
+  archived_at: string | null;
+  archived_by: string | null;
+}
+
+export interface SupplierCostTableVersion {
+  id: string;
+  organization_id: string;
+  cost_table_id: string;
+  version_number: number;
+  version_label: string | null;
+  source_date: string | null;
+  valid_from: string;
+  valid_to: string | null;
+  status: CostVersionStatus;
+  source_file_name: string | null;
+  source_file_hash: string | null;
+  source_document_id: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  published_by: string | null;
+  published_at: string | null;
+  superseded_at: string | null;
+}
+
+export interface SupplierCostItem {
+  id: string;
+  organization_id: string;
+  cost_table_version_id: string;
+  supplier_catalog_item_id: string;
+  catalog_item_id: string;
+  cost_status: CostItemStatus;
+  amount: number | null;
+  currency_code: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CostVersionWithItems extends SupplierCostTableVersion {
+  items: SupplierCostItem[];
+  cost_table: SupplierCostTable;
+}
+
+export interface CostResolution {
+  amount: number | null;
+  cost_status: CostItemStatus;
+  currency_code: string;
+  mapping_id: string;
+  cost_table_id: string;
+  version_id: string;
+  version_number: number;
+  valid_from: string;
+  valid_to: string | null;
+}
+
+export interface CostStats {
+  active_tables: number;
+  versions_in_review: number;
+  scheduled_versions: number;
+  items_without_cost: number;
+}
+
+export interface CostTableFormData {
+  supplier_company_id: string;
+  code: string;
+  name: string;
+  description: string;
+}
+
+export interface CostVersionFormData {
+  valid_from: string;
+  valid_to: string;
+  version_label: string;
+  source_date: string;
+  notes: string;
+}
+
+export interface CostItemFormData {
+  supplier_catalog_item_id: string;
+  catalog_item_id: string;
+  cost_status: CostItemStatus;
+  amount: number | null;
+  currency_code: string;
+  notes: string;
+}
+
+export const COST_VERSION_STATUSES = [
+  { value: "draft", label: "Rascunho", color: "#F59E0B" },
+  { value: "under_review", label: "Em Revisão", color: "#3B82F6" },
+  { value: "approved", label: "Aprovada", color: "#8B5CF6" },
+  { value: "scheduled", label: "Agendada", color: "#EC4899" },
+  { value: "active", label: "Ativa", color: "#10B981" },
+  { value: "superseded", label: "Substituída", color: "#6B7280" },
+  { value: "cancelled", label: "Cancelada", color: "#EF4444" },
+] as const;
+
+export const COST_PERMISSIONS = [
+  "pricing.cost.view",
+  "pricing.cost.create",
+  "pricing.cost.edit",
+  "pricing.cost.approve",
+  "pricing.cost.publish",
+  "pricing.cost.archive",
 ] as const;

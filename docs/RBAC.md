@@ -59,7 +59,12 @@ Permission (permissions)
 | pricing.supplier.edit | Editar Fornecedor | Fornecedores |
 | pricing.supplier.delete | Excluir Fornecedor | Fornecedores |
 | pricing.supplier.map | Mapear Itens de Fornecedor | Fornecedores |
-| pricing.cost.view | Visualizar Custos | Custos (futuro) |
+| pricing.cost.view | Visualizar Custos | Custos |
+| pricing.cost.create | Criar Tabelas e Versões de Custo | Custos |
+| pricing.cost.edit | Editar Itens de Custo | Custos |
+| pricing.cost.approve | Aprovar Versões de Custo | Custos |
+| pricing.cost.publish | Publicar Versões de Custo | Custos |
+| pricing.cost.archive | Arquivar Tabelas de Custo | Custos |
 | pricing.price.publish | Publicar Preços | Preços (futuro) |
 
 ### Permissões Futuras (NÃO implementadas)

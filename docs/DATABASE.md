@@ -278,6 +278,11 @@
 | 015 | 015_supplier_rbac | RBAC + audit triggers + alias extension + RPCs + log_audit() |
 | 016 | 016_supplier_security_hardening | Server-derived auth.uid(), REVOKE EXECUTE, CHECK preferred, hardened alias integrity |
 | 017 | 017_drop_old_function_overloads | Drop old function overloads (7-param log_audit, 12-param create_mapping, 2-param set_preferred) |
+| 018 | 018_supplier_cost_tables | supplier_cost_tables — registro de tabelas de custo por fornecedor |
+| 019 | 019_supplier_cost_table_versions | supplier_cost_table_versions — versões com vigência, workflow, overlap check |
+| 020 | 020_supplier_cost_items | supplier_cost_items — itens de custo por versão, cost_status CHECK, imutabilidade |
+| 021 | 021_cost_rls | RLS policies para tabelas de custo (4 policies × 3 tabelas) |
+| 022 | 022_cost_rbac_and_rpcs | Permissões pricing.cost.*, audit triggers, 10 RPCs |
 
 ## Geração de Tipos TypeScript
 

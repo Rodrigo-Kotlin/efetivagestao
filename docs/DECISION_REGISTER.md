@@ -181,3 +181,10 @@
 **Decisão:** `fn_alias_supplier_source_integrity` valida integralmente: mapping existe, organization_id confere, catalog_item_id confere, source_company_id confere.
 **Contexto:** PRC-02A — aliases de fornecedor devem referenciar mapeamentos consistentes. Validação parcial (apenas company_id) era insuficiente.
 **Consequência:** Trigger valida 4 campos contra a tabela `supplier_catalog_items` em uma única consulta; aliases com referências inconsistentes são rejeitados com erro claro.
+
+## DEC-026 — Tabelas de Custo com Versionamento Temporal
+
+**Data:** 2026-08-18
+**Decisão:** Custos de fornecedores são gerenciados via tabelas versionadas com vigência `[from, to)` e workflow draft→under_review→approved→scheduled→active→superseded.
+**Contexto:** PRC-03 — custos devem ser imutáveis após publicação, com suporte a comparação entre versões e resolução temporal automática.
+**Consequência:** 3 tabelas (`supplier_cost_tables`, `supplier_cost_table_versions`, `supplier_cost_items`), 10 RPCs, 12 políticas RLS, 6 permissões, proteção de sobreposição de vigência, imutabilidade de itens publicados.

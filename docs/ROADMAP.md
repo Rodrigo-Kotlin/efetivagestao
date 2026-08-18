@@ -9,7 +9,7 @@
 | PRC-01 | Catálogo Mestre | **COMPLETED** |
 | PRC-02 | Fornecedores e Mapeamentos | **COMPLETED** |
 | PRC-02A | Supplier Security & Integrity Hardening | **COMPLETED** |
-| PRC-03 | Custos e Versionamento | NOT STARTED |
+| PRC-03 | Custos e Versionamento | **IN PROGRESS** |
 | PRC-04 | Formação de Preço | NOT STARTED |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
