@@ -41,7 +41,7 @@ jobs:
   migrations-check:
     name: Migration Check
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.SUPABASE_ACCESS_TOKEN != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
