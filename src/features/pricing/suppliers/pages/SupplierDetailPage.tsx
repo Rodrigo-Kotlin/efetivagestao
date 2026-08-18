@@ -52,7 +52,7 @@ function Inner() {
   }, [load]);
 
   const handleAction = async (action: string) => {
-    if (!id || !orgId || !userId) return;
+    if (!id || !orgId) return;
 
     try {
       if (action === "edit") {
@@ -61,19 +61,19 @@ function Inner() {
       }
 
       if (action === "block") {
-        await updateSupplierStatus(id, "blocked", orgId, userId);
+        await updateSupplierStatus(id, "blocked", orgId, userId ?? "");
         await load();
         return;
       }
 
       if (action === "unblock") {
-        await updateSupplierStatus(id, "active", orgId, userId);
+        await updateSupplierStatus(id, "active", orgId, userId ?? "");
         await load();
         return;
       }
 
       if (action === "inactivate") {
-        await updateSupplierStatus(id, "inactive", orgId, userId);
+        await updateSupplierStatus(id, "inactive", orgId, userId ?? "");
         await load();
         return;
       }
@@ -81,7 +81,7 @@ function Inner() {
       if (action.startsWith("preferred:")) {
         const mappingId = action.split(":")[1];
         if (!mappingId) return;
-        await setPreferredMapping(mappingId, orgId, userId);
+        await setPreferredMapping(mappingId, orgId);
         await load();
         return;
       }
@@ -89,7 +89,7 @@ function Inner() {
       if (action.startsWith("inactivate_mapping:")) {
         const mappingId = action.split(":")[1];
         if (!mappingId) return;
-        await deactivateSupplierMapping(mappingId, orgId, userId);
+        await deactivateSupplierMapping(mappingId, orgId, userId ?? "");
         await load();
         return;
       }

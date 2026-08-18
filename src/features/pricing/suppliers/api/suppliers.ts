@@ -300,19 +300,24 @@ export async function fetchSupplierMappings(
 
 export async function createSupplierMapping(
   data: SupplierCatalogItemInsert,
-  orgId: string,
-  userId: string
+  orgId: string
 ): Promise<SupplierCatalogItem> {
   const normalized = normalizeText(data.external_name);
 
-  const { data: result, error } = await supabase
-    .from("supplier_catalog_items")
-    .insert({ ...data, organization_id: orgId, normalized_external_name: normalized, created_by: userId, updated_by: userId })
-    .select()
-    .single();
+  const { data: result, error } = await supabase.rpc("fn_create_supplier_mapping", {
+    p_supplier_company_id: data.supplier_company_id,
+    p_catalog_item_id: data.catalog_item_id,
+    p_external_name: data.external_name,
+    p_normalized_external_name: normalized,
+    p_notes: data.notes ?? null,
+    p_organization_id: orgId,
+  });
 
   if (error) {
     logger.error("Erro ao criar mapeamento", { error: error.message });
+    if (error.message.includes("not active") || error.message.includes("does not exist")) {
+      throw new Error("Fornecedor inexistente ou inativo");
+    }
     throw new Error("Falha ao criar mapeamento");
   }
 
@@ -320,11 +325,11 @@ export async function createSupplierMapping(
     organizationId: orgId,
     action: "supplier.mapping.created",
     entityType: "supplier_catalog_item",
-    entityId: result.id,
-    newData: result as unknown as Record<string, Json>,
+    entityId: result as string,
+    newData: { ...data, normalized_external_name: normalized } as unknown as Record<string, Json>,
   });
 
-  return result;
+  return result as unknown as SupplierCatalogItem;
 }
 
 export async function updateSupplierMapping(
@@ -370,31 +375,32 @@ export async function updateSupplierMapping(
 
 export async function setPreferredMapping(
   id: string,
-  orgId: string,
-  userId: string
+  orgId: string
 ): Promise<void> {
   const { data: mapping } = await supabase
     .from("supplier_catalog_items")
-    .select("supplier_company_id, catalog_item_id")
+    .select("supplier_company_id, catalog_item_id, status")
     .eq("id", id)
     .single();
 
   if (!mapping) throw new Error("Mapeamento não encontrado");
 
-  await supabase
-    .from("supplier_catalog_items")
-    .update({ is_preferred: false, updated_by: userId })
-    .eq("supplier_company_id", mapping.supplier_company_id)
-    .eq("catalog_item_id", mapping.catalog_item_id)
-    .neq("id", id);
+  if (mapping.status !== "active") {
+    throw new Error("Apenas mapeamentos ativos podem ser definidos como preferidos");
+  }
 
-  const { error } = await supabase
-    .from("supplier_catalog_items")
-    .update({ is_preferred: true, updated_by: userId })
-    .eq("id", id);
+  const { error } = await supabase.rpc("fn_set_preferred_mapping", {
+    p_mapping_id: id,
+  });
 
   if (error) {
     logger.error("Erro ao definir mapeamento preferencial", { error: error.message });
+    if (error.message.includes("not active")) {
+      throw new Error("Apenas mapeamentos ativos podem ser definidos como preferidos");
+    }
+    if (error.message.includes("Insufficient")) {
+      throw new Error("Sem permissão para gerenciar mapeamentos");
+    }
     throw new Error("Falha ao definir mapeamento preferencial");
   }
 

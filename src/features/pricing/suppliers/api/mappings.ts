@@ -118,8 +118,7 @@ export async function searchCatalogItems(
 
 export async function createSupplierMapping(
   data: SupplierCatalogItemInsert,
-  orgId: string,
-  userId: string
+  orgId: string
 ): Promise<SupplierCatalogItem> {
   const normalizedExternalName = normalizeText(data.external_name ?? "");
 
@@ -130,13 +129,15 @@ export async function createSupplierMapping(
     p_normalized_external_name: normalizedExternalName,
     p_notes: data.notes ?? null,
     p_organization_id: orgId,
-    p_user_id: userId,
   });
 
   if (error) {
     logger.error("Erro ao criar mapeamento", { error: error.message });
     if (error.message.includes("unique") || error.message.includes("duplicate")) {
       throw new Error("Já existe um mapeamento para este item externo neste fornecedor");
+    }
+    if (error.message.includes("not active") || error.message.includes("does not exist")) {
+      throw new Error("Fornecedor inexistente ou inativo");
     }
     throw new Error("Falha ao criar mapeamento");
   }
@@ -196,8 +197,7 @@ export async function updateSupplierMapping(
 
 export async function setPreferredMapping(
   mappingId: string,
-  orgId: string,
-  userId: string
+  orgId: string
 ): Promise<void> {
   const { data: before } = await supabase
     .from("supplier_catalog_items")
@@ -207,11 +207,16 @@ export async function setPreferredMapping(
 
   const { error } = await supabase.rpc("fn_set_preferred_mapping", {
     p_mapping_id: mappingId,
-    p_user_id: userId,
   });
 
   if (error) {
     logger.error("Erro ao definir mapeamento preferido", { error: error.message });
+    if (error.message.includes("not active")) {
+      throw new Error("Apenas mapeamentos ativos podem ser definidos como preferidos");
+    }
+    if (error.message.includes("Insufficient")) {
+      throw new Error("Sem permissão para gerenciar mapeamentos");
+    }
     throw new Error("Falha ao definir mapeamento preferido");
   }
 

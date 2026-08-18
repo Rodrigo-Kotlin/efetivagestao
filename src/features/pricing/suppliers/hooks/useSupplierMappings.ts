@@ -123,9 +123,9 @@ export function useMappingMutations() {
   const userId = user?.id;
 
   const create = useCallback(async (data: Omit<SupplierCatalogItem, "id" | "organization_id" | "created_by" | "created_at" | "updated_by" | "updated_at" | "deactivated_at" | "is_preferred">) => {
-    if (!orgId || !userId) throw new Error("Organização ou usuário não identificado");
-    return createSupplierMapping({ ...data, organization_id: orgId, created_by: userId, updated_by: userId } as SupplierCatalogItemInsert, orgId, userId);
-  }, [orgId, userId]);
+    if (!orgId) throw new Error("Organização não identificada");
+    return createSupplierMapping({ ...data, organization_id: orgId } as SupplierCatalogItemInsert, orgId);
+  }, [orgId]);
 
   const update = useCallback(async (id: string, data: Omit<SupplierCatalogItem, "id" | "supplier_company_id" | "catalog_item_id" | "organization_id" | "created_by" | "created_at" | "updated_by" | "updated_at" | "deactivated_at" | "is_preferred">) => {
     if (!orgId || !userId) throw new Error("Organização ou usuário não identificado");
@@ -133,9 +133,9 @@ export function useMappingMutations() {
   }, [orgId, userId]);
 
   const setPreferred = useCallback(async (mappingId: string) => {
-    if (!orgId || !userId) throw new Error("Organização ou usuário não identificado");
-    return setPreferredMapping(mappingId, orgId, userId);
-  }, [orgId, userId]);
+    if (!orgId) throw new Error("Organização não identificada");
+    return setPreferredMapping(mappingId, orgId);
+  }, [orgId]);
 
   const inactivate = useCallback(async (id: string) => {
     if (!orgId || !userId) throw new Error("Organização ou usuário não identificado");

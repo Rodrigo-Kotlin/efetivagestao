@@ -7,7 +7,8 @@
 | PRC-00 | Bootstrap / Foundation | **COMPLETED** |
 | PRC-00B | Infraestrutura Remota (GitHub + Supabase) | **COMPLETED** |
 | PRC-01 | Catálogo Mestre | **COMPLETED** |
-| PRC-02 | Fornecedores e Mapeamentos | NOT STARTED |
+| PRC-02 | Fornecedores e Mapeamentos | **COMPLETED** |
+| PRC-02A | Supplier Security & Integrity Hardening | **COMPLETED** |
 | PRC-03 | Custos e Versionamento | NOT STARTED |
 | PRC-04 | Formação de Preço | NOT STARTED |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
@@ -44,3 +45,4 @@ Controla:
 |-----------|-----|--------|
 | FOUNDATION_READY | PRC-00 | Atingido |
 | CATALOG_READY | PRC-01 | Atingido |
+| SUPPLIER_MAPPING_VERIFIED | PRC-02A | Atingido |

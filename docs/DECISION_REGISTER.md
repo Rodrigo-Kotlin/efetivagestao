@@ -153,3 +153,31 @@
 **Decisão:** Extensão de `catalog_item_aliases` com colunas `source_company_id`, `supplier_catalog_item_id` e `external_code`.
 **Contexto:** PRC-02 — aliases podem originar-se de fornecedores (via mapeamento), não apenas de migração manual ou legado. Colunas nullable mantêm retrocompatibilidade.
 **Consequência:** Função `fn_alias_supplier_source_integrity` valida integridade; trigger impede exclusão de mapeamento com alias vinculado; 3 novos valores de `source_type` ('supplier_*, 'supplier_unknown').
+
+## DEC-022 — Server-Derived Actor Identity em Auditoria
+
+**Data:** 2026-08-18
+**Decisão:** `log_audit()` derivou actor_user_id exclusivamente de `auth.uid()`, nunca de parâmetro fornecido pelo chamador.
+**Contexto:** PRC-02A — hardness de segurança. A função anterior aceitava `p_actor_user_id` como parâmetro, permitindo falsificação de ator por qualquer chamada direta.
+**Consequência:** REVOKE EXECUTE de PUBLIC/anon/authenticated na função; triggers continuam funcionando via SECURITY DEFINER; overload antigo (7 params) removido explicitamente.
+
+## DEC-023 — Server-Derived User ID em RPCs de Mapeamento
+
+**Data:** 2026-08-18
+**Decisão:** `fn_create_supplier_mapping` e `fn_set_preferred_mapping` derivam `auth.uid()` internamente; parâmetro `p_user_id` removido da assinatura.
+**Contexto:** PRC-02A — o frontend não deve enviar identidade de usuário para funções server-side. O servidor é a fonte de verdade para identidade.
+**Consequência:** created_by/updated_by/confirmed_by são derivados de `auth.uid()`; overloads antigos (12 params e 2 params) removidos explicitamente; frontend atualizado para nova assinatura.
+
+## DEC-024 — Supplier Ativo Obrigatório para Mapeamento
+
+**Data:** 2026-08-18
+**Decisão:** Apenas fornecedores com `supplier_profiles.status = 'active'` podem receber mapeamentos ou serem definidos como preferidos.
+**Contexto:** PRC-02A — integridade de dados. Fornecedores inativos ou bloqueados não devem participar de mapeamentos ativos.
+**Consequência:** `fn_create_supplier_mapping` valida `supplier_profiles.status = 'active'`; `fn_set_preferred_mapping` valida status do mapping E do supplier; CHECK constraint `chk_sci_preferred_requires_active` impede `is_preferred=true` com `status != 'active'`.
+
+## DEC-025 — Integridade Referencial Completa de Aliases
+
+**Data:** 2026-08-18
+**Decisão:** `fn_alias_supplier_source_integrity` valida integralmente: mapping existe, organization_id confere, catalog_item_id confere, source_company_id confere.
+**Contexto:** PRC-02A — aliases de fornecedor devem referenciar mapeamentos consistentes. Validação parcial (apenas company_id) era insuficiente.
+**Consequência:** Trigger valida 4 campos contra a tabela `supplier_catalog_items` em uma única consulta; aliases com referências inconsistentes são rejeitados com erro claro.

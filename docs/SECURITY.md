@@ -70,8 +70,31 @@ RLS está habilitado em todas as tabelas:
 ## Auditoria
 
 - `audit_logs` é append-only (triggers impedem UPDATE/DELETE)
-- Registra: actor, ação, entidade, dados antes/depois
+- `log_audit()` usa `auth.uid()` exclusivamente — never aceita actor do chamador
+- REVOKE EXECUTE de PUBLIC/anon/authenticated em `log_audit()`
+- Registra: actor (server-derived), ação, entidade, dados antes/depois
 - Organização é registrada quando aplicável
+
+## RPC Hardening (PRC-02A)
+
+| RPC | User ID | Permission Check | Supplier Active Check |
+|-----|---------|-----------------|----------------------|
+| `fn_create_supplier_mapping` | `auth.uid()` | `pricing.supplier.manage_mappings` | `supplier_profiles.status = 'active'` |
+| `fn_set_preferred_mapping` | `auth.uid()` | `pricing.supplier.manage_mappings` | `supplier_profiles.status = 'active'` + `mapping.status = 'active'` |
+
+- Frontend não envia `p_user_id` — servidor deriva de `auth.uid()`
+- Overloads antigos removidos explicitamente (DROP FUNCTION)
+- CHECK constraint `chk_sci_preferred_requires_active` impede preferred+inactive
+
+## Aliases Supplier Integrity (PRC-02A)
+
+`fn_alias_supplier_source_integrity` valida 4 campos:
+- `mapping.organization_id = alias.organization_id`
+- `mapping.catalog_item_id = alias.catalog_item_id`
+- `mapping.supplier_company_id = alias.source_company_id`
+- `mapping.id = alias.supplier_catalog_item_id`
+
+Aliases com referências inconsistentes são rejeitados.
 
 ## Checklist de Segurança
 

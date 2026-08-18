@@ -276,6 +276,8 @@
 | 013 | 013_supplier_catalog_items | supplier_catalog_items — mapeamentos fornecedor↔item + constraints |
 | 014 | 014_supplier_rls | RLS policies para companies, supplier_profiles, supplier_catalog_items |
 | 015 | 015_supplier_rbac | RBAC + audit triggers + alias extension + RPCs + log_audit() |
+| 016 | 016_supplier_security_hardening | Server-derived auth.uid(), REVOKE EXECUTE, CHECK preferred, hardened alias integrity |
+| 017 | 017_drop_old_function_overloads | Drop old function overloads (7-param log_audit, 12-param create_mapping, 2-param set_preferred) |
 
 ## Geração de Tipos TypeScript
 
