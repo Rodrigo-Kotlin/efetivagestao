@@ -5,6 +5,7 @@
 | PRC | Descrição | Status |
 |-----|-----------|--------|
 | PRC-00 | Bootstrap / Foundation | **COMPLETED** |
+| PRC-00B | Infraestrutura Remota (GitHub + Supabase) | **COMPLETED** |
 | PRC-01 | Catálogo Mestre | **COMPLETED** |
 | PRC-02 | Fornecedores e Mapeamentos | NOT STARTED |
 | PRC-03 | Custos e Versionamento | NOT STARTED |

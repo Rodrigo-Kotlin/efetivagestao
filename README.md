@@ -72,4 +72,8 @@ docs/           # Documentação do projeto
 
 ## Status
 
-**PRC-00 — Bootstrap / Foundation** → `IN PROGRESS`
+**PRC-00B — Infraestrutura Remota** → `COMPLETED`
+- GitHub: Rodrigo-Kotlin/efetivagestao (main)
+- Supabase: scyxgyewdokmsuehgwql (São Paulo)
+- Migrations: 001-010 aplicadas remotamente
+- CI: GitHub Actions (lint, typecheck, test, build)

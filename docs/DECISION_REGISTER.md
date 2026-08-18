@@ -118,3 +118,17 @@
 **Decisão:** Função `normalizeText()` centralizada para lowercase, remoção de acentos, colapso de espaços. Preserva texto original no cadastro.
 **Contexto:** Busca e detecção de duplicidade exigem comparação consistente independente de caixa, acentos ou espaçamento.
 **Consequência:** Normalização aplicada a aliases, busca e detecção de duplicidade; valor original sempre mantido para apresentação.
+
+## DEC-018 — Infraestrutura Remota: GitHub + Supabase
+
+**Data:** 2026-08-18
+**Decisão:** Conectar o projeto ao GitHub (Rodrigo-Kotlin/efetivagestao, branch main) e Supabase remoto (scyxgyewdokmsuehgwql) via CLI, sem Docker local.
+**Contexto:** PRC-00B — infraestrutura remota necessária para CI, deploy e colaboração. Conexão direta ao Postgres (IPv6) indisponível; utilizar connection pooler (IPv4, porta 6543).
+**Consequência:**
+- GitHub Actions CI: lint, typecheck, test, build, migration check
+- Supabase link via `supabase link --project-ref scyxgyewdokmsuehgwql`
+- Migrations aplicadas remotamente via `supabase db push --db-url <pooler-url>`
+- `.env.local` configurado com URL e anon key reais (gitignored)
+- Anon key segura: exposta apenas no browser, não em repositório
+- Database password nunca commitada; usada apenas via CLI local
+- CI usa GitHub Actions Variables (não Secrets) para `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (valores públicos para o browser)

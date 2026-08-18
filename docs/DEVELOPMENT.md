@@ -9,11 +9,11 @@
 ## Setup
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Rodrigo-Kotlin/efetivagestao.git
 cd efetivagestao
 npm install
-cp .env.example .env
-# Preencher variáveis de ambiente
+cp .env.example .env.local
+# Preencher variáveis de ambiente (ver abaixo)
 npm run dev
 ```
 
@@ -37,7 +37,11 @@ npm run dev
 | VITE_SUPABASE_URL | URL do projeto Supabase | Sim |
 | VITE_SUPABASE_ANON_KEY | Chave pública (anon) do Supabase | Sim |
 
-**NUNCA** commitar `.env`. Apenas `.env.example` vai para o repositório.
+**Produção local (.env.local):**
+- `VITE_SUPABASE_URL=https://scyxgyewdokmsuehgwql.supabase.co`
+- `VITE_SUPABASE_ANON_KEY=eyJ...` (obter no Supabase Dashboard > Settings > API)
+
+**NUNCA** commitar `.env.local`. Apenas `.env.example` vai para o repositório.
 
 ## Convenções
 
@@ -77,6 +81,27 @@ supabase start
 # Gerar tipos
 npx supabase gen types typescript --local > src/types/database.ts
 ```
+
+## Supabase Remoto
+
+```bash
+# Autenticar (precisa de token de acesso)
+supabase login
+
+# Linkar projeto
+supabase link --project-ref scyxgyewdokmsuehgwql
+
+# Dry-run de migrations
+supabase db push --dry-run
+
+# Aplicar migrations (via pooler IPv4)
+supabase db push --db-url "postgresql://postgres.scyxgyewdokmsuehgwql:<SENHA>@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
+
+# Validar schema remoto
+supabase db query --linked "SELECT count(*) FROM pg_tables WHERE schemaname='public';"
+```
+
+**Nota:** Conexão direta ao Postgres (`db.<ref>.supabase.co`) usa IPv6 e pode falhar. Usar connection pooler (`aws-0-sa-east-1.pooler.supabase.com:6543`) para IPv4.
 
 ## Estrutura de Testes
 

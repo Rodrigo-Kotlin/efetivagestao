@@ -46,6 +46,17 @@ RLS está habilitado em todas as tabelas:
 - **NUNCA** commitar service_role key, database password ou API keys privadas
 - Apenas `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no frontend
 - Variáveis sensíveis ficam apenas no backend/edge functions
+- `.env.local` está em `.gitignore` — nunca atinge o repositório
+- Supabase database password usada apenas via CLI local para `supabase db push`
+- CI usa GitHub Actions Variables para valores públicos (URL + anon key)
+
+### Auditoria de Secrets (PRC-00B)
+
+- [x] Zero referências a `service_role` no código fonte
+- [x] Zero JWTs hardcoded no código fonte
+- [x] `.env.local` gitignored
+- [x] Anon key é segura para browser (RLS protege tudo)
+- [x] Database password nunca em variáveis de ambiente do frontend
 
 ## Cache e PWA
 
@@ -69,3 +80,6 @@ RLS está habilitado em todas as tabelas:
 - [x] audit_logs append-only
 - [x] Triggers de updated_at automáticos
 - [x] Logger redacta dados sensíveis
+- [x] .env.local gitignored
+- [x] Zero service_role no frontend
+- [x] CI usa Variables (não Secrets) para valores públicos
