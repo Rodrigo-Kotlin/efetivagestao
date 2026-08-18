@@ -120,6 +120,71 @@
 
 **Append-only:** Triggers impedem UPDATE e DELETE.
 
+## Tabelas (PRC-01 — Catálogo Mestre)
+
+### catalog_categories
+| Coluna | Tipo | Constraints |
+|--------|------|------------|
+| id | uuid | PK |
+| organization_id | uuid | FK → organizations, NOT NULL |
+| parent_id | uuid | FK → catalog_categories, nullable |
+| code | text | NOT NULL |
+| name | text | NOT NULL |
+| description | text | nullable |
+| sort_order | integer | NOT NULL, default 0 |
+| is_active | boolean | NOT NULL, default true |
+| created_at | timestamptz | NOT NULL |
+| updated_at | timestamptz | NOT NULL, trigger |
+
+**Unique:** (organization_id, code)
+**Triggers:** Self-parent check, cross-org parent check, cycle detection (max depth 10), delete-if-children protection, updated_at.
+
+### catalog_items
+| Coluna | Tipo | Constraints |
+|--------|------|------------|
+| id | uuid | PK |
+| organization_id | uuid | FK → organizations, NOT NULL |
+| code | text | NOT NULL |
+| legacy_code | text | nullable |
+| item_type | text | NOT NULL, CHECK (8 values) |
+| category_id | uuid | FK → catalog_categories, nullable |
+| name | text | NOT NULL |
+| short_name | text | nullable |
+| description | text | nullable |
+| commercial_unit | text | NOT NULL |
+| execution_type | text | NOT NULL, CHECK (own/outsourced/hybrid) |
+| status | text | NOT NULL, default 'draft', CHECK (draft/active/inactive/archived) |
+| activated_at | timestamptz | nullable |
+| deactivated_at | timestamptz | nullable |
+| notes | text | nullable |
+| created_by | uuid | FK → auth.users, NOT NULL |
+| created_at | timestamptz | NOT NULL |
+| updated_by | uuid | FK → auth.users, NOT NULL |
+| updated_at | timestamptz | NOT NULL, trigger |
+| archived_at | timestamptz | nullable |
+| archived_by | uuid | nullable |
+
+**Unique:** (organization_id, code)
+**Triggers:** Category same-org check, delete-if-aliases protection, updated_at.
+**Indexes:** organization, code, status, type, category, legacy_code, normalized_name.
+
+### catalog_item_aliases
+| Coluna | Tipo | Constraints |
+|--------|------|------------|
+| id | uuid | PK |
+| organization_id | uuid | FK → organizations, NOT NULL |
+| catalog_item_id | uuid | FK → catalog_items, NOT NULL |
+| source_type | text | NOT NULL, CHECK (manual/legacy/internal) |
+| original_name | text | NOT NULL |
+| normalized_name | text | NOT NULL |
+| is_confirmed | boolean | NOT NULL, default true |
+| confirmed_by | uuid | FK → auth.users, nullable |
+| confirmed_at | timestamptz | nullable |
+| created_at | timestamptz | NOT NULL |
+
+**Unique:** (catalog_item_id, normalized_name)
+**Triggers:** Item same-org check.
+
 ## Migrations
 
 | # | Arquivo | Descrição |
@@ -130,6 +195,10 @@
 | 004 | 004_core_audit | audit_logs com append-only |
 | 005 | 005_core_rls | RLS habilitado + policies base |
 | 006 | 006_core_seed | Seed: EFETIVA, roles globais, permissões base |
+| 007 | 007_catalog_tables | catalog_categories, catalog_items, catalog_item_aliases + triggers |
+| 008 | 008_catalog_rls | RLS policies para tabelas do catálogo + has_permission() helper |
+| 009 | 009_catalog_code_generation | Sequências + fn_catalog_next_code() para geração segura de código |
+| 010 | 010_catalog_rbac | Permissões catálogo + seeds para roles admin/manager/operator/viewer |
 
 ## Geração de Tipos TypeScript
 

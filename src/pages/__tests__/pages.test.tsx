@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HomePage } from "@/pages/HomePage";
-import { PricingPage } from "@/pages/PricingPage";
 
 vi.mock("@/features/core/useAuth", () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -51,12 +50,12 @@ describe("HomePage", () => {
     expect(cards).toHaveLength(12);
   });
 
-  it("renders Preços & Exames as in-development with link to /pricing", () => {
+  it("renders Preços & Exames as active with link to /pricing", () => {
     renderWithRouter(<HomePage />);
     const pricingCard = screen.getByRole("listitem", { name: /preços & exames/i });
     expect(pricingCard).toHaveAttribute("href", "/pricing");
     expect(pricingCard.tagName).toBe("A");
-    expect(within(pricingCard).getByText("Em desenvolvimento")).toBeInTheDocument();
+    expect(within(pricingCard).getByText("Disponível")).toBeInTheDocument();
   });
 
   it("renders Clientes & CRM as coming soon", () => {
@@ -75,13 +74,5 @@ describe("HomePage", () => {
       const card = badge.closest('[role="listitem"]');
       expect(card?.tagName).not.toBe("A");
     });
-  });
-});
-
-describe("PricingPage", () => {
-  it("renders placeholder message", () => {
-    renderWithRouter(<PricingPage />);
-    expect(screen.getByText("Preços & Exames")).toBeInTheDocument();
-    expect(screen.getByText("Módulo em preparação")).toBeInTheDocument();
   });
 });

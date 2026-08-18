@@ -76,3 +76,45 @@
 **Decisão:** Dados clínicos sensíveis não pertencem ao Core geral.
 **Contexto**: Proteção de dados sensíveis, LGPD.
 **Consequência:** Módulo Clínica com isolamento próprio.
+
+## DEC-012 — Catálogo Genérico em Vez de Tabela Exclusiva de Exames
+
+**Data:** 2026-08-18
+**Decisão:** O catálogo mestre suporta múltiplos tipos de item (exames, procedimentos, consultas, pacotes, etc.) em vez de tabela exclusiva de exames.
+**Contexto:** A Efetiva comercializa e operacionaliza serviços diversos, não apenas exames laboratoriais. Um catálogo genérico evita reestruturação futura.
+**Consequência:** Campo `item_type` com CHECK constraint; prefixos de código variam por tipo; schema preparado para evolução.
+
+## DEC-013 — Identificador Técnico UUID + Código Comercial Estável
+
+**Data:** 2026-08-18
+**Decisão:** PK é UUID; código comercial (`EXA-000001`) é atributo único por organização, imutável após ativação.
+**Contexto:** UUID evita枚举 de IDs; código comercial é o identificador humano estável para comunicação interna.
+**Consequência:** Constraint `unique(organization_id, code)`; código gerado server-side; não editável após ativação.
+
+## DEC-014 — Aliases Separados do Nome Mestre
+
+**Data:** 2026-08-18
+**Decisão:** Nomes alternativos ficam em tabela separada (`catalog_item_aliases`) com normalização para busca.
+**Contexto:** O mesmo item pode ser chamado de diversas formas (ex: "Hemograma", "Hemograma Completo", "HEMOGRAMA COMPLETO"). Aliases evitam duplicidade e suportam migração de legado.
+**Consequência:** Nome mestre é único e imutável para identidade; aliases são auditáveis e indexados por nome normalizado.
+
+## DEC-015 — Geração de Código Server-Side via Sequências PostgreSQL
+
+**Data:** 2026-08-18
+**Decisão:** Geração de código usando sequences PostgreSQL (`nextval`) com mapeamento centralizado tipo→prefixo.
+**Contexto:** `MAX(code) + 1` sem proteção de concorrência causa race conditions. Sequências são atômicas e concorrente-seguras.
+**Consequência:** Função `fn_catalog_next_code(item_type, org_id)`; uma sequence por tipo de item; prefixos centralizados na função `fn_catalog_item_prefix`.
+
+## DEC-016 — Inativação/Arquivamento em Vez de Exclusão Histórica
+
+**Data:** 2026-08-18
+**Decisão:** Itens e categorias nunca são excluídos fisicamente quando possuem dependências ou histórico. Utilizar inativação (status) e arquivamento.
+**Contexto:** Integridade referencial e histórico de auditoria. Exclusão destrói rastreabilidade.
+**Consequência:** Status com lifecycle `draft→active→inactive→archived`; triggers protegem DELETE em categorias com filhos e itens com aliases.
+
+## DEC-017 — Normalização de Texto para Busca e Comparação
+
+**Data:** 2026-08-18
+**Decisão:** Função `normalizeText()` centralizada para lowercase, remoção de acentos, colapso de espaços. Preserva texto original no cadastro.
+**Contexto:** Busca e detecção de duplicidade exigem comparação consistente independente de caixa, acentos ou espaçamento.
+**Consequência:** Normalização aplicada a aliases, busca e detecção de duplicidade; valor original sempre mantido para apresentação.

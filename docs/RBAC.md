@@ -26,7 +26,7 @@ Permission (permissions)
 
 ### Permissions
 
-- Código pontual: `pricing.catalog.view`, `pricing.price.publish`
+- Código pontual: `pricing.catalog.view`, `pricing.catalog.create`
 - Catálogo aberto — qualquer autenticado pode listar
 - Associação a roles controla acesso
 
@@ -35,23 +35,27 @@ Permission (permissions)
 - Um usuário pode ter múltiplas memberships (multi-organização)
 - Cada membership pode ter múltiplos roles
 
-## Estado Atual (PRC-00)
+## Roles Implementadas
 
-### Roles Implementadas
+| Code | Nome | Tipo | Permissões Catálogo |
+|------|------|------|---------------------|
+| admin | Administrador | Global (system) | Todas |
+| manager | Gerente | Global (system) | view, create, edit |
+| operator | Operador | Global (system) | view |
+| viewer | Visualizador | Global (system) | view |
 
-| Code | Nome | Tipo |
-|------|------|------|
-| admin | Administrador | Global (system) |
-| viewer | Visualizador | Global (system) |
+## Permissões Implementadas
 
-### Permissões Implementadas
-
-| Code | Nome |
-|------|------|
-| system.admin | Administração do Sistema |
-| pricing.catalog.view | Visualizar Catálogo |
-| pricing.cost.view | Visualizar Custos |
-| pricing.price.publish | Publicar Preços |
+| Code | Nome | Domínio |
+|------|------|---------|
+| system.admin | Administração do Sistema | Sistema |
+| pricing.catalog.view | Visualizar Catálogo | Catálogo |
+| pricing.catalog.create | Criar Item do Catálogo | Catálogo |
+| pricing.catalog.edit | Editar Item do Catálogo | Catálogo |
+| pricing.catalog.archive | Arquivar Item do Catálogo | Catálogo |
+| pricing.catalog.manage_categories | Gerenciar Categorias | Catálogo |
+| pricing.cost.view | Visualizar Custos | Custos (futuro) |
+| pricing.price.publish | Publicar Preços | Preços (futuro) |
 
 ### Permissões Futuras (NÃO implementadas)
 
@@ -73,19 +77,32 @@ if (can("pricing.catalog.view")) {
 ## Uso no Banco (RLS)
 
 ```sql
--- Exemplo: policy futura de pricing
-create policy "pricing_catalog_view"
+-- Helper: verificar permissão
+create or replace function public.has_permission(permission_code text, org_id uuid)
+returns boolean as $$
+begin
+  return exists (
+    select 1
+    from public.organization_memberships m
+    join public.membership_roles mr on mr.membership_id = m.id
+    join public.role_permissions rp on rp.role_id = mr.role_id
+    join public.permissions p on p.id = rp.permission_id
+    where m.user_id = auth.uid()
+      and m.organization_id = org_id
+      and m.status = 'active'
+      and p.code = permission_code
+  );
+end;
+$$ language plpgsql security definer;
+
+-- Exemplo: policy de catálogo
+create policy "catalog_items_select"
   on public.catalog_items for select
-  using (
-    public.is_member_of(organization_id)
-    and exists (
-      select 1 from public.organization_memberships m
-      join public.membership_roles mr on mr.membership_id = m.id
-      join public.role_permissions rp on rp.role_id = mr.role_id
-      join public.permissions p on p.id = rp.permission_id
-      where m.user_id = auth.uid()
-        and p.code = 'pricing.catalog.view'
-        and m.status = 'active'
-    )
+  using (public.is_member_of(organization_id));
+
+create policy "catalog_items_insert"
+  on public.catalog_items for insert
+  with check (
+    public.has_permission('pricing.catalog.create', organization_id)
   );
 ```

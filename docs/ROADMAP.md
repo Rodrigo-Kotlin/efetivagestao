@@ -4,8 +4,8 @@
 
 | PRC | Descrição | Status |
 |-----|-----------|--------|
-| PRC-00 | Bootstrap / Foundation | **IN PROGRESS** |
-| PRC-01 | Catálogo Mestre | NOT STARTED |
+| PRC-00 | Bootstrap / Foundation | **COMPLETED** |
+| PRC-01 | Catálogo Mestre | **COMPLETED** |
 | PRC-02 | Fornecedores e Mapeamentos | NOT STARTED |
 | PRC-03 | Custos e Versionamento | NOT STARTED |
 | PRC-04 | Formação de Preço | NOT STARTED |
@@ -36,3 +36,10 @@ Controla:
 - Conciliação de faturamento de fornecedores
 - Inteligência de mercado
 - Auditoria
+
+## Checkpoints
+
+| Checkpoint | PRC | Status |
+|-----------|-----|--------|
+| FOUNDATION_READY | PRC-00 | Atingido |
+| CATALOG_READY | PRC-01 | Atingido |

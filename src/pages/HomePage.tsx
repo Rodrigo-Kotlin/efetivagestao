@@ -25,7 +25,7 @@ const modules: ModuleCard[] = [
     title: "Preços & Exames",
     description: "Catálogo, custos, margens e tabelas comerciais.",
     icon: "📋",
-    status: "in-development",
+    status: "active",
     path: "/pricing",
   },
   {
