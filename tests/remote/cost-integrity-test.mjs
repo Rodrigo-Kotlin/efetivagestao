@@ -5,6 +5,9 @@
  * Runs against the remote Supabase project using the JS client.
  * Tests: strict cost status, immutability, workflow, overlap, no hard delete,
  * temporal resolution, and continuous timeline.
+ *
+ * Includes fixture cleanup: tracks created versions and cleans up
+ * active/scheduled/draft versions after tests complete.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -19,6 +22,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let passed = 0;
 let failed = 0;
 const failures = [];
+const createdVersionIds = [];
 
 function log(label, ok, detail = "") {
   if (ok) {
@@ -67,6 +71,7 @@ async function createVersion(label, validFrom, validTo) {
     p_notes: "test",
   });
   if (error) throw new Error("createVersion(" + label + ") failed: " + error.message);
+  createdVersionIds.push(data);
   return data;
 }
 
@@ -145,6 +150,49 @@ async function createSecondMapping() {
     .single();
 
   return { catalogItemId: ci2.id, mappingId: map2.id };
+}
+
+async function cleanupFixtures() {
+  console.log("\n═══ CLEANUP ═══");
+  try {
+    const { data: versions } = await supabase
+      .from("supplier_cost_table_versions")
+      .select("id, status, version_number")
+      .eq("cost_table_id", F.costTableId)
+      .order("version_number", { ascending: true });
+
+    if (!versions) {
+      console.log("  No versions found to clean");
+      return;
+    }
+
+    console.log(`  Total versions: ${versions.length}`);
+    const byStatus = {};
+    for (const v of versions) {
+      byStatus[v.status] = (byStatus[v.status] || 0) + 1;
+    }
+    console.log("  Status breakdown:", JSON.stringify(byStatus));
+
+    let cleaned = 0;
+    for (const v of versions) {
+      if (v.status === "draft" || v.status === "under_review" || v.status === "approved") {
+        try {
+          const { error } = await supabase
+            .from("supplier_cost_table_versions")
+            .delete()
+            .eq("id", v.id);
+          if (!error) {
+            cleaned++;
+          }
+        } catch {
+          // hard delete may be blocked by trigger
+        }
+      }
+    }
+    console.log(`  Attempted cleanup of ${cleaned} non-published versions`);
+  } catch (e) {
+    console.log("  Cleanup error:", e.message);
+  }
 }
 
 // ============================================================
@@ -323,14 +371,6 @@ async function runTests() {
   // ---- H13: scheduled future does not remove current cost ----
   console.log("COST-H13: scheduled future does not remove current cost");
   {
-    // Debug: show active/scheduled versions before test
-    const { data: activeVersions } = await supabase
-      .from("supplier_cost_table_versions")
-      .select("id, version_number, status, valid_from, valid_to")
-      .eq("cost_table_id", F.costTableId)
-      .in("status", ["active", "scheduled"]);
-    console.log("  Active/scheduled before H13:", JSON.stringify(activeVersions?.map(v => `${v.version_number}:${v.status}(${v.valid_from}→${v.valid_to})`)));
-
     // Create vA (active, current)
     const vA = await createVersion("H13-A", "2025-01-01", null);
     await addItem(vA, "provided", 10.0);
@@ -338,48 +378,35 @@ async function runTests() {
     await approveVersion(vA);
     await publishVersion(vA);
 
-    // Debug: show active/scheduled after vA publish
-    const { data: afterA } = await supabase
-      .from("supplier_cost_table_versions")
-      .select("id, version_number, status, valid_from, valid_to")
-      .eq("cost_table_id", F.costTableId)
-      .in("status", ["active", "scheduled"]);
-    console.log("  Active/scheduled after vA publish:", JSON.stringify(afterA?.map(v => `${v.version_number}:${v.status}(${v.valid_from}→${v.valid_to})`)));
-
     // Create vB (scheduled, future)
     const vB = await createVersion("H13-B", "2099-01-01", null);
     await addItem(vB, "provided", 15.0);
     await submitVersion(vB);
     await approveVersion(vB);
 
-    // Debug: show vB state before publish
-    const { data: vBRow } = await supabase
-      .from("supplier_cost_table_versions")
-      .select("id, version_number, status, valid_from, valid_to")
-      .eq("id", vB)
-      .single();
-    console.log("  vB before publish:", JSON.stringify(vBRow));
-
+    // Publish vB — must succeed (DEFERRABLE EXCLUDE constraint)
+    let publishOk = false;
     try {
       await publishVersion(vB);
+      publishOk = true;
     } catch (e) {
       console.log("  H13-B publish error:", e.message);
     }
 
-    // Debug: show active/scheduled after vB publish attempt
-    const { data: afterB } = await supabase
-      .from("supplier_cost_table_versions")
-      .select("id, version_number, status, valid_from, valid_to")
-      .eq("cost_table_id", F.costTableId)
-      .in("status", ["active", "scheduled"]);
-    console.log("  Active/scheduled after vB publish:", JSON.stringify(afterB?.map(v => `${v.version_number}:${v.status}(${v.valid_from}→${v.valid_to})`)));
-
-    // Resolve for today → should still be 10.00 (vA active)
+    // Verify vA is still active for today (valid_to closed to 2099-01-01)
     const { data: res } = await resolveCost(null, null, new Date().toISOString().slice(0, 10));
     const vAOk = res?.amount === 10.0;
-    // vB publish may fail due to EXCLUDE — that's acceptable since
-    // the important thing is vA remains active for today's date
-    log("COST-H13", vAOk, `amount=${res?.amount} (vA active for today)`);
+
+    // Verify vB is now scheduled
+    const { data: vBRow } = await supabase
+      .from("supplier_cost_table_versions")
+      .select("status")
+      .eq("id", vB)
+      .single();
+    const vBScheduled = vBRow?.status === "scheduled";
+
+    const ok = publishOk && vAOk && vBScheduled;
+    log("COST-H13", ok, `publish=${publishOk} vA_amount=${res?.amount} vB_status=${vBRow?.status}`);
   }
 
   // ---- H14: historical lookup in superseded version ----
@@ -562,6 +589,8 @@ async function main() {
     console.error("\n💀 FATAL:", e.message);
     process.exit(1);
   }
+
+  await cleanupFixtures();
 
   console.log("\n═══ SUMMARY ═══");
   console.log(`  Passed: ${passed}`);

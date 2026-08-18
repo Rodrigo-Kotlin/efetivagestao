@@ -1,0 +1,8 @@
+-- PRC-03A: H13 fix — SUPERSEDED by migration 023
+--
+-- This migration was an intermediate iteration during H13 debugging.
+-- The final solution (two-statement publish: supersede ALL then publish)
+-- is fully contained in migration 023's fn_publish_cost_version.
+--
+-- This file exists only to maintain migration ordering on the remote DB
+-- (it was already applied during debugging). No changes needed.

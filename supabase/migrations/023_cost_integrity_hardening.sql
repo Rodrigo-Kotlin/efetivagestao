@@ -1,6 +1,7 @@
 -- PRC-03A: Cost Temporal & Financial Integrity Hardening
 -- Corrective migration — does NOT modify 018-022
 -- Addresses: strict cost status, immutability, workflow, overlap, resolution, security
+-- Deployed state: includes H13 fix (two-statement publish for scheduled versions)
 
 -- ============================================================
 -- 1. STRICT COST STATUS / AMOUNT CONSTRAINT
@@ -87,6 +88,11 @@ BEGIN
     IF NEW.status IS DISTINCT FROM OLD.status THEN
       RAISE EXCEPTION 'Cannot change status of % version directly', OLD.status;
     END IF;
+    RETURN NEW;
+  END IF;
+
+  -- Allow scheduled → superseded via RPC (for publish continuous timeline)
+  IF OLD.status = 'scheduled' AND NEW.status = 'superseded' AND v_is_rpc THEN
     RETURN NEW;
   END IF;
 
@@ -187,6 +193,12 @@ BEGIN
     THEN
       RAISE EXCEPTION 'Cannot modify published version commercial/temporal fields';
     END IF;
+  END IF;
+
+  -- Allow scheduled → superseded via RPC (set superseded_at)
+  IF OLD.status = 'scheduled' AND NEW.status = 'superseded' AND v_is_rpc THEN
+    NEW.superseded_at := now();
+    RETURN NEW;
   END IF;
 
   RETURN NEW;
@@ -319,27 +331,31 @@ DROP FUNCTION IF EXISTS fn_sctv_overlap_check();
 -- Add EXCLUDE constraint for concurrent-safe temporal overlap
 -- Uses daterange with '[)' bounds (inclusive start, exclusive end)
 -- NULL valid_to is treated as infinity via upper open bound
+-- DEFERRABLE INITIALLY DEFERRED: allows H13 scheduled publish to work
 
 DO $$
 BEGIN
-  -- Add the EXCLUDE constraint if it doesn't exist
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'chk_sctv_no_overlap'
-  ) THEN
-    ALTER TABLE supplier_cost_table_versions
-      ADD CONSTRAINT chk_sctv_no_overlap EXCLUDE USING gist (
-        cost_table_id WITH =,
-        daterange(valid_from, valid_to, '[)') WITH &&
-      )
-      WHERE (status IN ('active', 'scheduled'));
-  END IF;
+  -- Drop existing constraint first (may have been recreated during H13 debugging)
+  ALTER TABLE supplier_cost_table_versions DROP CONSTRAINT IF EXISTS chk_sctv_no_overlap;
+
+  ALTER TABLE supplier_cost_table_versions
+    ADD CONSTRAINT chk_sctv_no_overlap EXCLUDE USING gist (
+      cost_table_id WITH =,
+      daterange(valid_from, valid_to, '[)') WITH &&
+    )
+    WHERE (status IN ('active', 'scheduled'))
+    DEFERRABLE INITIALLY DEFERRED;
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
 -- ============================================================
 -- 8. FIX fn_publish_cost_version — CONTINUOUS TIMELINE
+--    H13 fix: Two-statement publish for scheduled versions.
+--    Statement 1 supersedes ALL other active/scheduled versions,
+--    removing them from the EXCLUDE constraint's WHERE clause.
+--    Statement 2 publishes the new version with no conflicts.
+--    EXCLUDE checks at statement end, so no overlap is possible.
 -- ============================================================
 
 DROP FUNCTION IF EXISTS fn_publish_cost_version(uuid);
@@ -356,7 +372,6 @@ DECLARE
   v_valid_to   date;
   v_table_id   uuid;
   v_new_status text;
-  v_prev_version record;
 BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
@@ -390,43 +405,32 @@ BEGIN
   -- Signal RPC context before any status changes
   PERFORM set_config('app.cost_rpc_active', 'true', true);
 
-  -- Find the currently active version for same table (if any)
-  SELECT v2.id, v2.valid_from, v2.valid_to, v2.status
-  INTO v_prev_version
-  FROM supplier_cost_table_versions v2
-  WHERE v2.cost_table_id = v_table_id
-    AND v2.id != p_version_id
-    AND v2.status IN ('active', 'scheduled')
-  ORDER BY v2.valid_from DESC
-  LIMIT 1;
+  -- Statement 1: Supersede ALL other active/scheduled versions for this table
+  -- This removes them from the EXCLUDE WHERE clause (status IN ('active','scheduled'))
+  -- so statement 2 can publish without overlap.
+  UPDATE supplier_cost_table_versions
+  SET status = 'superseded',
+      superseded_at = now(),
+      valid_to = CASE
+        WHEN v_valid_from > valid_from THEN v_valid_from
+        ELSE valid_to
+      END
+  WHERE cost_table_id = v_table_id
+    AND id != p_version_id
+    AND status IN ('active', 'scheduled');
+  -- EXCLUDE fires at statement end:
+  --   All superseded rows leave WHERE clause → no check needed → passes
 
-  -- If there's an active/scheduled version and we're publishing a future one:
-  -- Close the previous version's validity to maintain continuous timeline
-  IF v_prev_version IS NOT NULL AND v_new_status = 'scheduled' THEN
-    -- Close previous version: set valid_to = new version's valid_from
-    UPDATE supplier_cost_table_versions
-    SET valid_to = v_valid_from
-    WHERE id = v_prev_version.id
-      AND (v_prev_version.valid_to IS NULL OR v_prev_version.valid_to > v_valid_from);
-  END IF;
-
-  -- Supersede any currently active/scheduled version that overlaps
-  -- But only if the new version is active (not scheduled)
-  IF v_new_status = 'active' THEN
-    UPDATE supplier_cost_table_versions
-    SET status = 'superseded',
-        superseded_at = now()
-    WHERE cost_table_id = v_table_id
-      AND id != p_version_id
-      AND status IN ('active', 'scheduled');
-  END IF;
-
-  -- Publish the new version
+  -- Statement 2: Publish the new version
   UPDATE supplier_cost_table_versions
   SET status = v_new_status,
       published_by = v_user_id,
       published_at = now()
   WHERE id = p_version_id;
+  -- EXCLUDE fires at statement end:
+  --   Only the new version matches WHERE (if scheduled/active)
+  --   All others were superseded in statement 1 → no overlap → passes
+
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 

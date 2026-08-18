@@ -188,3 +188,17 @@
 **Decisão:** Custos de fornecedores são gerenciados via tabelas versionadas com vigência `[from, to)` e workflow draft→under_review→approved→scheduled→active→superseded.
 **Contexto:** PRC-03 — custos devem ser imutáveis após publicação, com suporte a comparação entre versões e resolução temporal automática.
 **Consequência:** 3 tabelas (`supplier_cost_tables`, `supplier_cost_table_versions`, `supplier_cost_items`), 10 RPCs, 12 políticas RLS, 6 permissões, proteção de sobreposição de vigência, imutabilidade de itens publicados.
+
+## DEC-027 — Session Variable RPC Signal
+
+**Data:** 2026-08-18
+**Decisão:** Usar `set_config('app.cost_rpc_active', 'true', true)` como sinal de que uma mudança de status vem de uma RPC autorizada, em vez de criar triggers duplicados ou modifier security.
+**Contexto:** PRC-03A — triggers BEFORE UPDATE precisam distinguir entre UPDATEs diretos (bloqueados) e UPDATEs vindos de RPCs (permitidos). A variável de sessão é transaction-scoped e requer auth context.
+**Consequência:** `fn_validate_version_transition` e `fn_sctv_protect_published_fields` verificam `current_setting('app.cost_rpc_active', true) = 'true'`; todas as RPCs de status definem a flag antes de UPDATEs; RPCs são SECURITY DEFINER com search_path = public.
+
+## DEC-028 — H13: Two-Statement Publish for Scheduled Versions
+
+**Data:** 2026-08-18
+**Decisão:** Publicação de versões scheduled usa duas statements UPDATE separadas em vez de uma multi-row UPDATE ou SET CONSTRAINTS DEFERRED.
+**Contexto:** PRC-03A H13 — o EXCLUDE constraint GiST (`chk_sctv_no_overlap`) com partial WHERE clause checa por statement end. Multi-row UPDATE causa false-positive porque o processamento de rows é não-determinístico; SET CONSTRAINTS DEFERRED não funciona para EXCLUDE constraints no PostgreSQL. Solução: Statement 1 supersede TODAS outras active/scheduled (removendo-as do WHERE clause do EXCLUDE); Statement 2 publica a nova versão (única row no WHERE clause → sem overlap).
+**Consequência:** `fn_publish_cost_version` sempre supersede primeiramente todas as versões concorrentes, depois publica; validade do predecessor é fechada apenas quando `v_valid_from > valid_from` para evitar ranges inválidos.

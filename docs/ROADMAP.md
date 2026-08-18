@@ -9,7 +9,8 @@
 | PRC-01 | Catálogo Mestre | **COMPLETED** |
 | PRC-02 | Fornecedores e Mapeamentos | **COMPLETED** |
 | PRC-02A | Supplier Security & Integrity Hardening | **COMPLETED** |
-| PRC-03 | Custos e Versionamento | **IN PROGRESS** |
+| PRC-03 | Custos e Versionamento | **COMPLETED** |
+| PRC-03A | Cost Temporal & Financial Integrity Hardening | **COMPLETED** |
 | PRC-04 | Formação de Preço | NOT STARTED |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
@@ -46,3 +47,4 @@ Controla:
 | FOUNDATION_READY | PRC-00 | Atingido |
 | CATALOG_READY | PRC-01 | Atingido |
 | SUPPLIER_MAPPING_VERIFIED | PRC-02A | Atingido |
+| COST_INTEGRITY_VERIFIED | PRC-03A | Atingido |
