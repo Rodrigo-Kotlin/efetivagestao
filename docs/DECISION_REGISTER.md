@@ -281,3 +281,10 @@
 **Decisão:** Em v1, componentes percentuais de custo usam base não circular (`base_cost` ou subtotal já resolvido); proibido percentual sobre o preço final de venda; sem motor tributário/fiscal.
 **Contexto:** PRC-04A — evitar fórmulas circulares (`price depende de imposto; imposto depende de price`) e simplificar o modelo inicial.
 **Consequência:** Tipos de componente FIXED e PERCENTAGE_OF_BASE_COST; total_cost = base + fixos + percentuais; cada componente rastreável no breakdown.
+
+## DEC-039 — Alocação Automática de version_number Adiada para o Workflow RPC (PRC-04B)
+
+**Data:** 2026-08-19
+**Decisão:** No schema de política de preço (PRC-04B), `pricing_policy_versions.version_number` é obrigatório e único por política (`UNIQUE (pricing_policy_id, version_number)`), mas a alocação automática do número da versão fica adiada para as RPCs de workflow do PRC-04C. Nenhum trigger do schema (inclusive `fn_ppv_validate_status_transition`) atribui `version_number` automaticamente.
+**Contexto:** PRC-04B — no domínio de custos, `fn_create_cost_version` (022) atribui o `version_number` automaticamente. Para políticas de preço, o escopo do PRC-04B é o modelo de dados confiável (integridade/RLS/RBAC); as RPCs de criação/transição de versão pertencem ao PRC-04C. Antecipar a alocação agora exigiria decidir o contrato das RPCs antes da fase de engine.
+**Consequência:** O schema garante apenas integridade (obrigatoriedade via NOT NULL + unicidade); o cliente/API deve informar `version_number` ao criar uma versão até o PRC-04C introduzir as RPCs de workflow; a transição de status é validada por trigger com gate `app.pricing_rpc_active`.

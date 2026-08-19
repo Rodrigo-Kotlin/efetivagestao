@@ -257,6 +257,72 @@
 
 **Triggers:** `fn_alias_supplier_source_integrity` valida integridade; proteção de exclusão de mapeamento com alias vinculado.
 
+## Tabelas (PRC-04B - Políticas de Preço)
+
+### pricing_policies
+
+Identidade estável de uma política de preço. Não armazena valores de cálculo (ficam nas versões).
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | default gen_random_uuid() |
+| organization_id | uuid FK → organizations | tenant |
+| code | text | UNIQUE (organization_id, code) |
+| name | text | |
+| description | text | |
+| scope_type | text | `default` \| `category` \| `catalog_item` |
+| catalog_category_id | uuid FK → catalog_categories | só para scope_type = category |
+| catalog_item_id | uuid FK → catalog_items | só para scope_type = catalog_item |
+| status | text | `active` \| `inactive` |
+| created_by / created_at | uuid FK / timestamptz | |
+| updated_by / updated_at | uuid FK / timestamptz | trigger fn_set_updated_at |
+
+**Integridade:** `chk_pp_scope_consistency` (cada scope_type exige exatamente sua coluna-alvo); índices parciais únicos por escopo ativo (`idx_pp_unique_default/category/item`) impedem ambiguidade (1 política ativa por alvo); trigger `fn_pp_scope_same_org` garante que categoria/item pertencem à mesma organização.
+
+### pricing_policy_versions
+
+Regras numéricas versionadas e temporalmente válidas da política. Não persiste preços calculados (PRC-04C/PRC-05).
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | |
+| organization_id | uuid FK → organizations | tenant |
+| pricing_policy_id | uuid FK → pricing_policies | |
+| version_number | integer | > 0; UNIQUE (pricing_policy_id, version_number) |
+| valid_from / valid_to | date | vigência `[valid_from, valid_to)` |
+| status | text | draft \| under_review \| approved \| scheduled \| active \| superseded \| cancelled |
+| pricing_method | text | `target_margin` \| `markup` \| `fixed_price` |
+| target_margin_rate | numeric(9,6) | só para target_margin; [0, 1) |
+| markup_rate | numeric(9,6) | só para markup; >= 0 |
+| fixed_price | numeric(14,4) | só para fixed_price; >= 0 |
+| minimum_margin_rate | numeric(9,6) | NULL ou [0, 1) |
+| maximum_discount_rate | numeric(9,6) | NULL ou [0, 1] |
+| rounding_mode | text | `none` \| `nearest` \| `up` \| `down` |
+| rounding_step | numeric(12,4) | obrigatório se rounding_mode != none |
+| approved_by / approved_at | uuid / timestamptz | |
+| published_by / published_at | uuid / timestamptz | |
+| superseded_by / superseded_at | uuid / timestamptz | |
+
+**Integridade:** `chk_ppv_method_integrity` (cada método aceita somente sua própria taxa); `chk_ppv_min_margin`; `chk_ppv_max_discount`; `chk_ppv_rounding`; `chk_ppv_validity`; EXCLUDE temporal `chk_ppv_no_overlap` (GiST, `daterange('[)')`, DEFERRABLE) sobre versões active/scheduled da mesma política; triggers: cross-org (`fn_ppv_policy_same_org`), transição de status (`fn_ppv_validate_status_transition`, gate `app.pricing_rpc_active`), imutabilidade de publicados/aprovados (`fn_ppv_protect_published_fields`), bloqueio de hard delete de versões não-draft (`fn_ppv_delete_guard`).
+
+### pricing_policy_components
+
+Componentes adicionais de custo da versão de política.
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | |
+| organization_id | uuid FK → organizations | tenant |
+| pricing_policy_version_id | uuid FK → pricing_policy_versions | |
+| name | text | |
+| component_type | text | `fixed` \| `percentage_of_base_cost` |
+| fixed_amount | numeric(14,4) | só para fixed; >= 0 |
+| rate | numeric(9,6) | só para percentage_of_base_cost; [0, 1] |
+| created_by / created_at | uuid / timestamptz | |
+| updated_by / updated_at | uuid / timestamptz | |
+
+**Integridade:** `chk_ppc_type_integrity` (cada tipo aceita somente seu campo); trigger cross-org (`fn_ppc_version_same_org`); trigger `fn_ppc_parent_draft` (somente versões draft aceitam componentes); hard delete protegido em versões não-draft.
+
 ## Migrations
 
 | # | Arquivo | Descrição |
@@ -286,6 +352,8 @@
 | 023 | 023_cost_integrity_hardening | Restrição estrita de cost_status, imutabilidade RLS (app.cost_rpc_active), bloqueio de UPDATE direto de status, EXCLUDE temporal, RPCs seguras (submit/approve/publish) |
 | 024 | 024_h13_fix_scheduled_publish | Fix H13 (semantic doc): publicação scheduled mantém predecessor active |
 | 025 | 025_cost_temporal_cutover_finalization | Semântica temporal final: publish v8 (predecessor ativo até início da nova versão), resolver inclui 'scheduled', RPC idempotente fn_sync_cost_version_status |
+| 026 | 026_pricing_policy_schema | pricing_policies, pricing_policy_versions, pricing_policy_components + constraints de integridade, escopo, método, temporal (EXCLUDE GiST) e triggers cross-org/status/imutabilidade/hard-delete |
+| 027 | 027_pricing_policy_security | Permissões pricing.policy.* (6), mapeamentos RBAC, RLS (12 policies), audit triggers |
 
 ## Geração de Tipos TypeScript
 

@@ -14,7 +14,8 @@
 | PRC-03B | Temporal Cutover & Migration Reproducibility | **COMPLETED** |
 | PRC-04 | Formação de Preço | IN PROGRESS |
 | PRC-04A | Pricing Model & Mathematical Rules | **COMPLETED** |
-| PRC-04B | Price Calculation Engine (RPC + Frontend) | NOT STARTED |
+| PRC-04B | Pricing Policy Database, Integrity, RLS & RBAC | **COMPLETED** |
+| PRC-04C | Price Calculation Engine (RPC + Frontend) | NOT STARTED |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
 | PRC-07 | Motor de Resolução | NOT STARTED |
@@ -53,3 +54,4 @@ Controla:
 | COST_INTEGRITY_VERIFIED | PRC-03A | Atingido |
 | SUPPLIER_COSTS_VERIFIED | PRC-03B | Atingido |
 | PRICING_MODEL_DEFINED | PRC-04A | Atingido |
+| PRICING_POLICY_SCHEMA_VERIFIED | PRC-04B | Atingido |

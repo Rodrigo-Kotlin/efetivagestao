@@ -65,7 +65,24 @@ Permission (permissions)
 | pricing.cost.approve | Aprovar Versões de Custo | Custos |
 | pricing.cost.publish | Publicar Versões de Custo | Custos |
 | pricing.cost.archive | Arquivar Tabelas de Custo | Custos |
+| pricing.policy.view | Visualizar Políticas de Preço | Políticas de Preço |
+| pricing.policy.create | Criar Políticas de Preço | Políticas de Preço |
+| pricing.policy.edit | Editar Políticas de Preço | Políticas de Preço |
+| pricing.policy.review | Revisar Políticas de Preço | Políticas de Preço |
+| pricing.policy.approve | Aprovar Políticas de Preço | Políticas de Preço |
+| pricing.policy.publish | Publicar Políticas de Preço | Políticas de Preço |
 | pricing.price.publish | Publicar Preços | Preços (futuro) |
+
+### Políticas de Preço × Papéis (PRC-04B)
+
+| Papel | view | create | edit | review | approve | publish |
+|-------|------|--------|------|--------|---------|---------|
+| admin | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| manager | ✔ | ✔ | ✔ | ✔ | ✔ | — |
+| operator | — | — | — | — | — | — |
+| viewer | — | — | — | — | — | — |
+
+`pricing.policy.publish` é exclusivo do admin (consistente com `pricing.cost.publish`); operator/viewer não têm permissões de política de preço.
 
 ### Permissões Futuras (NÃO implementadas)
 

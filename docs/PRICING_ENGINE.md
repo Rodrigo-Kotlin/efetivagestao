@@ -659,3 +659,11 @@ Resumo das decisões que o PRC-04B deve executar (implementação):
 10. **Persistência** — simulações não persistidas automaticamente no v1; persistência de preço comercial só no PRC-05; auditoria opcional de simulações importantes pode ser discutida.
 11. **Desconto** — recalcular métricas após desconto; piso efetivo = mais restritivo entre desconto máximo e margem mínima.
 12. **FIXED_PRICE** — método opcional adiado para PRC-04B, com validação obrigatória de margem/markup resultantes.
+
+## 23. Estado de Implementação (PRC-04B)
+
+Modelo de dados confiável implementado e verificado:
+
+- **Migrations:** `026_pricing_policy_schema` (tabelas + integridade) e `027_pricing_policy_security` (permissões, RBAC, RLS, auditoria) — seções 14-19 deste documento.
+- **Verificação remota:** testes POL-H01..H27 (`tests/remote/pricing-policy-integrity-test.mjs`, fixtures em `tests/remote/sql/pricing_test_setup.sql`) — 33/33 assertivas PASS.
+- **Fora de escopo nesta fase:** motor de cálculo (`fn_calculate_price`, `fn_resolve_pricing_policy`, `fn_simulate_price`), RPCs de workflow de política e frontend — PRC-04C.
