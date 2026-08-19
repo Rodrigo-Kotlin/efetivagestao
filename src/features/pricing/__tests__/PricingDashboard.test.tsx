@@ -11,11 +11,11 @@ vi.mock("@/features/core/useAuth", () => ({
     profile: { full_name: "Test User" },
     memberships: [],
     activeOrganization: { id: "org-1", name: "Test Org" },
-    userRoles: { roles: [], permissions: ["pricing.catalog.view"] },
+    userRoles: { roles: [], permissions: ["pricing.catalog.view", "pricing.supplier.view", "pricing.cost.view"] },
     loading: false,
     signIn: vi.fn(),
     signOut: vi.fn(),
-    can: (perm: string) => perm === "pricing.catalog.view",
+    can: (perm: string) => ["pricing.catalog.view", "pricing.supplier.view", "pricing.cost.view"].includes(perm),
     hasRole: () => false,
   }),
 }));

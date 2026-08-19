@@ -16,7 +16,7 @@
 | PRC-04A | Pricing Model & Mathematical Rules | **COMPLETED** |
 | PRC-04B | Pricing Policy Database, Integrity, RLS & RBAC | **COMPLETED** |
 | PRC-04C | Authoritative Pricing Engine & Workflow (RPC) | **COMPLETED** |
-| PRC-04D | Pricing Policy UI & Price Simulator | NOT STARTED |
+| PRC-04D | Pricing Policy UI & Price Simulator | **COMPLETED** |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
 | PRC-07 | Motor de Resolução | NOT STARTED |
@@ -57,3 +57,4 @@ Controla:
 | PRICING_MODEL_DEFINED | PRC-04A | Atingido |
 | PRICING_POLICY_SCHEMA_VERIFIED | PRC-04B | Atingido |
 | PRICING_ENGINE_CORE_VERIFIED | PRC-04C | Atingido |
+| PRICING_POLICY_UI_VERIFIED | PRC-04D | Atingido |

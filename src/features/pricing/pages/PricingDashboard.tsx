@@ -7,6 +7,7 @@ interface FutureModule {
   description: string;
   status: "available" | "coming-soon";
   path?: string;
+  permission?: string;
 }
 
 const futureModules: FutureModule[] = [
@@ -15,23 +16,35 @@ const futureModules: FutureModule[] = [
     description: "Itens, categorias e nomenclaturas do catálogo de serviços.",
     status: "available",
     path: "/pricing/catalog",
+    permission: "pricing.catalog.view",
   },
   {
     title: "Fornecedores",
     description: "Mapeamento e gestão de fornecedores.",
     status: "available",
     path: "/pricing/suppliers",
+    permission: "pricing.supplier.view",
   },
   {
     title: "Custos",
     description: "Custos de exames e serviços por fornecedor.",
     status: "available",
     path: "/pricing/costs",
+    permission: "pricing.cost.view",
   },
   {
-    title: "Formação de Preço",
-    description: "Margens, markup e cálculo de preços.",
-    status: "coming-soon",
+    title: "Políticas de Preço",
+    description: "Margens, markup, componentes e regras de precificação.",
+    status: "available",
+    path: "/pricing/policies",
+    permission: "pricing.policy.view",
+  },
+  {
+    title: "Simulador de Preço",
+    description: "Simula o preço conforme custo e política vigentes.",
+    status: "available",
+    path: "/pricing/simulator",
+    permission: "pricing.calculate",
   },
   {
     title: "Tabelas Comerciais",
@@ -137,7 +150,8 @@ export function PricingDashboard() {
       {/* Future modules */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
         {futureModules.map((mod) => {
-          const isAvailable = mod.status === "available" && mod.path;
+          const hasPermission = !mod.permission || can(mod.permission);
+          const isAvailable = mod.status === "available" && mod.path && hasPermission;
 
           const cardContent = (
             <>

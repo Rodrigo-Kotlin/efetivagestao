@@ -18,6 +18,12 @@ import { CostNewPage } from "@/features/pricing/costs/pages/CostNewPage";
 import { CostDetailPage } from "@/features/pricing/costs/pages/CostDetailPage";
 import { VersionDetailPage } from "@/features/pricing/costs/pages/VersionDetailPage";
 import { VersionNewPage } from "@/features/pricing/costs/pages/VersionNewPage";
+import { PricingPoliciesPage } from "@/features/pricing/policies/pages/PricingPoliciesPage";
+import { PricingPolicyNewPage } from "@/features/pricing/policies/pages/PricingPolicyNewPage";
+import { PricingPolicyDetailPage } from "@/features/pricing/policies/pages/PricingPolicyDetailPage";
+import { PricingPolicyVersionNewPage } from "@/features/pricing/policies/pages/PricingPolicyVersionNewPage";
+import { PricingPolicyVersionDetailPage } from "@/features/pricing/policies/pages/PricingPolicyVersionDetailPage";
+import { PriceSimulatorPage } from "@/features/pricing/policies/pages/PriceSimulatorPage";
 
 export const router = createBrowserRouter([
   {
@@ -93,6 +99,30 @@ export const router = createBrowserRouter([
           {
             path: "/pricing/costs/versions/:id",
             element: <VersionDetailPage />,
+          },
+          {
+            path: "/pricing/policies",
+            element: <PricingPoliciesPage />,
+          },
+          {
+            path: "/pricing/policies/new",
+            element: <PricingPolicyNewPage />,
+          },
+          {
+            path: "/pricing/policies/:id",
+            element: <PricingPolicyDetailPage />,
+          },
+          {
+            path: "/pricing/policies/:id/versions/new",
+            element: <PricingPolicyVersionNewPage />,
+          },
+          {
+            path: "/pricing/policies/versions/:id",
+            element: <PricingPolicyVersionDetailPage />,
+          },
+          {
+            path: "/pricing/simulator",
+            element: <PriceSimulatorPage />,
           },
         ],
       },

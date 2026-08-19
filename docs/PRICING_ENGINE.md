@@ -1,7 +1,7 @@
 # Motor de Formação de Preço — PRC-04
 
-**Status:** Especificação autoritativa (PRC-04A) · Engine implementada e verificada (PRC-04C **COMPLETED**)
-**Baseline:** PRC-03B fechado — `SUPPLIER_COSTS_VERIFIED` · Migrations 001–025 imutáveis
+**Status:** Especificação autoritativa (PRC-04A) · Engine implementada e verificada (PRC-04C **COMPLETED**) · UI e Simulador (PRC-04D **COMPLETED**)
+**Baseline:** PRC-03B fechado — `SUPPLIER_COSTS_VERIFIED` · Migrations 001–031 imutáveis
 **Fonte de custo autoritativa:** `fn_resolve_supplier_cost(...)`
 
 ---
@@ -692,4 +692,16 @@ Motor de precificação autoritativo implementado:
 
 - **Testes:** `tests/remote/pricing-engine-test.mjs` (PRICE-H01..H46), fixtures em `tests/remote/sql/pricing_engine_test_setup.sql`
 
-- **Fora de escopo nesta fase:** frontend (PRC-04D), persistência de preços comerciais (PRC-05).
+### PRC-04D — UI & Simulador (COMPLETED)
+
+Frontend de políticas de preço e simulador, consumindo exclusivamente as RPCs autoritativas:
+
+- **Feature:** `src/features/pricing/policies/` — types, camada de API, hooks, componentes, páginas.
+- **Rotas:** `/pricing/policies`, `/pricing/policies/new`, `/pricing/policies/:id`, `/pricing/policies/:id/versions/new`, `/pricing/policies/versions/:id`, `/pricing/simulator`.
+- **Dashboard:** módulos "Políticas de Preço" (`pricing.policy.view`) e "Simulador de Preço" (`pricing.calculate`) habilitados com gating por permissão.
+- **Workflow:** transições exclusivamente via RPC (submit/approve/return_to_draft/cancel/publish); edição de rascunho via UPDATE direto org-escoped com whitelist de colunas (nunca envia `status`/`organization_id`/actor).
+- **Cálculo:** `fn_simulate_price` é a única fonte de cálculo; o frontend não replica matemática financeira.
+- **Testes:** `src/features/pricing/policies/__tests__/` — API, RBAC, formulário de método, simulador (resultado/formatos pt-BR) e workflow — 52 testes de UI.
+- **Qualidade:** typecheck, lint e build PASS; suíte completa 163/163 PASS; regressão remota 50/50 PASS.
+
+- **Fora de escopo nesta fase:** persistência de preços comerciais (PRC-05).
