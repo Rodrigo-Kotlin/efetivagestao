@@ -16,6 +16,7 @@ BEGIN;
 DO $$
 DECLARE
   v_user_id uuid := 'd7df8bb1-7da4-4926-8bd2-2fe6ad8ac060';
+  v_e2e_user_id uuid := '1933891b-e0b9-42fc-afaa-641966824742';
 
   v_p_org uuid := 'b3333333-3333-3333-3333-333333333333';  -- main pricing test org (admin)
   v_x_org uuid := 'c3333333-3333-3333-3333-333333333333';  -- foreign org (no membership)
@@ -102,6 +103,29 @@ BEGIN
   SELECT m.id, v_admin_role
   FROM organization_memberships m
   WHERE m.organization_id = v_z_org AND m.user_id = v_user_id;
+
+  -- E2E_TEST_USER: admin in P_ORG and Z_ORG, viewer in Y_ORG (the real
+  -- account the suite authenticates as — mirrors pricing_engine_test_setup.sql)
+  INSERT INTO organization_memberships (id, organization_id, user_id, status)
+  VALUES (gen_random_uuid(), v_p_org, v_e2e_user_id, 'active');
+  INSERT INTO membership_roles (membership_id, role_id)
+  SELECT m.id, v_admin_role
+  FROM organization_memberships m
+  WHERE m.organization_id = v_p_org AND m.user_id = v_e2e_user_id;
+
+  INSERT INTO organization_memberships (id, organization_id, user_id, status)
+  VALUES (gen_random_uuid(), v_z_org, v_e2e_user_id, 'active');
+  INSERT INTO membership_roles (membership_id, role_id)
+  SELECT m.id, v_admin_role
+  FROM organization_memberships m
+  WHERE m.organization_id = v_z_org AND m.user_id = v_e2e_user_id;
+
+  INSERT INTO organization_memberships (id, organization_id, user_id, status)
+  VALUES (gen_random_uuid(), v_y_org, v_e2e_user_id, 'active');
+  INSERT INTO membership_roles (membership_id, role_id)
+  SELECT m.id, v_viewer_role
+  FROM organization_memberships m
+  WHERE m.organization_id = v_y_org AND m.user_id = v_e2e_user_id;
 
   -- X_ORG: NO membership (foreign tenant)
 
