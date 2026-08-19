@@ -200,17 +200,28 @@ async function testWorkflow() {
     log("PRICE-H03", data !== null && error === null, data || error?.message);
   }
 
-  // H04: concurrent version creation yields unique numbers
-  console.log("H04: concurrent version creation yields unique numbers");
+  // H04: concurrent version creation yields unique version_number values
+  console.log("H04: concurrent version creation yields unique version_number values");
   {
     const p3 = createVersion(policyId, { validFrom: "2028-01-01" });
     const p4 = createVersion(policyId, { validFrom: "2029-01-01" });
     const [r3, r4] = await Promise.all([p3, p4]);
     const bothOk = r3.data !== null && r4.data !== null && r3.error === null && r4.error === null;
-    const distinct = r3.data !== r4.data;
-    log("PRICE-H04", bothOk && distinct, `v3=${r3.data} v4=${r4.data}`);
-    if (r3.data) createdVersionIds.push(r3.data);
-    if (r4.data) createdVersionIds.push(r4.data);
+    let numbersOk = false;
+    if (bothOk) {
+      createdVersionIds.push(r3.data);
+      createdVersionIds.push(r4.data);
+      // Verify actual version_number values from DB (not just UUID distinctness)
+      const { data: rows } = await supabase
+        .from("pricing_policy_versions")
+        .select("version_number")
+        .in("id", [r3.data, r4.data]);
+      if (rows && rows.length === 2) {
+        const nums = rows.map((r) => r.version_number).sort((a, b) => a - b);
+        numbersOk = nums[1] - nums[0] === 1;
+      }
+    }
+    log("PRICE-H04", bothOk && numbersOk, `v3=${r3.data} v4=${r4.data}`);
   }
 
   // H05: direct status UPDATE rejected
@@ -246,7 +257,18 @@ async function testWorkflow() {
   // H08: future publish → scheduled
   console.log("H08: future publish → scheduled");
   {
-    // First submit+approve v2
+    // First publish v1 as immediate active (v1 valid_from = 2026-01-01 ≤ today)
+    await supabase.rpc("fn_publish_pricing_policy_version", { p_version_id: v1Id });
+    const { data: v1StatusCheck } = await supabase
+      .from("pricing_policy_versions")
+      .select("status")
+      .eq("id", v1Id)
+      .single();
+    if (v1StatusCheck?.status !== "active") {
+      log("PRICE-H08", false, `v1 publish failed: status=${v1StatusCheck?.status}`);
+    }
+
+    // Then submit+approve v2
     await supabase.rpc("fn_submit_pricing_policy_version", {
       p_version_id: v2Id,
     });
@@ -1382,6 +1404,94 @@ async function testSecurity() {
 }
 
 // ============================================================
+// COMPONENT UPDATE TESTS: COMP-UPD-01–03
+// ============================================================
+async function testComponentUpdate() {
+  console.log("\n═══ COMPONENT UPDATE TESTS (COMP-UPD-01–03) ═══\n");
+
+  // Helper: create a draft policy+version and return both IDs
+  async function createDraftPolicyVersion(itemId) {
+    const { data: polId } = await createPolicy("catalog_item", { itemId });
+    const { data: vid } = await createVersion(polId, {
+      validFrom: "2026-01-01",
+      method: "target_margin",
+      targetMarginRate: 0.2,
+    });
+    return { polId, vid };
+  }
+
+  // COMP-UPD-01: fixed component — update fixed_amount without changing name
+  console.log("COMP-UPD-01: fixed component update amount without name");
+  {
+    const { vid } = await createDraftPolicyVersion(F.pItemA);
+    // Add a fixed component
+    const { data: compId } = await supabase.rpc("fn_add_pricing_policy_component", {
+      p_version_id: vid,
+      p_name: "Platform fee",
+      p_component_type: "fixed",
+      p_fixed_amount: 10,
+    });
+    // Update only fixed_amount (name=null, rate=null)
+    const { error: updErr } = await supabase.rpc("fn_update_pricing_policy_component", {
+      p_component_id: compId,
+      p_fixed_amount: 20,
+    });
+    // Verify
+    const { data: row } = await supabase
+      .from("pricing_policy_components")
+      .select("name, fixed_amount, rate")
+      .eq("id", compId)
+      .single();
+    const ok = !updErr && row?.name === "Platform fee" && Number(row?.fixed_amount) === 20;
+    log("COMP-UPD-01", ok, `name=${row?.name} fixed_amount=${row?.fixed_amount}`);
+    createdVersionIds.push(vid);
+  }
+
+  // COMP-UPD-02: percentage component — update rate without changing name
+  console.log("COMP-UPD-02: percentage component update rate without name");
+  {
+    const { vid } = await createDraftPolicyVersion(F.pItemA);
+    const { data: compId } = await supabase.rpc("fn_add_pricing_policy_component", {
+      p_version_id: vid,
+      p_name: "Operational surcharge",
+      p_component_type: "percentage_of_base_cost",
+      p_rate: 0.05,
+    });
+    const { error: updErr } = await supabase.rpc("fn_update_pricing_policy_component", {
+      p_component_id: compId,
+      p_rate: 0.1,
+    });
+    const { data: row } = await supabase
+      .from("pricing_policy_components")
+      .select("name, fixed_amount, rate")
+      .eq("id", compId)
+      .single();
+    const ok = !updErr && row?.name === "Operational surcharge" && Number(row?.rate) === 0.1;
+    log("COMP-UPD-02", ok, `name=${row?.name} rate=${row?.rate}`);
+    createdVersionIds.push(vid);
+  }
+
+  // COMP-UPD-03: cross-type rejection — set rate on a fixed component
+  console.log("COMP-UPD-03: cross-type rejection — rate on fixed component");
+  {
+    const { vid } = await createDraftPolicyVersion(F.pItemA);
+    const { data: compId } = await supabase.rpc("fn_add_pricing_policy_component", {
+      p_version_id: vid,
+      p_name: "Setup fee",
+      p_component_type: "fixed",
+      p_fixed_amount: 50,
+    });
+    const { error: updErr } = await supabase.rpc("fn_update_pricing_policy_component", {
+      p_component_id: compId,
+      p_rate: 0.15,
+    });
+    const rejected = updErr !== null;
+    log("COMP-UPD-03", rejected, updErr?.message || "rejected");
+    createdVersionIds.push(vid);
+  }
+}
+
+// ============================================================
 // CLEANUP
 // ============================================================
 async function cleanupFixtures() {
@@ -1420,7 +1530,7 @@ async function cleanupFixtures() {
 async function main() {
   console.log("╔══════════════════════════════════════════════════════╗");
   console.log("║  PRC-04C: PRICING ENGINE REMOTE TESTS              ║");
-  console.log("║  PRICE-H01 to PRICE-H46                            ║");
+  console.log("║  PRICE-H01 to H46 + COMP-UPD-01 to 03             ║");
   console.log("╚══════════════════════════════════════════════════════╝");
 
   try {
@@ -1429,6 +1539,7 @@ async function main() {
     await testResolver();
     await testCalculation();
     await testSecurity();
+    await testComponentUpdate();
   } catch (e) {
     console.error("\n💀 FATAL:", e.message);
     process.exit(1);

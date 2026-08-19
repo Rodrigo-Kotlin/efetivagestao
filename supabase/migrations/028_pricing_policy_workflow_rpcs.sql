@@ -243,15 +243,16 @@ CREATE OR REPLACE FUNCTION fn_update_pricing_policy_component(
 )
 RETURNS void AS $$
 DECLARE
-  v_user_id uuid;
-  v_org_id  uuid;
+  v_user_id      uuid;
+  v_org_id       uuid;
+  v_component_type text;
 BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Authentication required';
   END IF;
 
-  SELECT c.organization_id INTO v_org_id
+  SELECT c.organization_id, c.component_type INTO v_org_id, v_component_type
   FROM pricing_policy_components c
   WHERE c.id = p_component_id;
 
@@ -267,10 +268,19 @@ BEGIN
     RAISE EXCEPTION 'Insufficient permissions (requires pricing.policy.edit)';
   END IF;
 
+  -- Component-type integrity: reject cross-type field mutations
+  IF v_component_type = 'fixed' AND p_rate IS NOT NULL AND p_fixed_amount IS NULL AND p_name IS NULL THEN
+    RAISE EXCEPTION 'Cannot set rate on a fixed component (provide fixed_amount instead)';
+  END IF;
+
+  IF v_component_type = 'percentage_of_base_cost' AND p_fixed_amount IS NOT NULL AND p_rate IS NULL AND p_name IS NULL THEN
+    RAISE EXCEPTION 'Cannot set fixed_amount on a percentage_of_base_cost component (provide rate instead)';
+  END IF;
+
   UPDATE pricing_policy_components
   SET name = COALESCE(p_name, name),
-      fixed_amount = CASE WHEN p_name IS NOT NULL THEN p_fixed_amount ELSE fixed_amount END,
-      rate = CASE WHEN p_name IS NOT NULL THEN p_rate ELSE rate END,
+      fixed_amount = COALESCE(p_fixed_amount, fixed_amount),
+      rate = COALESCE(p_rate, rate),
       sort_order = COALESCE(p_sort_order, sort_order),
       updated_by = v_user_id
   WHERE id = p_component_id;
