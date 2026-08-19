@@ -34,7 +34,8 @@ draft → under_review → approved → scheduled/active → superseded
 - **Vigência**: `[valid_from, valid_to)` — início inclusivo, fim exclusivo
 - **Imutabilidade**: itens em versões `active` ou `superseded` não podem ser alterados
 - **Sobreposição**: apenas 1 versão `active` ou `scheduled` por tabela de custo com vigência sobreposta
-- **Resolução**: `fn_resolve_supplier_cost` retorna o custo vigente mais recente para um item
+- **Resolução**: `fn_resolve_supplier_cost` retorna o custo vigente mais recente para um item (date-driven, inclui versões `scheduled`)
+- **Transições de status só via RPC**: nenhum UPDATE direto de `status` é permitido pelo frontend — `fn_submit_cost_version`, `fn_approve_cost_version` e `fn_publish_cost_version` são o único caminho (RLS bloqueia com `app.cost_rpc_active`)
 
 ## RPCs
 
@@ -45,9 +46,26 @@ draft → under_review → approved → scheduled/active → superseded
 | `fn_submit_cost_version` | Enviar draft para revisão |
 | `fn_approve_cost_version` | Aprovar versão em revisão |
 | `fn_publish_cost_version` | Publicar versão aprovada |
+| `fn_sync_cost_version_status` | Cutover idempotente scheduled → active para uma data de referência |
 | `fn_resolve_supplier_cost` | Resolver custo vigente para item |
 | `fn_get_version_items` | Listar itens de uma versão |
 | `fn_get_cost_stats` | Estatísticas para dashboard |
+
+## Frontend × RPC
+
+A camada de API (`src/features/pricing/costs/api/costs.ts`) expõe apenas funções que chamam as RPCs:
+
+| Função frontend | RPC backend | Permissão exigida |
+|-----------------|-------------|-------------------|
+| `submitCostVersion` | `fn_submit_cost_version` | `pricing.cost.create` |
+| `approveCostVersion` | `fn_approve_cost_version` | `pricing.cost.approve` |
+| `publishCostVersion` | `fn_publish_cost_version` | `pricing.cost.publish` |
+| `syncCostVersionStatus` | `fn_sync_cost_version_status` | qualquer membro autenticado |
+
+- Hooks `useSubmitCostVersion` / `useApproveCostVersion` / `usePublishCostVersion` / `useSyncCostVersionStatus` em `src/features/pricing/costs/hooks/useCosts.ts` (com estado de loading/erro e guarda anti-duplicidade).
+- Botões na página de detalhe da versão dependem de status **e** permissão RBAC (via `can()`); estados `scheduled`/`active`/`superseded`/`cancelled` são somente leitura.
+- Erros de RPC são mapeados para mensagens amigáveis (`mapCostWorkflowError`).
+- Status canônico: `COST_VERSION_STATUSES` em `src/types/index.ts` (draft, under_review, approved, scheduled, active, superseded, cancelled).
 
 ## Permissões
 
@@ -86,3 +104,6 @@ draft → under_review → approved → scheduled/active → superseded
 | 020 | supplier_cost_items + immutability + mapping integrity |
 | 021 | RLS policies (12 policies) |
 | 022 | RBAC permissions (6) + audit triggers + RPCs (8) |
+| 023 | Cost integrity hardening (strict cost_status, no direct status UPDATE, EXCLUDE temporal, secure RPCs) |
+| 024 | H13 fix — scheduled publish mantém predecessor ativo |
+| 025 | Temporal cutover finalization (publish v8, resolver com scheduled, fn_sync_cost_version_status) |

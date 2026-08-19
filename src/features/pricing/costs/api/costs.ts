@@ -232,46 +232,61 @@ export async function createCostTableVersion(
   return result;
 }
 
-export async function updateCostTableVersionStatus(
-  id: string,
-  newStatus: string,
-  orgId: string,
-  userId: string
-): Promise<void> {
-  const { data: before } = await supabase
-    .from("supplier_cost_table_versions")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  const updateData: Record<string, unknown> = { status: newStatus };
-
-  if (newStatus === "approved") {
-    updateData.approved_by = userId;
-    updateData.approved_at = new Date().toISOString();
-  } else if (newStatus === "active") {
-    updateData.published_by = userId;
-    updateData.published_at = new Date().toISOString();
+export function mapCostWorkflowError(message: string): string {
+  if (message.includes("Authentication required")) {
+    return "Sua sessão expirou. Faça login novamente.";
   }
+  if (message.includes("Insufficient permissions")) {
+    return "Você não tem permissão para realizar esta ação.";
+  }
+  if (message.includes("Not a member of this organization")) {
+    return "Você não é membro desta organização.";
+  }
+  if (message.includes("Version not found")) {
+    return "Versão não encontrada. Ela pode ter sido removida.";
+  }
+  if (message.includes("Only draft versions can be submitted")) {
+    return "Somente versões em rascunho podem ser enviadas para revisão.";
+  }
+  if (message.includes("Only versions under review can be approved")) {
+    return "Somente versões em revisão podem ser aprovadas.";
+  }
+  if (message.includes("Only approved versions can be published")) {
+    return "Somente versões aprovadas podem ser publicadas.";
+  }
+  if (message.includes("Version must have at least one cost item")) {
+    return "Adicione ao menos um item de custo antes de enviar para revisão.";
+  }
+  return "Não foi possível concluir a ação. Tente novamente.";
+}
 
-  const { error } = await supabase
-    .from("supplier_cost_table_versions")
-    .update(updateData)
-    .eq("id", id);
-
+async function rpcVersionAction(rpcName: string, versionId: string): Promise<void> {
+  const { error } = await supabase.rpc(rpcName, { p_version_id: versionId });
   if (error) {
-    logger.error("Erro ao atualizar status da versão", { error: error.message });
-    throw new Error("Falha ao atualizar status da versão");
+    logger.error(`Erro ao executar ${rpcName}`, { error: error.message });
+    throw new Error(mapCostWorkflowError(error.message));
   }
+}
 
-  await logAudit({
-    organizationId: orgId,
-    action: `cost_table_version.${newStatus}`,
-    entityType: "cost_table_version",
-    entityId: id,
-    oldData: before as unknown as Record<string, Json> | undefined,
-    newData: { status: newStatus },
-  });
+export async function submitCostVersion(versionId: string): Promise<void> {
+  await rpcVersionAction("fn_submit_cost_version", versionId);
+}
+
+export async function approveCostVersion(versionId: string): Promise<void> {
+  await rpcVersionAction("fn_approve_cost_version", versionId);
+}
+
+export async function publishCostVersion(versionId: string): Promise<void> {
+  await rpcVersionAction("fn_publish_cost_version", versionId);
+}
+
+export async function syncCostVersionStatus(referenceDate?: string): Promise<void> {
+  const params = referenceDate ? { p_reference_date: referenceDate } : {};
+  const { error } = await supabase.rpc("fn_sync_cost_version_status", params);
+  if (error) {
+    logger.error("Erro ao sincronizar status de versões", { error: error.message });
+    throw new Error("Falha ao sincronizar status das versões");
+  }
 }
 
 // ============================================================

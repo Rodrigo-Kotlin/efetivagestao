@@ -201,4 +201,27 @@
 **Data:** 2026-08-18
 **Decisão:** Publicação de versões scheduled usa duas statements UPDATE separadas em vez de uma multi-row UPDATE ou SET CONSTRAINTS DEFERRED.
 **Contexto:** PRC-03A H13 — o EXCLUDE constraint GiST (`chk_sctv_no_overlap`) com partial WHERE clause checa por statement end. Multi-row UPDATE causa false-positive porque o processamento de rows é não-determinístico; SET CONSTRAINTS DEFERRED não funciona para EXCLUDE constraints no PostgreSQL. Solução: Statement 1 supersede TODAS outras active/scheduled (removendo-as do WHERE clause do EXCLUDE); Statement 2 publica a nova versão (única row no WHERE clause → sem overlap).
-**Consequência:** `fn_publish_cost_version` sempre supersede primeiramente todas as versões concorrentes, depois publica; validade do predecessor é fechada apenas quando `v_valid_from > valid_from` para evitar ranges inválidos.
+**Consequência:** `fn_publish_cost_version` sempre supersede primeiramente todas as versões concorrentes, depois publica; validade do predecessor é fechada apenas quando `v_valid_from > valid_from` para evitar ranges inválidos. **Refinado pelo DEC-029 (PRC-03B):** no caso de publicação futura, o predecessor NÃO é mais superseded — apenas seu `valid_to` é fechado, e a EXCLUDE passa por adjacência de ranges.
+
+## DEC-029 — Temporal Cutover Semantics (PRC-03B)
+
+**Data:** 2026-08-18
+**Decisão:** Publicação futura mantém o predecessor ACTIVE com `valid_to` fechado na data de início da nova versão; resolução temporal é date-driven (inclui versões `scheduled`); ativação do schedule é feita por RPC idempotente `fn_sync_cost_version_status`.
+**Contexto:** PRC-03B — finalizar semântica temporal e reprodutibilidade de migração. Publicar uma versão futura B não deve "remover" o custo corrente A antes do tempo: A permanece `active` com range `[A.valid_from, B.valid_from)` e B torna-se `scheduled` `[B.valid_from, ∞)`. Ranges adjacentes não se sobrepõem, satisfazendo a EXCLUDE `chk_sctv_no_overlap` sem superseder A.
+**Consequência:**
+- `fn_publish_cost_version` (v8): para `valid_from > current_date` → fecha `valid_to` do predecessor active, supersede apenas versões scheduled sobrepostas e publica como `scheduled`; para `valid_from <= current_date` → comportamento anterior (supersede todas, publica `active`).
+- `fn_resolve_supplier_cost` (v2): filtro de status passa a incluir `'scheduled'` — resolução é por data (`reference_date >= valid_from`), não por status. `resolve(B.valid_from)` retorna B mesmo antes do cutover.
+- `fn_sync_cost_version_status` (novo): RPC SECURITY DEFINER idempotente que ativa versões scheduled cujo range cobre `p_reference_date` (default `current_date`) e supersede o predecessor. Pode ser chamado por cron/agendador repetidamente; segunda chamada retorna 0.
+- Migração 025: DDL/RPC idempotente que leva qualquer banco no estado 023/024 ao estado final; migrations 001-024 permanecem imutáveis.
+
+## DEC-030 — Frontend Version Workflow via RPCs (PRC-03B)
+
+**Data:** 2026-08-19
+**Decisão:** O frontend não executa UPDATE direto de `status` em `supplier_cost_table_versions`. Todas as transições do workflow (submit/approve/publish) são feitas exclusivamente pelas RPCs `fn_submit_cost_version`, `fn_approve_cost_version` e `fn_publish_cost_version` via `supabase.rpc(...)`, sem fabricar `approved_by`/`published_by`/`status` no cliente.
+**Contexto:** PRC-03B — a integração frontend×backend estava desalinhada: a página de detalhe da versão chamava `updateCostTableVersionStatus` (UPDATE direto), o que é bloqueado pelos triggers do PRC-03A (`fn_validate_version_transition`, sinal `app.cost_rpc_active`). O caminho correto já existia no backend desde a 022/023.
+**Consequência:**
+- `updateCostTableVersionStatus` foi removida; novas funções de API (`submitCostVersion`, `approveCostVersion`, `publishCostVersion`, `syncCostVersionStatus`) encapsulam as RPCs; erros mapeados por `mapCostWorkflowError` para mensagens amigáveis.
+- Hooks explícitos `useSubmitCostVersion`/`useApproveCostVersion`/`usePublishCostVersion`/`useSyncCostVersionStatus` com estado loading/erro e guarda anti-duplicidade; a página refaz o fetch após mutação bem-sucedida (estado autoritativo do servidor).
+- Botões de ação dependem de status **e** permissão RBAC (`pricing.cost.create` para submit, `pricing.cost.approve` para approve, `pricing.cost.publish` para publish); `scheduled`/`active`/`superseded`/`cancelled` são somente leitura.
+- Status canônico consolidado em `COST_VERSION_STATUSES` (7 estados); `VERSION_STATUSES`/`VersionStatus` duplicados (com `expired` inexistente) foram removidos.
+- Testes UI-WF01..06 cobrem submit/approve/publish via RPC, bloqueio por permissão, erro amigável e refetch pós-mutação.

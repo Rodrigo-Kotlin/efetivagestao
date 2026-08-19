@@ -1,9 +1,14 @@
-import { COST_ITEM_STATUSES } from "@/types";
+import { COST_ITEM_STATUSES, COST_VERSION_STATUSES } from "@/types";
 import type { CostTableVersionWithItems } from "@/types";
 
 interface Props {
   version: CostTableVersionWithItems;
   onAction: (action: string) => void;
+  permissions?: {
+    canSubmit?: boolean;
+    canApprove?: boolean;
+    canPublish?: boolean;
+  };
 }
 
 const cardStyle: React.CSSProperties = {
@@ -39,10 +44,12 @@ const formatCurrency = (amount: number | null, currency: string) => {
   }).format(amount);
 };
 
-export function VersionDetail({ version, onAction }: Props) {
+export function VersionDetail({ version, onAction, permissions = {} }: Props) {
+  const { canSubmit = false, canApprove = false, canPublish = false } = permissions;
   const isDraft = version.status === "draft";
   const isUnderReview = version.status === "under_review";
   const isApproved = version.status === "approved";
+  const isTerminal = ["scheduled", "active", "superseded", "cancelled"].includes(version.status);
 
   return (
     <div>
@@ -59,14 +66,7 @@ export function VersionDetail({ version, onAction }: Props) {
           </h1>
           <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
             {(() => {
-              const statusInfo = [
-                { value: "draft", label: "Rascunho", color: "#F59E0B" },
-                { value: "under_review", label: "Em Revisão", color: "#3B82F6" },
-                { value: "approved", label: "Aprovado", color: "#8B5CF6" },
-                { value: "active", label: "Ativo", color: "#10B981" },
-                { value: "scheduled", label: "Agendado", color: "#06B6D4" },
-                { value: "expired", label: "Expirado", color: "#6B7280" },
-              ].find((s) => s.value === version.status);
+              const statusInfo = COST_VERSION_STATUSES.find((s) => s.value === version.status);
 
               return statusInfo ? (
                 <span style={{
@@ -99,7 +99,7 @@ export function VersionDetail({ version, onAction }: Props) {
         </div>
 
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-          {isDraft && (
+          {isDraft && canSubmit && (
             <button
               onClick={() => onAction("submit")}
               style={{
@@ -115,7 +115,7 @@ export function VersionDetail({ version, onAction }: Props) {
               Enviar para Revisão
             </button>
           )}
-          {isUnderReview && (
+          {isUnderReview && canApprove && (
             <button
               onClick={() => onAction("approve")}
               style={{
@@ -131,7 +131,7 @@ export function VersionDetail({ version, onAction }: Props) {
               Aprovar
             </button>
           )}
-          {isApproved && (
+          {isApproved && canPublish && (
             <button
               onClick={() => onAction("publish")}
               style={{
@@ -147,20 +147,22 @@ export function VersionDetail({ version, onAction }: Props) {
               Publicar
             </button>
           )}
-          <button
-            onClick={() => onAction("compare")}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "transparent",
-              color: "var(--color-text-secondary)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-            }}
-          >
-            Comparar com versão anterior
-          </button>
+          {!isTerminal && (
+            <button
+              onClick={() => onAction("compare")}
+              style={{
+                padding: "var(--space-2) var(--space-4)",
+                backgroundColor: "transparent",
+                color: "var(--color-text-secondary)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-md)",
+                cursor: "pointer",
+                fontSize: "var(--text-sm)",
+              }}
+            >
+              Comparar com versão anterior
+            </button>
+          )}
         </div>
       </div>
 

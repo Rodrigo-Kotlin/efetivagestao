@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/features/core/useAuth";
 import {
   fetchCostTables,
   fetchCostTable,
   fetchCostTableVersion,
   fetchCostAuditLogs,
+  submitCostVersion,
+  approveCostVersion,
+  publishCostVersion,
+  syncCostVersionStatus,
 } from "../api/costs";
 import type {
   CostTableWithSupplier,
@@ -172,4 +176,78 @@ export function useCostAuditLogs(entityId: string | null) {
   }, [entityId, orgId]);
 
   return { logs, loading, error };
+}
+
+// ============================================================
+// Version workflow mutations (thin wrappers over backend RPCs)
+// ============================================================
+
+function useCostVersionMutation(
+  action: (versionId: string) => Promise<void>
+) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
+
+  const mutate = useCallback(async (versionId: string): Promise<string | null> => {
+    if (inFlight.current) return null;
+
+    inFlight.current = true;
+    setLoading(true);
+    setError(null);
+
+    try {
+      await action(versionId);
+      return null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro inesperado";
+      setError(message);
+      return message;
+    } finally {
+      inFlight.current = false;
+      setLoading(false);
+    }
+  }, [action]);
+
+  return { mutate, loading, error, resetError: () => setError(null) };
+}
+
+export function useSubmitCostVersion() {
+  return useCostVersionMutation(submitCostVersion);
+}
+
+export function useApproveCostVersion() {
+  return useCostVersionMutation(approveCostVersion);
+}
+
+export function usePublishCostVersion() {
+  return useCostVersionMutation(publishCostVersion);
+}
+
+export function useSyncCostVersionStatus() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
+
+  const sync = useCallback(async (referenceDate?: string): Promise<string | null> => {
+    if (inFlight.current) return null;
+
+    inFlight.current = true;
+    setLoading(true);
+    setError(null);
+
+    try {
+      await syncCostVersionStatus(referenceDate);
+      return null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro inesperado";
+      setError(message);
+      return message;
+    } finally {
+      inFlight.current = false;
+      setLoading(false);
+    }
+  }, []);
+
+  return { sync, loading, error, resetError: () => setError(null) };
 }

@@ -14,8 +14,19 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://scyxgyewdokmsuehgwql.supabase.co";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-const TEST_EMAIL = "prc03atest@proton.me";
-const TEST_PASSWORD = "T3stP@ssw0rd!";
+const TEST_EMAIL = process.env.PRC03A_TEST_EMAIL;
+const TEST_PASSWORD = process.env.PRC03A_TEST_PASSWORD;
+
+if (!SUPABASE_ANON_KEY) {
+  console.error("Missing required env var: VITE_SUPABASE_ANON_KEY");
+  process.exit(1);
+}
+if (!TEST_EMAIL || !TEST_PASSWORD) {
+  console.error(
+    "Missing required env vars: PRC03A_TEST_EMAIL and PRC03A_TEST_PASSWORD (use rotated credentials, never commit them)"
+  );
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -368,9 +379,11 @@ async function runTests() {
     log("COST-H12", ok, `v1=${v1Row?.status} v2=${v2Row?.status} pubErr=${pubErr?.message || "none"}`);
   }
 
-  // ---- H13: scheduled future does not remove current cost ----
-  console.log("COST-H13: scheduled future does not remove current cost");
+  // ---- H13: scheduled future keeps predecessor active + date-driven resolution ----
+  console.log("COST-H13: scheduled future keeps predecessor active + date-driven resolution");
   {
+    const vB_AFTER = "2099-01-01";
+
     // Create vA (active, current)
     const vA = await createVersion("H13-A", "2025-01-01", null);
     await addItem(vA, "provided", 10.0);
@@ -379,12 +392,12 @@ async function runTests() {
     await publishVersion(vA);
 
     // Create vB (scheduled, future)
-    const vB = await createVersion("H13-B", "2099-01-01", null);
+    const vB = await createVersion("H13-B", vB_AFTER, null);
     await addItem(vB, "provided", 15.0);
     await submitVersion(vB);
     await approveVersion(vB);
 
-    // Publish vB — must succeed (DEFERRABLE EXCLUDE constraint)
+    // Publish vB — must succeed (predecessor stays active; EXCLUDE passes)
     let publishOk = false;
     try {
       await publishVersion(vB);
@@ -392,21 +405,52 @@ async function runTests() {
     } catch (e) {
       console.log("  H13-B publish error:", e.message);
     }
+    log("COST-H13.1 publish ok", publishOk);
 
-    // Verify vA is still active for today (valid_to closed to 2099-01-01)
-    const { data: res } = await resolveCost(null, null, new Date().toISOString().slice(0, 10));
-    const vAOk = res?.amount === 10.0;
+    // vA must still be ACTIVE (NOT superseded)
+    const { data: vARow } = await supabase
+      .from("supplier_cost_table_versions")
+      .select("status, valid_from, valid_to")
+      .eq("id", vA)
+      .single();
+    log("COST-H13.2 vA stays active", vARow?.status === "active", `vA_status=${vARow?.status}`);
 
-    // Verify vB is now scheduled
+    // vA.valid_to must be closed to vB.valid_from
+    log("COST-H13.3 vA.valid_to = B.valid_from", vARow?.valid_to === vB_AFTER, `vA.valid_to=${vARow?.valid_to}`);
+
+    // vB must be scheduled
     const { data: vBRow } = await supabase
       .from("supplier_cost_table_versions")
-      .select("status")
+      .select("status, valid_from, valid_to")
       .eq("id", vB)
       .single();
-    const vBScheduled = vBRow?.status === "scheduled";
+    log("COST-H13.4 vB scheduled", vBRow?.status === "scheduled", `vB_status=${vBRow?.status}`);
 
-    const ok = publishOk && vAOk && vBScheduled;
-    log("COST-H13", ok, `publish=${publishOk} vA_amount=${res?.amount} vB_status=${vBRow?.status}`);
+    const today = new Date().toISOString().slice(0, 10);
+
+    // resolve(today) → vA (10.0) — B not applicable yet
+    const rToday = await resolveCost(null, null, today);
+    log(
+      "COST-H13.5 resolve(today)=vA",
+      rToday.data?.amount === 10.0 && rToday.data?.version_id === vA,
+      `today→${rToday.data?.amount}`
+    );
+
+    // resolve(B.valid_from) → vB (15.0) — date-driven, scheduled included
+    const rFrom = await resolveCost(null, null, vB_AFTER);
+    log(
+      "COST-H13.6 resolve(B.valid_from)=vB",
+      rFrom.data?.amount === 15.0 && rFrom.data?.version_id === vB,
+      `${vB_AFTER}→${rFrom.data?.amount}`
+    );
+
+    // resolve(after B) → vB (15.0)
+    const rAfter = await resolveCost(null, null, "2099-06-01");
+    log(
+      "COST-H13.7 resolve(after B)=vB",
+      rAfter.data?.amount === 15.0 && rAfter.data?.version_id === vB,
+      `2099-06-01→${rAfter.data?.amount}`
+    );
   }
 
   // ---- H14: historical lookup in superseded version ----
@@ -496,6 +540,116 @@ async function runTests() {
       .delete()
       .eq("id", F.costTableId);
     log("COST-H18", error !== null, error?.message || "hard delete blocked");
+  }
+
+  // ---- H19: idempotent scheduled→active cutover (fn_sync_cost_version_status) ----
+  console.log("COST-H19: fn_sync_cost_version_status idempotent cutover");
+  {
+    const CUTOVER = "2099-01-01";
+    const m = await createSecondMapping();
+
+    // vA: active today
+    const vA = await createVersion("H19-A", "2025-01-01", null);
+    await supabase.from("supplier_cost_items").insert({
+      organization_id: F.orgId,
+      cost_table_version_id: vA,
+      supplier_catalog_item_id: m.mappingId,
+      catalog_item_id: m.catalogItemId,
+      cost_status: "provided",
+      amount: 100.0,
+    });
+    await submitVersion(vA);
+    await approveVersion(vA);
+    await publishVersion(vA);
+
+    // vB: scheduled future (valid_from > current_date → scheduled)
+    const vB = await createVersion("H19-B", CUTOVER, null);
+    await supabase.from("supplier_cost_items").insert({
+      organization_id: F.orgId,
+      cost_table_version_id: vB,
+      supplier_catalog_item_id: m.mappingId,
+      catalog_item_id: m.catalogItemId,
+      cost_status: "provided",
+      amount: 200.0,
+    });
+    await submitVersion(vB);
+    await approveVersion(vB);
+    await publishVersion(vB);
+
+    // Predecessor stays active with closed valid_to; vB scheduled
+    const { data: aRow } = await supabase
+      .from("supplier_cost_table_versions")
+      .select("status, valid_to")
+      .eq("id", vA)
+      .single();
+    const { data: bRow } = await supabase
+      .from("supplier_cost_table_versions")
+      .select("status")
+      .eq("id", vB)
+      .single();
+    log(
+      "COST-H19.1 scheduled publish (pred stays active)",
+      aRow?.status === "active" && aRow?.valid_to === CUTOVER && bRow?.status === "scheduled",
+      `vA=${aRow?.status} vA.to=${aRow?.valid_to} vB=${bRow?.status}`
+    );
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    // resolve(today) → vA (100)
+    const rToday = await supabase.rpc("fn_resolve_supplier_cost", {
+      p_organization_id: F.orgId,
+      p_supplier_company_id: F.companyId,
+      p_catalog_item_id: m.catalogItemId,
+      p_reference_date: today,
+    });
+    log("COST-H19.2 resolve(today)=vA", rToday.data?.[0]?.amount === 100.0, `today→${rToday.data?.[0]?.amount}`);
+
+    // resolve(cutover) → vB (200) — date-driven, scheduled included
+    const rCut = await supabase.rpc("fn_resolve_supplier_cost", {
+      p_organization_id: F.orgId,
+      p_supplier_company_id: F.companyId,
+      p_catalog_item_id: m.catalogItemId,
+      p_reference_date: CUTOVER,
+    });
+    log("COST-H19.3 resolve(cutover)=vB", rCut.data?.[0]?.amount === 200.0, `${CUTOVER}→${rCut.data?.[0]?.amount}`);
+
+    // Run cutover at reference date = CUTOVER
+    const { data: synced, error: syncErr } = await supabase.rpc("fn_sync_cost_version_status", {
+      p_reference_date: CUTOVER,
+    });
+    log("COST-H19.4 cutover ran", syncErr === null && synced >= 1, `activated=${synced} err=${syncErr?.message || "none"}`);
+
+    // vB now active, vA superseded
+    const { data: aRow2 } = await supabase
+      .from("supplier_cost_table_versions")
+      .select("status")
+      .eq("id", vA)
+      .single();
+    const { data: bRow2 } = await supabase
+      .from("supplier_cost_table_versions")
+      .select("status")
+      .eq("id", vB)
+      .single();
+    log(
+      "COST-H19.5 cutover statuses",
+      aRow2?.status === "superseded" && bRow2?.status === "active",
+      `vA=${aRow2?.status} vB=${bRow2?.status}`
+    );
+
+    // resolve(cutover) → vB (200) after cutover
+    const rAfter = await supabase.rpc("fn_resolve_supplier_cost", {
+      p_organization_id: F.orgId,
+      p_supplier_company_id: F.companyId,
+      p_catalog_item_id: m.catalogItemId,
+      p_reference_date: CUTOVER,
+    });
+    log("COST-H19.6 resolve(cutover)=vB after cutover", rAfter.data?.[0]?.amount === 200.0, `${CUTOVER}→${rAfter.data?.[0]?.amount}`);
+
+    // Idempotency: second run activates nothing
+    const { data: synced2, error: syncErr2 } = await supabase.rpc("fn_sync_cost_version_status", {
+      p_reference_date: CUTOVER,
+    });
+    log("COST-H19.7 idempotent (second run → 0)", syncErr2 === null && synced2 === 0, `activated=${synced2} err=${syncErr2?.message || "none"}`);
   }
 
   // ---- TEMPORAL SMOKE: A/B/C versioning ----

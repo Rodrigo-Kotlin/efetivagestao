@@ -2,21 +2,30 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { fetchCostTableVersion, updateCostTableVersionStatus } from "../api/costs";
+import { fetchCostTableVersion } from "../api/costs";
+import {
+  useSubmitCostVersion,
+  useApproveCostVersion,
+  usePublishCostVersion,
+} from "../hooks/useCosts";
 import { VersionDetail } from "../components/VersionDetail";
 import type { CostTableVersionWithItems } from "@/types";
 
 function Inner() {
   const { id } = useParams<{ id: string }>();
-  const { activeOrganization, user } = useAuth();
+  const { activeOrganization, can } = useAuth();
   const navigate = useNavigate();
 
   const [version, setVersion] = useState<CostTableVersionWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
+
+  const submit = useSubmitCostVersion();
+  const approve = useApproveCostVersion();
+  const publish = usePublishCostVersion();
 
   const orgId = activeOrganization?.id;
-  const userId = user?.id;
 
   const load = useCallback(async () => {
     if (!id || !orgId) {
@@ -48,34 +57,31 @@ function Inner() {
   const handleAction = async (action: string) => {
     if (!id || !orgId) return;
 
-    try {
-      if (action === "submit") {
-        await updateCostTableVersionStatus(id, "under_review", orgId, userId ?? "");
-        await load();
-        return;
-      }
+    setWorkflowError(null);
 
-      if (action === "approve") {
-        await updateCostTableVersionStatus(id, "approved", orgId, userId ?? "");
-        await load();
-        return;
-      }
+    if (action === "compare") {
+      return;
+    }
 
-      if (action === "publish") {
-        await updateCostTableVersionStatus(id, "active", orgId, userId ?? "");
-        await load();
-        return;
-      }
+    let message: string | null = null;
+    if (action === "submit") {
+      message = await submit.mutate(id);
+    } else if (action === "approve") {
+      message = await approve.mutate(id);
+    } else if (action === "publish") {
+      message = await publish.mutate(id);
+    }
 
-      if (action === "compare") {
-        // Compare placeholder - in real implementation would open a modal or navigate
-        // For now, we show the diff inline via state
-        return;
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao executar ação");
+    if (message) {
+      setWorkflowError(message);
+    } else {
+      await load();
     }
   };
+
+  const canSubmit = can("pricing.cost.create");
+  const canApprove = can("pricing.cost.approve");
+  const canPublish = can("pricing.cost.publish");
 
   if (loading) {
     return (
@@ -109,7 +115,16 @@ function Inner() {
 
   return (
     <div>
-      <VersionDetail version={version} onAction={handleAction} />
+      {workflowError && (
+        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)" }}>{workflowError}</p>
+        </div>
+      )}
+      <VersionDetail
+        version={version}
+        onAction={(action) => void handleAction(action)}
+        permissions={{ canSubmit, canApprove, canPublish }}
+      />
     </div>
   );
 }

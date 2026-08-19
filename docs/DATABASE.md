@@ -283,6 +283,9 @@
 | 020 | 020_supplier_cost_items | supplier_cost_items — itens de custo por versão, cost_status CHECK, imutabilidade |
 | 021 | 021_cost_rls | RLS policies para tabelas de custo (4 policies × 3 tabelas) |
 | 022 | 022_cost_rbac_and_rpcs | Permissões pricing.cost.*, audit triggers, 10 RPCs |
+| 023 | 023_cost_integrity_hardening | Restrição estrita de cost_status, imutabilidade RLS (app.cost_rpc_active), bloqueio de UPDATE direto de status, EXCLUDE temporal, RPCs seguras (submit/approve/publish) |
+| 024 | 024_h13_fix_scheduled_publish | Fix H13 (semantic doc): publicação scheduled mantém predecessor active |
+| 025 | 025_cost_temporal_cutover_finalization | Semântica temporal final: publish v8 (predecessor ativo até início da nova versão), resolver inclui 'scheduled', RPC idempotente fn_sync_cost_version_status |
 
 ## Geração de Tipos TypeScript
 

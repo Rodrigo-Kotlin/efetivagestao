@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { COST_TABLE_STATUSES, VERSION_STATUSES } from "@/types";
+import { COST_TABLE_STATUSES, COST_VERSION_STATUSES } from "@/types";
 import type { CostTableWithSupplier } from "@/types";
 import { useCostAuditLogs } from "../hooks/useCosts";
 
@@ -233,7 +233,7 @@ export function CostTableDetail({ costTable, onAction }: Props) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
               {versions.map((version) => {
-                const vStatus = VERSION_STATUSES.find((s) => s.value === version.status);
+                const vStatus = COST_VERSION_STATUSES.find((s) => s.value === version.status);
                 const isCurrent = version.status === 'active';
 
                 return (

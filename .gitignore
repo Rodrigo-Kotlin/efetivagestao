@@ -19,8 +19,6 @@ dist-ssr
 
 # Supabase
 supabase/.temp
-supabase/migrations/023_cost_integrity_hardening_test.sql
-supabase/migrations/023_cost_test_setup.sql
 
 # Coverage
 coverage

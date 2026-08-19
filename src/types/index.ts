@@ -239,17 +239,6 @@ export const COST_TABLE_STATUSES = [
 
 export type CostTableStatus = (typeof COST_TABLE_STATUSES)[number]["value"];
 
-export const VERSION_STATUSES = [
-  { value: "draft", label: "Rascunho", color: "#F59E0B" },
-  { value: "under_review", label: "Em Revisão", color: "#3B82F6" },
-  { value: "approved", label: "Aprovado", color: "#8B5CF6" },
-  { value: "active", label: "Ativo", color: "#10B981" },
-  { value: "scheduled", label: "Agendado", color: "#06B6D4" },
-  { value: "expired", label: "Expirado", color: "#6B7280" },
-] as const;
-
-export type VersionStatus = (typeof VERSION_STATUSES)[number]["value"];
-
 export const COST_ITEM_STATUSES = [
   { value: "provided", label: "Fornecido", color: "#10B981" },
   { value: "not_provided", label: "Não Fornecido", color: "#6B7280" },
