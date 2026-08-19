@@ -225,3 +225,59 @@
 - Botões de ação dependem de status **e** permissão RBAC (`pricing.cost.create` para submit, `pricing.cost.approve` para approve, `pricing.cost.publish` para publish); `scheduled`/`active`/`superseded`/`cancelled` são somente leitura.
 - Status canônico consolidado em `COST_VERSION_STATUSES` (7 estados); `VERSION_STATUSES`/`VersionStatus` duplicados (com `expired` inexistente) foram removidos.
 - Testes UI-WF01..06 cobrem submit/approve/publish via RPC, bloqueio por permissão, erro amigável e refetch pós-mutação.
+
+## DEC-031 — Fórmulas Canônicas de Margem e Markup (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** Margem é calculada sobre o preço (`margin_rate = (price - total_cost) / price`, `price = total_cost / (1 - margin_rate)`, `0 <= margin_rate < 1`); markup é calculado sobre o custo (`markup_rate = (price - total_cost) / total_cost`, `price = total_cost * (1 + markup_rate)`, `markup_rate >= 0`).
+**Contexto:** PRC-04A — formação de preço. Margem e markup não são sinônimos; 20% de margem (custo 80 → 100) ≠ 20% de markup (custo 80 → 96). O motor de precificação e todos os artefatos (banco, RPC, frontend, rótulos, testes, docs) devem manter a distinção.
+**Consequência:** Documentado em `docs/PRICING_ENGINE.md` (seção 4); PRC-04B implementa as fórmulas em RPC autoritativa e valida as entradas (`INVALID_MARGIN`, `INVALID_MARKUP`).
+
+## DEC-032 — Aritmética Autoritativa em PostgreSQL numeric (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** Todo cálculo financeiro autoritativo usa PostgreSQL `numeric`; jamais float. Frontend JavaScript só para preview temporário de UX; resultado validado/persistido vem da RPC PostgreSQL.
+**Contexto:** PRC-04A — precisão financeira. Custos já usam `numeric(14,4)`.
+**Consequência:** Recomendação de precisão: montantes/custos `numeric(14,4)`; taxas (fração decimal) `numeric(9,6)`; passos de arredondamento `numeric(12,4)`; percentuais derivados na apresentação. Nenhuma migration criada nesta fase.
+
+## DEC-033 — Custo Sempre Resolvido por fn_resolve_supplier_cost (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** O custo-base do motor de preço origina-se exclusivamente de `fn_resolve_supplier_cost(org, supplier_company, catalog_item, cost_reference_date)`. Proibida qualquer outra fonte independente de custo.
+**Contexto:** PRC-04A — baseline não-negociável. O resolver já é a fonte autoritativa verificada (PRC-03B), com resolução temporal, mapping e versionamento.
+**Consequência:** O motor repassa a data de referência ao resolver e usa apenas linhas `resolution_status = 'CONFIRMED'`; nunca decide por conta própria qual versão de custo usar.
+
+## DEC-034 — Custo Desconhecido Bloqueia Cálculo Normal (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** Se o resolver retornar `COST_NOT_CONFIRMED`, o motor não calcula preço normal a partir de zero, NULL convertido, último custo conhecido sem proveniência ou fallback de frontend. Resposta: `PRICE_NOT_CALCULABLE`/`COST_NOT_CONFIRMED`.
+**Contexto:** PRC-04A — `UNKNOWN COST != ZERO`. `confirmed_zero` é custo confirmado válido e não é desconhecido.
+**Consequência:** Regra crítica preservada no spec (`docs/PRICING_ENGINE.md` seção 11); PRC-04B a implementa na RPC.
+
+## DEC-035 — Arredondamento Antes da Validação Final de Margem (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** O arredondamento (NONE/NEAREST/UP/DOWN + passo) ocorre após a fórmula de precificação e antes das validações finais; margem e markup são recalculados com o `final_price`.
+**Contexto:** PRC-04A — o preço comercialmente exibido é o arredondado; validar margem sobre valor não arredondado causaria falsos OK/false violations.
+**Consequência:** A ordem do pipeline (seção 17) e o modelo de violações (BELOW_COST/BELOW_MINIMUM_MARGIN) são avaliados sobre o preço final.
+
+## DEC-036 — Preço Calculado Separado do Preço Comercial Publicado (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** `CALCULATED PRICE != PUBLISHED COMMERCIAL PRICE`. O PRC-04 produz preço calculado/simulado; o PRC-05 publica tabelas comerciais com vigência de venda.
+**Contexto:** PRC-04A — fronteira de escopo. Evitar confusão conceitual entre motor de precificação e gestão de tabelas comerciais.
+**Consequência:** Nenhuma persistência de preço comercial no PRC-04; simulações não são persistidas automaticamente; a separação é refletida em banco, RPC, frontend, rótulos, testes e documentação.
+
+## DEC-037 — Versionamento de Política de Preço (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** Políticas de preço usam o mesmo lifecycle do domínio de custos: `draft → under_review → approved → scheduled/active → superseded/cancelled`, com vigência `[valid_from, valid_to)` e versões ativas/aprovadas imutáveis.
+**Contexto:** PRC-04A — coerência conceitual e reuso de RPCs/telas de workflow existentes; não confundir versão de política com versão de tabela comercial.
+**Consequência:** Entidades conceituais `pricing_policies`, `pricing_policy_versions`, `pricing_policy_components`; resolução por data de referência incluindo `scheduled`.
+
+## DEC-038 — Componentes Percentuais Não Circulares (PRC-04)
+
+**Data:** 2026-08-19
+**Decisão:** Em v1, componentes percentuais de custo usam base não circular (`base_cost` ou subtotal já resolvido); proibido percentual sobre o preço final de venda; sem motor tributário/fiscal.
+**Contexto:** PRC-04A — evitar fórmulas circulares (`price depende de imposto; imposto depende de price`) e simplificar o modelo inicial.
+**Consequência:** Tipos de componente FIXED e PERCENTAGE_OF_BASE_COST; total_cost = base + fixos + percentuais; cada componente rastreável no breakdown.
