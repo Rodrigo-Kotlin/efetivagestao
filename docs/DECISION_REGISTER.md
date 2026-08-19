@@ -288,3 +288,38 @@
 **Decisão:** No schema de política de preço (PRC-04B), `pricing_policy_versions.version_number` é obrigatório e único por política (`UNIQUE (pricing_policy_id, version_number)`), mas a alocação automática do número da versão fica adiada para as RPCs de workflow do PRC-04C. Nenhum trigger do schema (inclusive `fn_ppv_validate_status_transition`) atribui `version_number` automaticamente.
 **Contexto:** PRC-04B — no domínio de custos, `fn_create_cost_version` (022) atribui o `version_number` automaticamente. Para políticas de preço, o escopo do PRC-04B é o modelo de dados confiável (integridade/RLS/RBAC); as RPCs de criação/transição de versão pertencem ao PRC-04C. Antecipar a alocação agora exigiria decidir o contrato das RPCs antes da fase de engine.
 **Consequência:** O schema garante apenas integridade (obrigatoriedade via NOT NULL + unicidade); o cliente/API deve informar `version_number` ao criar uma versão até o PRC-04C introduzir as RPCs de workflow; a transição de status é validada por trigger com gate `app.pricing_rpc_active`.
+
+## DEC-040 — pricing.calculate Permission Separated from Policy Management (PRC-04C)
+
+**Data:** 2026-08-19
+**Decisão:** Cálculo/simulação de preço usa permissão `pricing.calculate` separada das permissões de gestão de política (`pricing.policy.create/edit/publish`). Um usuário pode calcular preços sem necessariamente ter permissão para criar ou publicar políticas.
+**Contexto:** PRC-04C — separação de responsabilidades. Operadores precisam simular preços diariamente; apenas gestores/admins devem criar/publicar políticas. Exigir `pricing.policy.publish` para calcular seria excessivo.
+**Consequência:** `pricing.calculate` concedida a admin, manager e operator; `pricing.policy.publish` mantida exclusiva para admin; `fn_simulate_price` verifica `pricing.calculate` independente das permissões de política.
+
+## DEC-041 — Pure Calculation vs Orchestration RPC (PRC-04C)
+
+**Data:** 2026-08-19
+**Decisão:** O motor de precificação é dividido em duas funções: `fn_calculate_price` (camada matemática pura, interna, não concedida a usuários autenticados) e `fn_simulate_price` (orquestração pública que autentica, valida, resolve custo/política e chama o calculador). A função interna não realiza resolução de custo ou política.
+**Contexto:** PRC-04C — auditabilidade e segurança. Separar cálculo puro de orquestração facilita testes unitários do math layer e expõe menos superfície de ataque. A função pública não persiste preço comercial (PRC-05 boundary).
+**Consequência:** `fn_calculate_price` é REVOKE de PUBLIC/anon/authenticated; `fn_simulate_price` é a única entrada pública; proveniência completa é construída na camada de orquestração.
+
+## DEC-042 — Dedicated E2E Test Identity Standardization (PRC-04C)
+
+**Data:** 2026-08-19
+**Decisão:** Testes remotos E2E usam variáveis de ambiente canônicas `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD` e `VITE_SUPABASE_ANON_KEY`. Fallback para `PRC03A_TEST_EMAIL`/`PRC03A_TEST_PASSWORD` é mantido por retrocompatibilidade. Novos testes não devem criar nomes de variáveis específicos de fase.
+**Contexto:** PRC-04C — a conta de teste canônica deve ser identificável e reutilizável entre fases. Criar variáveis de ambiente por fase (PRC03A_*, PRC04B_*) causa fragmentação e dificulta manutenção.
+**Consequência:** Testes verificam `E2E_TEST_EMAIL` primeiro, fallback para `PRC03A_TEST_EMAIL`; se ambas ausentes, reportam `E2E TEST USER: USER ACTION REQUIRED`; credenciais nunca são commitadas ou expostas.
+
+## DEC-043 — Simulation Non-Persistence (PRC-04C)
+
+**Data:** 2026-08-19
+**Decisão:** `fn_simulate_price` calcula preços autoritativos mas NÃO persiste resultados em nenhuma tabela. Simulações são Stateless — cada chamada recalcula do zero. Persistência de preços comerciais pertence exclusivamente ao PRC-05.
+**Contexto:** PRC-04C — fronteira de escopo. Persistir cada simulação criaria volume desnecessário de registros e confundiria o conceito de "preço calculado" com "preço publicado". Auditoria de simulações importantes pode ser implementada no futuro se necessário.
+**Consequência:** Nenhuma tabela de persistência de simulação é criada; resultado retornado como JSONB volatile; decision logico futuramente pode adicionar audit_logs para mutações de workflow (já existentes via triggers 027).
+
+## DEC-044 — Concurrency-Safe Version Number via FOR UPDATE Lock (PRC-04C)
+
+**Data:** 2026-08-19
+**Decisão:** `fn_create_pricing_policy_version` usa `SELECT ... FOR UPDATE` na row da política pai para serializar a alocação de `version_number`. Duas chamadas concorrentes para a mesma política produzem números distintos sem erros de duplicata.
+**Contexto:** PRC-04C — DEC-039 adiou a alocação para PRC-04C; o padrão idêntico já está validado no domínio de custos (`fn_create_cost_version` em 023). Sequências PostgreSQL não são aplicáveis porque o contador é por política, não global.
+**Consequência:** `FOR UPDATE` na row da política bloqueia concorrentes; `MAX(version_number) + 1` é atômico sob lock; transactions abortadas liberam o lock normalmente; dois INSERTs simultâneos para a mesma política recebem versões consecutivas.

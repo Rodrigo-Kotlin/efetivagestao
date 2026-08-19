@@ -71,18 +71,20 @@ Permission (permissions)
 | pricing.policy.review | Revisar Políticas de Preço | Políticas de Preço |
 | pricing.policy.approve | Aprovar Políticas de Preço | Políticas de Preço |
 | pricing.policy.publish | Publicar Políticas de Preço | Políticas de Preço |
+| pricing.calculate | Calcular/Simular Preços | Precificação |
 | pricing.price.publish | Publicar Preços | Preços (futuro) |
 
-### Políticas de Preço × Papéis (PRC-04B)
+### Políticas de Preço × Papéis (PRC-04B/C)
 
-| Papel | view | create | edit | review | approve | publish |
-|-------|------|--------|------|--------|---------|---------|
-| admin | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| manager | ✔ | ✔ | ✔ | ✔ | ✔ | — |
-| operator | — | — | — | — | — | — |
-| viewer | — | — | — | — | — | — |
+| Papel | view | create | edit | review | approve | publish | calculate |
+|-------|------|--------|------|--------|---------|---------|-----------|
+| admin | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| manager | ✔ | ✔ | ✔ | ✔ | ✔ | — | ✔ |
+| operator | — | — | — | — | — | — | ✔ |
+| viewer | — | — | — | — | — | — | — |
 
 `pricing.policy.publish` é exclusivo do admin (consistente com `pricing.cost.publish`); operator/viewer não têm permissões de política de preço.
+`pricing.calculate` permite executar cálculos/simulações de preço sem necessidade de permissão para criar/publicar políticas.
 
 ### Permissões Futuras (NÃO implementadas)
 

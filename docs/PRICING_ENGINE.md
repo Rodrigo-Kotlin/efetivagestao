@@ -660,10 +660,36 @@ Resumo das decisões que o PRC-04B deve executar (implementação):
 11. **Desconto** — recalcular métricas após desconto; piso efetivo = mais restritivo entre desconto máximo e margem mínima.
 12. **FIXED_PRICE** — método opcional adiado para PRC-04B, com validação obrigatória de margem/markup resultantes.
 
-## 23. Estado de Implementação (PRC-04B)
+## 23. Estado de Implementação (PRC-04B/C)
+
+### PRC-04B — Schema (COMPLETED)
 
 Modelo de dados confiável implementado e verificado:
 
 - **Migrations:** `026_pricing_policy_schema` (tabelas + integridade) e `027_pricing_policy_security` (permissões, RBAC, RLS, auditoria) — seções 14-19 deste documento.
 - **Verificação remota:** testes POL-H01..H27 (`tests/remote/pricing-policy-integrity-test.mjs`, fixtures em `tests/remote/sql/pricing_test_setup.sql`) — 33/33 assertivas PASS.
-- **Fora de escopo nesta fase:** motor de cálculo (`fn_calculate_price`, `fn_resolve_pricing_policy`, `fn_simulate_price`), RPCs de workflow de política e frontend — PRC-04C.
+
+### PRC-04C — Engine (IN PROGRESS → COMPLETED)
+
+Motor de precificação autoritativo implementado:
+
+- **Migration 028:** RPCs de workflow de política:
+  - `fn_create_pricing_policy` — cria identidade da política (derived actor)
+  - `fn_create_pricing_policy_version` — alocação concurrency-safe de version_number via FOR UPDATE
+  - `fn_add_pricing_policy_component` / `fn_update_pricing_policy_component` / `fn_delete_pricing_policy_component`
+  - `fn_submit_pricing_policy_version` — draft → under_review
+  - `fn_approve_pricing_policy_version` — under_review → approved
+  - `fn_return_pricing_policy_version_to_draft` — under_review → draft
+  - `fn_cancel_pricing_policy_version` — draft/under_review/approved → cancelled
+  - `fn_publish_pricing_policy_version` — approved → active/scheduled (continuous timeline)
+  - `fn_sync_pricing_policy_version_status` — idempotent scheduled→active cutover
+  - Permissão `pricing.calculate` + RBAC (admin/manager/operator)
+
+- **Migration 029:** Motor de cálculo:
+  - `fn_resolve_pricing_policy` — resolução por precedência de escopo (CATALOG_ITEM > CATEGORY > DEFAULT)
+  - `fn_calculate_price` — camada matemática interna (numeric, não exposta)
+  - `fn_simulate_price` — RPC pública de orquestração (auth → permission → policy → cost → calculate → result)
+
+- **Testes:** `tests/remote/pricing-engine-test.mjs` (PRICE-H01..H46), fixtures em `tests/remote/sql/pricing_engine_test_setup.sql`
+
+- **Fora de escopo nesta fase:** frontend (PRC-04D), persistência de preços comerciais (PRC-05).

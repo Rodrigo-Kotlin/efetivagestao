@@ -15,7 +15,8 @@
 | PRC-04 | Formação de Preço | IN PROGRESS |
 | PRC-04A | Pricing Model & Mathematical Rules | **COMPLETED** |
 | PRC-04B | Pricing Policy Database, Integrity, RLS & RBAC | **COMPLETED** |
-| PRC-04C | Price Calculation Engine (RPC + Frontend) | NOT STARTED |
+| PRC-04C | Authoritative Pricing Engine & Workflow (RPC) | IN PROGRESS |
+| PRC-04D | Pricing Policy UI & Price Simulator | NOT STARTED |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
 | PRC-07 | Motor de Resolução | NOT STARTED |

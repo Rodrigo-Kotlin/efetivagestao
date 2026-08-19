@@ -317,7 +317,7 @@ Componentes adicionais de custo da versão de política.
 | name | text | |
 | component_type | text | `fixed` \| `percentage_of_base_cost` |
 | fixed_amount | numeric(14,4) | só para fixed; >= 0 |
-| rate | numeric(9,6) | só para percentage_of_base_cost; [0, 1] |
+| rate | numeric(9,6) | só para percentage_of_base_cost; >= 0 (sem limite superior em v1) |
 | created_by / created_at | uuid / timestamptz | |
 | updated_by / updated_at | uuid / timestamptz | |
 
@@ -354,6 +354,8 @@ Componentes adicionais de custo da versão de política.
 | 025 | 025_cost_temporal_cutover_finalization | Semântica temporal final: publish v8 (predecessor ativo até início da nova versão), resolver inclui 'scheduled', RPC idempotente fn_sync_cost_version_status |
 | 026 | 026_pricing_policy_schema | pricing_policies, pricing_policy_versions, pricing_policy_components + constraints de integridade, escopo, método, temporal (EXCLUDE GiST) e triggers cross-org/status/imutabilidade/hard-delete |
 | 027 | 027_pricing_policy_security | Permissões pricing.policy.* (6), mapeamentos RBAC, RLS (12 policies), audit triggers |
+| 028 | 028_pricing_policy_workflow_rpcs | Permissão pricing.calculate, RBAC mappings, RPCs de workflow: create policy/version, component writes, submit/approve/cancel/return-to-draft, publish, sync cutover |
+| 029 | 029_pricing_engine | Motor de precificação autoritativo: fn_resolve_pricing_policy (resolução por precedência de escopo), fn_calculate_price (cálculo numérico interno), fn_simulate_price (RPC pública de orquestração) |
 
 ## Geração de Tipos TypeScript
 
