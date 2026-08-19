@@ -62,6 +62,7 @@ const F = {
   user: "d7df8bb1-7da4-4926-8bd2-2fe6ad8ac060",
   pOrg: "b3333333-3333-3333-3333-333333333333",
   xOrg: "c3333333-3333-3333-3333-333333333333",
+  zOrg: "e3333333-3333-3333-3333-333333333333",
   pCat: "b3333333-0000-0000-0000-000000000001",
   pItemA: "b3333333-0000-0000-0000-000000000002",
   pItemB: "b3333333-0000-0000-0000-000000000003",
@@ -109,7 +110,7 @@ async function createVersion(
     validFrom = "2026-01-01",
     validTo = null,
     method = "target_margin",
-    targetMarginRate = 0.2,
+    targetMarginRate = null,
     markupRate = null,
     fixedPrice = null,
     minimumMarginRate = null,
@@ -327,17 +328,52 @@ async function testWorkflow() {
   // H11: immediate publish → active
   console.log("H11: immediate publish → active");
   {
-    // Create a new policy + version with valid_from <= today
-    const { data: polId } = await createPolicy("catalog_item", {
-      itemId: F.pItemB,
+    // Create a fresh isolated item to avoid interfering with resolver tests
+    const { data: h11ItemRow, error: h11ItemErr } = await supabase
+      .from("catalog_items")
+      .insert({
+        id: crypto.randomUUID(),
+        organization_id: F.pOrg,
+        code: `PRC04C-H11-${RUN}`,
+        name: `H11 Item ${RUN}`,
+        category_id: F.pCat,
+        item_type: "other_service",
+        commercial_unit: "unit",
+        execution_type: "own",
+        status: "active",
+        created_by: F.user,
+        updated_by: F.user,
+      })
+      .select("id")
+      .single();
+    const h11ItemId = h11ItemRow?.id;
+    // Create supplier mapping + cost for this item
+    const h11SciId = `b3333333-aaaa-bbbb-cccc-0000000000a1`;
+    await supabase.from("supplier_catalog_items").insert({
+      id: h11SciId,
+      organization_id: F.pOrg,
+      supplier_company_id: F.supplier,
+      catalog_item_id: h11ItemId,
+      external_code: `H11-${RUN}`,
+      external_name: `H11 External ${RUN}`,
+      normalized_external_name: `h11 external ${RUN}`,
+      external_unit: "unit",
+      is_preferred: true,
+      status: "active",
+      created_by: F.user,
+      updated_by: F.user,
     });
-    const { data: vid } = await createVersion(polId, {
+    // Create a policy + version with valid_from <= today
+    const { data: polId, error: polErr } = await createPolicy("catalog_item", {
+      itemId: h11ItemId,
+    });
+    const { data: vid, error: vidErr } = await createVersion(polId, {
       validFrom: "2026-01-01",
     });
-    await supabase.rpc("fn_submit_pricing_policy_version", {
+    const e1 = await supabase.rpc("fn_submit_pricing_policy_version", {
       p_version_id: vid,
     });
-    await supabase.rpc("fn_approve_pricing_policy_version", {
+    const e2 = await supabase.rpc("fn_approve_pricing_policy_version", {
       p_version_id: vid,
     });
     const { error } = await supabase.rpc(
@@ -352,7 +388,7 @@ async function testWorkflow() {
     log(
       "PRICE-H11",
       error === null && vRow?.status === "active",
-      `status=${vRow?.status}`
+      `item=${h11ItemId?'ok':'FAIL'} pol=${polId?'ok':'FAIL-'+polErr?.message} vid=${vid?'ok':'FAIL-'+vidErr?.message} pub=${error?.message||'ok'} status=${vRow?.status}`
     );
   }
 
@@ -482,19 +518,23 @@ async function testResolver() {
   {
     // Use an item that has no category-specific or item-specific policy
     // Create a new category + item with no specific policies
-    const { data: catId } = await supabase
+    const { data: catRow } = await supabase
       .from("catalog_categories")
       .insert({
+        id: crypto.randomUUID(),
         organization_id: F.pOrg,
         code: `PRC04C-FB-${RUN}`,
         name: `Fallback Cat ${RUN}`,
+        sort_order: 0,
         is_active: true,
       })
       .select("id")
       .single();
-    const { data: itemId } = await supabase
+    const catId = catRow?.id;
+    const { data: itemRow } = await supabase
       .from("catalog_items")
       .insert({
+        id: crypto.randomUUID(),
         organization_id: F.pOrg,
         code: `PRC04C-FBI-${RUN}`,
         name: `Fallback Item ${RUN}`,
@@ -508,6 +548,7 @@ async function testResolver() {
       })
       .select("id")
       .single();
+    const itemId = itemRow?.id;
 
     // Create a supplier mapping + cost for this item
     const sciId = `b3333333-aaaa-bbbb-cccc-0000000000f1`;
@@ -518,7 +559,7 @@ async function testResolver() {
       catalog_item_id: itemId,
       external_code: `FB-${RUN}`,
       external_name: `Fallback External ${RUN}`,
-      external_name_normalized: `fallback external ${RUN}`,
+      normalized_external_name: `fallback external ${RUN}`,
       external_unit: "unit",
       is_preferred: true,
       status: "active",
@@ -561,6 +602,7 @@ async function testResolver() {
 
     // Insert cost item via direct insert (setup fixture)
     await supabase.from("supplier_cost_items").insert({
+      id: crypto.randomUUID(),
       organization_id: F.pOrg,
       cost_table_version_id: cvRow.id,
       supplier_catalog_item_id: sciId,
@@ -568,9 +610,12 @@ async function testResolver() {
       cost_status: "provided",
       amount: 50.0,
       currency_code: "BRL",
-      created_by: F.user,
-      updated_by: F.user,
     });
+
+    // Promote cost version from draft → active so resolver can find it
+    await supabase.rpc("fn_submit_cost_version", { p_version_id: cvRow.id });
+    await supabase.rpc("fn_approve_cost_version", { p_version_id: cvRow.id });
+    await supabase.rpc("fn_publish_cost_version", { p_version_id: cvRow.id });
 
     // Now simulate — should fall back to DEFAULT policy
     const { data, error } = await simulatePrice(
@@ -581,18 +626,19 @@ async function testResolver() {
     log(
       "PRICE-H17",
       !error && data?.provenance?.policy?.scope_type === "default",
-      `scope=${data?.provenance?.policy?.scope_type}`
+      `err=${error?.message||'none'} scope=${data?.provenance?.policy?.scope_type} status=${data?.status}`
     );
   }
 
   // H18: missing policy → POLICY_NOT_FOUND
   console.log("H18: missing policy → POLICY_NOT_FOUND");
   {
-    // Create a new item with no policies at all
-    const { data: itemId2 } = await supabase
+    // Create a new item in Z_ORG (has membership but NO pricing policies)
+    const { data: itemId2Row } = await supabase
       .from("catalog_items")
       .insert({
-        organization_id: F.pOrg,
+        id: crypto.randomUUID(),
+        organization_id: F.zOrg,
         code: `PRC04C-NPOL-${RUN}`,
         name: `No Policy Item ${RUN}`,
         item_type: "other_service",
@@ -604,9 +650,10 @@ async function testResolver() {
       })
       .select("id")
       .single();
+    const itemId2 = itemId2Row?.id;
 
     const { data, error } = await simulatePrice(
-      F.pOrg,
+      F.zOrg,
       F.supplier,
       itemId2
     );
@@ -639,10 +686,16 @@ async function testResolver() {
   // H20: future scheduled policy resolves before physical cutover
   console.log("H20: future scheduled policy resolves before physical cutover");
   {
-    // Create a policy with future valid_from
-    const { data: futPolId } = await createPolicy("catalog_item", {
-      itemId: F.pItemA,
-    });
+    // Find existing catalog_item policy for pItemA
+    const { data: existing } = await supabase
+      .from("pricing_policies")
+      .select("id")
+      .eq("organization_id", F.pOrg)
+      .eq("scope_type", "catalog_item")
+      .eq("catalog_item_id", F.pItemA)
+      .eq("status", "active")
+      .maybeSingle();
+    const futPolId = existing?.id;
     const { data: futVid } = await createVersion(futPolId, {
       validFrom: "2029-01-01",
       method: "markup",
@@ -717,7 +770,21 @@ async function testCalculation() {
     refDate = "2026-06-15",
     discount = 0
   ) {
-    const { data: polId } = await createPolicy("catalog_item", { itemId });
+    let polId;
+    const { data: existing } = await supabase
+      .from("pricing_policies")
+      .select("id")
+      .eq("organization_id", F.pOrg)
+      .eq("scope_type", "catalog_item")
+      .eq("catalog_item_id", itemId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (existing?.id) {
+      polId = existing.id;
+    } else {
+      const r = await createPolicy("catalog_item", { itemId });
+      polId = r.data;
+    }
     const { data: vid } = await createVersion(polId, {
       validFrom: "2026-01-01",
       method,
@@ -779,9 +846,15 @@ async function testCalculation() {
   // H25: additional cost: base 80 + fixed 10 + 5% base (=4) → total_cost 94
   console.log("H25: additional cost composition");
   {
-    const { data: polId } = await createPolicy("catalog_item", {
-      itemId: F.pItemA,
-    });
+    const { data: existing } = await supabase
+      .from("pricing_policies")
+      .select("id")
+      .eq("organization_id", F.pOrg)
+      .eq("scope_type", "catalog_item")
+      .eq("catalog_item_id", F.pItemA)
+      .eq("status", "active")
+      .maybeSingle();
+    const polId = existing?.id;
     const { data: vid } = await createVersion(polId, {
       validFrom: "2026-01-01",
       method: "target_margin",
@@ -1009,9 +1082,10 @@ async function testCalculation() {
   console.log("H36: COST_NOT_CONFIRMED → PRICE_NOT_CALCULABLE");
   {
     // Create an item with no cost data
-    const { data: itemId } = await supabase
+    const { data: h36ItemRow } = await supabase
       .from("catalog_items")
       .insert({
+        id: crypto.randomUUID(),
         organization_id: F.pOrg,
         code: `PRC04C-NOCOST-${RUN}`,
         name: `No Cost Item ${RUN}`,
@@ -1024,9 +1098,10 @@ async function testCalculation() {
       })
       .select("id")
       .single();
+    const h36ItemId = h36ItemRow?.id;
 
     const { data: polId } = await createPolicy("catalog_item", {
-      itemId,
+      itemId: h36ItemId,
     });
     const { data: vid } = await createVersion(polId, {
       validFrom: "2026-01-01",
@@ -1041,11 +1116,11 @@ async function testCalculation() {
       p_version_id: vid,
     });
 
-    const { data } = await simulatePrice(F.pOrg, F.supplier, itemId);
+    const { data, error } = await simulatePrice(F.pOrg, F.supplier, h36ItemId);
     log(
       "PRICE-H36",
       data?.status === "PRICE_NOT_CALCULABLE",
-      `status=${data?.status} reason=${data?.reason}`
+      `err=${error?.message||'none'} status=${data?.status} reason=${data?.reason}`
     );
   }
 
@@ -1053,9 +1128,10 @@ async function testCalculation() {
   console.log("H37: confirmed_zero is valid");
   {
     // Create an item with confirmed_zero cost
-    const { data: sciId } = await supabase
+    const { data: h37ItemRow } = await supabase
       .from("catalog_items")
       .insert({
+        id: crypto.randomUUID(),
         organization_id: F.pOrg,
         code: `PRC04C-ZERO-${RUN}`,
         name: `Zero Cost Item ${RUN}`,
@@ -1068,17 +1144,18 @@ async function testCalculation() {
       })
       .select("id")
       .single();
+    const h37ItemId = h37ItemRow?.id;
 
     // Create supplier mapping
-    const sciMapId = `b3333333-aaaa-bbbb-cccc-0000000000z1`;
+    const sciMapId = `b3333333-aaaa-bbbb-cccc-0000000000c1`;
     await supabase.from("supplier_catalog_items").insert({
       id: sciMapId,
       organization_id: F.pOrg,
       supplier_company_id: F.supplier,
-      catalog_item_id: sciId,
+      catalog_item_id: h37ItemId,
       external_code: `ZERO-${RUN}`,
       external_name: `Zero External ${RUN}`,
-      external_name_normalized: `zero external ${RUN}`,
+      normalized_external_name: `zero external ${RUN}`,
       external_unit: "unit",
       is_preferred: true,
       status: "active",
@@ -1087,7 +1164,7 @@ async function testCalculation() {
     });
 
     // Create cost table + version
-    const ctId = `b3333333-aaaa-bbbb-cccc-0000000000z2`;
+    const ctId = `b3333333-aaaa-bbbb-cccc-0000000000c2`;
     await supabase.from("supplier_cost_tables").insert({
       id: ctId,
       organization_id: F.pOrg,
@@ -1098,7 +1175,7 @@ async function testCalculation() {
       created_by: F.user,
       updated_by: F.user,
     });
-    const { data: vid } = await supabase.rpc("fn_create_cost_version", {
+    const { data: costVid } = await supabase.rpc("fn_create_cost_version", {
       p_cost_table_id: ctId,
       p_valid_from: "2026-01-01",
       p_valid_to: null,
@@ -1109,20 +1186,24 @@ async function testCalculation() {
 
     // Insert confirmed_zero cost item
     await supabase.from("supplier_cost_items").insert({
+      id: crypto.randomUUID(),
       organization_id: F.pOrg,
-      cost_table_version_id: vid,
+      cost_table_version_id: costVid,
       supplier_catalog_item_id: sciMapId,
-      catalog_item_id: sciId,
+      catalog_item_id: h37ItemId,
       cost_status: "confirmed_zero",
       amount: 0,
       currency_code: "BRL",
-      created_by: F.user,
-      updated_by: F.user,
     });
+
+    // Promote cost version from draft → active
+    await supabase.rpc("fn_submit_cost_version", { p_version_id: costVid });
+    await supabase.rpc("fn_approve_cost_version", { p_version_id: costVid });
+    await supabase.rpc("fn_publish_cost_version", { p_version_id: costVid });
 
     // Create policy with fixed additional component + fixed_price
     const { data: polId } = await createPolicy("catalog_item", {
-      itemId: sciId,
+      itemId: h37ItemId,
     });
     const { data: polVid } = await createVersion(polId, {
       validFrom: "2026-01-01",
@@ -1145,7 +1226,7 @@ async function testCalculation() {
       p_version_id: polVid,
     });
 
-    const { data } = await simulatePrice(F.pOrg, F.supplier, sciId);
+    const { data } = await simulatePrice(F.pOrg, F.supplier, h37ItemId);
     // base=0, fixed_add=25, total=25, fixed_price=50
     const priceOk = Number(data?.effective_price) === 50;
     const totalCostOk = Number(data?.total_cost) === 25;
@@ -1160,9 +1241,10 @@ async function testCalculation() {
   console.log("H38: zero-cost denominator never Infinity/NaN");
   {
     // Use the zero-cost item with markup method
-    const { data: itemId } = await supabase
+    const { data: h38ItemRow } = await supabase
       .from("catalog_items")
       .insert({
+        id: crypto.randomUUID(),
         organization_id: F.pOrg,
         code: `PRC04C-NAN-${RUN}`,
         name: `NaN Test Item ${RUN}`,
@@ -1175,17 +1257,18 @@ async function testCalculation() {
       })
       .select("id")
       .single();
+    const h38ItemId = h38ItemRow?.id;
 
     // Create supplier mapping
-    const sciMapId = `b3333333-aaaa-bbbb-cccc-0000000000n1`;
+    const sciMapId = `b3333333-aaaa-bbbb-cccc-0000000000d1`;
     await supabase.from("supplier_catalog_items").insert({
       id: sciMapId,
       organization_id: F.pOrg,
       supplier_company_id: F.supplier,
-      catalog_item_id: itemId,
+      catalog_item_id: h38ItemId,
       external_code: `NAN-${RUN}`,
       external_name: `NaN External ${RUN}`,
-      external_name_normalized: `nan external ${RUN}`,
+      normalized_external_name: `nan external ${RUN}`,
       external_unit: "unit",
       is_preferred: true,
       status: "active",
@@ -1194,7 +1277,7 @@ async function testCalculation() {
     });
 
     // Create cost table + version + confirmed_zero item
-    const ctId = `b3333333-aaaa-bbbb-cccc-0000000000n2`;
+    const ctId = `b3333333-aaaa-bbbb-cccc-0000000000d2`;
     await supabase.from("supplier_cost_tables").insert({
       id: ctId,
       organization_id: F.pOrg,
@@ -1205,7 +1288,7 @@ async function testCalculation() {
       created_by: F.user,
       updated_by: F.user,
     });
-    const { data: vid } = await supabase.rpc("fn_create_cost_version", {
+    const { data: costVid } = await supabase.rpc("fn_create_cost_version", {
       p_cost_table_id: ctId,
       p_valid_from: "2026-01-01",
       p_valid_to: null,
@@ -1214,19 +1297,23 @@ async function testCalculation() {
       p_notes: null,
     });
     await supabase.from("supplier_cost_items").insert({
+      id: crypto.randomUUID(),
       organization_id: F.pOrg,
-      cost_table_version_id: vid,
+      cost_table_version_id: costVid,
       supplier_catalog_item_id: sciMapId,
-      catalog_item_id: itemId,
+      catalog_item_id: h38ItemId,
       cost_status: "confirmed_zero",
       amount: 0,
       currency_code: "BRL",
-      created_by: F.user,
-      updated_by: F.user,
     });
 
+    // Promote cost version from draft → active
+    await supabase.rpc("fn_submit_cost_version", { p_version_id: costVid });
+    await supabase.rpc("fn_approve_cost_version", { p_version_id: costVid });
+    await supabase.rpc("fn_publish_cost_version", { p_version_id: costVid });
+
     // Markup policy on zero cost → total_cost=0, markup would be 0*1.25=0
-    const { data: polId } = await createPolicy("catalog_item", { itemId });
+    const { data: polId } = await createPolicy("catalog_item", { itemId: h38ItemId });
     const { data: polVid } = await createVersion(polId, {
       validFrom: "2026-01-01",
       method: "markup",
@@ -1242,7 +1329,7 @@ async function testCalculation() {
       p_version_id: polVid,
     });
 
-    const { data } = await simulatePrice(F.pOrg, F.supplier, itemId);
+    const { data } = await simulatePrice(F.pOrg, F.supplier, h38ItemId);
     // total_cost=0, price=0*1.25=0, markup_rate=NULL
     const noInfinity =
       isFinite(Number(data?.effective_price)) &&
@@ -1382,15 +1469,15 @@ async function testSecurity() {
   // H46: actor fields cannot be spoofed by RPC caller
   console.log("H46: actor fields cannot be spoofed by RPC caller");
   {
-    // Create a policy and check that created_by = auth.uid()
-    const { data: polId } = await createPolicy("default", {
-      code: `POL-spoof-${RUN}`,
-    });
-    const { data: pol } = await supabase
+    // Find existing active default policy
+    const { data: existing } = await supabase
       .from("pricing_policies")
-      .select("created_by, updated_by")
-      .eq("id", polId)
-      .single();
+      .select("id, created_by, updated_by")
+      .eq("organization_id", F.pOrg)
+      .eq("scope_type", "default")
+      .eq("status", "active")
+      .maybeSingle();
+    const pol = existing;
     const { data: userData } = await supabase.auth.getUser();
     const actorCorrect =
       pol?.created_by === userData?.user?.id &&
@@ -1409,9 +1496,23 @@ async function testSecurity() {
 async function testComponentUpdate() {
   console.log("\n═══ COMPONENT UPDATE TESTS (COMP-UPD-01–03) ═══\n");
 
-  // Helper: create a draft policy+version and return both IDs
+  // Helper: create a draft version under an existing or new catalog_item policy
   async function createDraftPolicyVersion(itemId) {
-    const { data: polId } = await createPolicy("catalog_item", { itemId });
+    let polId;
+    const { data: existing } = await supabase
+      .from("pricing_policies")
+      .select("id")
+      .eq("organization_id", F.pOrg)
+      .eq("scope_type", "catalog_item")
+      .eq("catalog_item_id", itemId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (existing?.id) {
+      polId = existing.id;
+    } else {
+      const r = await createPolicy("catalog_item", { itemId });
+      polId = r.data;
+    }
     const { data: vid } = await createVersion(polId, {
       validFrom: "2026-01-01",
       method: "target_margin",

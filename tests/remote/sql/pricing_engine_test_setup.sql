@@ -14,6 +14,7 @@ BEGIN;
 DO $$
 DECLARE
   v_user_id uuid := 'd7df8bb1-7da4-4926-8bd2-2fe6ad8ac060';
+  v_e2e_user_id uuid := '1933891b-e0b9-42fc-afaa-641966824742';
 
   v_p_org uuid := 'b3333333-3333-3333-3333-333333333333';
   v_x_org uuid := 'c3333333-3333-3333-3333-333333333333';
@@ -115,6 +116,21 @@ BEGIN
   -- X_ORG: NO membership
   -- Y_ORG: NO membership
 
+  -- E2E_TEST_USER: admin in P_ORG and Z_ORG (for remote E2E tests)
+  INSERT INTO organization_memberships (id, organization_id, user_id, status)
+  VALUES (gen_random_uuid(), v_p_org, v_e2e_user_id, 'active');
+  INSERT INTO membership_roles (membership_id, role_id)
+  SELECT m.id, v_admin_role
+  FROM organization_memberships m
+  WHERE m.organization_id = v_p_org AND m.user_id = v_e2e_user_id;
+
+  INSERT INTO organization_memberships (id, organization_id, user_id, status)
+  VALUES (gen_random_uuid(), v_z_org, v_e2e_user_id, 'active');
+  INSERT INTO membership_roles (membership_id, role_id)
+  SELECT m.id, v_admin_role
+  FROM organization_memberships m
+  WHERE m.organization_id = v_z_org AND m.user_id = v_e2e_user_id;
+
   -- ============================================================
   -- 6. CATALOG FIXTURES
   -- ============================================================
@@ -135,8 +151,8 @@ BEGIN
   -- ============================================================
   -- 7. SUPPLIER COMPANY
   -- ============================================================
-  INSERT INTO companies (id, organization_id, legal_name, legal_name_normalized, status, created_by, updated_by)
-  VALUES (v_supplier_company, v_p_org, 'PRC04C Test Supplier', 'prc04c test supplier', 'active', v_user_id, v_user_id)
+  INSERT INTO companies (id, organization_id, legal_name, status, created_by, updated_by)
+  VALUES (v_supplier_company, v_p_org, 'PRC04C Test Supplier', 'active', v_user_id, v_user_id)
   ON CONFLICT (id) DO UPDATE SET legal_name = EXCLUDED.legal_name;
 
   -- ============================================================
@@ -149,7 +165,7 @@ BEGIN
   -- ============================================================
   -- 9. SUPPLIER CATALOG ITEM MAPPINGS
   -- ============================================================
-  INSERT INTO supplier_catalog_items (id, organization_id, supplier_company_id, catalog_item_id, external_code, external_name, external_name_normalized, external_unit, is_preferred, status, created_by, updated_by)
+  INSERT INTO supplier_catalog_items (id, organization_id, supplier_company_id, catalog_item_id, external_code, external_name, normalized_external_name, external_unit, is_preferred, status, created_by, updated_by)
   VALUES
     (v_supplier_catalog_item_a, v_p_org, v_supplier_company, v_p_item_a, 'EXT-A', 'External Item A', 'external item a', 'unit', true, 'active', v_user_id, v_user_id),
     (v_supplier_catalog_item_b, v_p_org, v_supplier_company, v_p_item_b, 'EXT-B', 'External Item B', 'external item b', 'unit', true, 'active', v_user_id, v_user_id)
@@ -180,17 +196,22 @@ BEGIN
   -- ============================================================
   -- 11. COST ITEMS
   -- ============================================================
+  -- Disable trigger to insert into active versions (fixture reset)
+  ALTER TABLE supplier_cost_items DISABLE TRIGGER USER;
+
   -- Version 1: Item A = 80, Item B = 120
-  INSERT INTO supplier_cost_items (id, organization_id, cost_table_version_id, supplier_catalog_item_id, catalog_item_id, cost_status, amount, currency_code, created_by, updated_by)
+  INSERT INTO supplier_cost_items (id, organization_id, cost_table_version_id, supplier_catalog_item_id, catalog_item_id, cost_status, amount, currency_code)
   VALUES
-    (v_cost_item_1_a, v_p_org, v_cost_version_1, v_supplier_catalog_item_a, v_p_item_a, 'provided', 80.0000, 'BRL', v_user_id, v_user_id),
-    (v_cost_item_1_b, v_p_org, v_cost_version_1, v_supplier_catalog_item_b, v_p_item_b, 'provided', 120.0000, 'BRL', v_user_id, v_user_id)
+    (v_cost_item_1_a, v_p_org, v_cost_version_1, v_supplier_catalog_item_a, v_p_item_a, 'provided', 80.0000, 'BRL'),
+    (v_cost_item_1_b, v_p_org, v_cost_version_1, v_supplier_catalog_item_b, v_p_item_b, 'provided', 120.0000, 'BRL')
   ON CONFLICT (id) DO UPDATE SET amount = EXCLUDED.amount;
 
   -- Version 2: Item A = 85 (higher cost for future simulation tests)
-  INSERT INTO supplier_cost_items (id, organization_id, cost_table_version_id, supplier_catalog_item_id, catalog_item_id, cost_status, amount, currency_code, created_by, updated_by)
-  VALUES (v_cost_item_2_a, v_p_org, v_cost_version_2, v_supplier_catalog_item_a, v_p_item_a, 'provided', 85.0000, 'BRL', v_user_id, v_user_id)
+  INSERT INTO supplier_cost_items (id, organization_id, cost_table_version_id, supplier_catalog_item_id, catalog_item_id, cost_status, amount, currency_code)
+  VALUES (v_cost_item_2_a, v_p_org, v_cost_version_2, v_supplier_catalog_item_a, v_p_item_a, 'provided', 85.0000, 'BRL')
   ON CONFLICT (id) DO UPDATE SET amount = EXCLUDED.amount;
+
+  ALTER TABLE supplier_cost_items ENABLE TRIGGER USER;
 
   RAISE NOTICE 'PRC04C SETUP DONE: p_org=% supplier=% cost_table=% v1=% v2=%',
     v_p_org, v_supplier_company, v_cost_table, v_cost_version_1, v_cost_version_2;

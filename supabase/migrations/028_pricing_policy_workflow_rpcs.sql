@@ -103,7 +103,7 @@ CREATE OR REPLACE FUNCTION fn_create_pricing_policy_version(
   p_policy_id          uuid,
   p_valid_from         date,
   p_valid_to           date DEFAULT NULL,
-  p_pricing_method     text,
+  p_pricing_method     text DEFAULT 'target_margin',
   p_target_margin_rate numeric(9,6) DEFAULT NULL,
   p_markup_rate        numeric(9,6) DEFAULT NULL,
   p_fixed_price        numeric(14,4) DEFAULT NULL,
