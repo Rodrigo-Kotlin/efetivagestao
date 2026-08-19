@@ -1,6 +1,6 @@
 # Motor de Formação de Preço — PRC-04
 
-**Status:** Especificação autoritativa (PRC-04A) · Sem implementação
+**Status:** Especificação autoritativa (PRC-04A) · Engine implementada e verificada (PRC-04C **COMPLETED**)
 **Baseline:** PRC-03B fechado — `SUPPLIER_COSTS_VERIFIED` · Migrations 001–025 imutáveis
 **Fonte de custo autoritativa:** `fn_resolve_supplier_cost(...)`
 
@@ -669,7 +669,7 @@ Modelo de dados confiável implementado e verificado:
 - **Migrations:** `026_pricing_policy_schema` (tabelas + integridade) e `027_pricing_policy_security` (permissões, RBAC, RLS, auditoria) — seções 14-19 deste documento.
 - **Verificação remota:** testes POL-H01..H27 (`tests/remote/pricing-policy-integrity-test.mjs`, fixtures em `tests/remote/sql/pricing_test_setup.sql`) — 33/33 assertivas PASS.
 
-### PRC-04C — Engine (IN PROGRESS → COMPLETED)
+### PRC-04C — Engine (COMPLETED)
 
 Motor de precificação autoritativo implementado:
 

@@ -15,7 +15,7 @@
 | PRC-04 | Formação de Preço | IN PROGRESS |
 | PRC-04A | Pricing Model & Mathematical Rules | **COMPLETED** |
 | PRC-04B | Pricing Policy Database, Integrity, RLS & RBAC | **COMPLETED** |
-| PRC-04C | Authoritative Pricing Engine & Workflow (RPC) | IN PROGRESS |
+| PRC-04C | Authoritative Pricing Engine & Workflow (RPC) | **COMPLETED** |
 | PRC-04D | Pricing Policy UI & Price Simulator | NOT STARTED |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
@@ -56,3 +56,4 @@ Controla:
 | SUPPLIER_COSTS_VERIFIED | PRC-03B | Atingido |
 | PRICING_MODEL_DEFINED | PRC-04A | Atingido |
 | PRICING_POLICY_SCHEMA_VERIFIED | PRC-04B | Atingido |
+| PRICING_ENGINE_CORE_VERIFIED | PRC-04C | Atingido |
