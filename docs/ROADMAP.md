@@ -12,11 +12,12 @@
 | PRC-03 | Custos e Versionamento | **COMPLETED** |
 | PRC-03A | Cost Temporal & Financial Integrity Hardening | **COMPLETED** |
 | PRC-03B | Temporal Cutover & Migration Reproducibility | **COMPLETED** |
-| PRC-04 | Formação de Preço | IN PROGRESS |
+| PRC-04 | Formação de Preço | **COMPLETED** |
 | PRC-04A | Pricing Model & Mathematical Rules | **COMPLETED** |
 | PRC-04B | Pricing Policy Database, Integrity, RLS & RBAC | **COMPLETED** |
 | PRC-04C | Authoritative Pricing Engine & Workflow (RPC) | **COMPLETED** |
 | PRC-04D | Pricing Policy UI & Price Simulator | **COMPLETED** |
+| PRC-04E | Pricing End-to-End Hardening & Final Verification | **COMPLETED** |
 | PRC-05 | Tabelas Comerciais | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
 | PRC-07 | Motor de Resolução | NOT STARTED |
@@ -58,3 +59,4 @@ Controla:
 | PRICING_POLICY_SCHEMA_VERIFIED | PRC-04B | Atingido |
 | PRICING_ENGINE_CORE_VERIFIED | PRC-04C | Atingido |
 | PRICING_POLICY_UI_VERIFIED | PRC-04D | Atingido |
+| PRICING_ENGINE_VERIFIED | PRC-04E | Atingido |

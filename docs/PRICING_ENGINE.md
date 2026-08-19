@@ -1,6 +1,6 @@
 # Motor de Formação de Preço — PRC-04
 
-**Status:** Especificação autoritativa (PRC-04A) · Engine implementada e verificada (PRC-04C **COMPLETED**) · UI e Simulador (PRC-04D **COMPLETED**)
+**Status:** Especificação autoritativa (PRC-04A) · Engine implementada e verificada (PRC-04C **COMPLETED**) · UI e Simulador (PRC-04D **COMPLETED**) · Verificação end-to-end (PRC-04E **COMPLETED**)
 **Baseline:** PRC-03B fechado — `SUPPLIER_COSTS_VERIFIED` · Migrations 001–031 imutáveis
 **Fonte de custo autoritativa:** `fn_resolve_supplier_cost(...)`
 
@@ -705,3 +705,41 @@ Frontend de políticas de preço e simulador, consumindo exclusivamente as RPCs 
 - **Qualidade:** typecheck, lint e build PASS; suíte completa 163/163 PASS; regressão remota 50/50 PASS.
 
 - **Fora de escopo nesta fase:** persistência de preços comerciais (PRC-05).
+
+## 24. Verificação End-to-End (PRC-04E — COMPLETED)
+
+PRC-04E fechou o primeiro domínio funcional (Catálogo → Fornecedor → Custo → Política → Motor → UI) com hardening e verificação final, sem alterar as migrations 001–031.
+
+### 24.1 Regressão completa
+
+| Suíte | Resultado |
+|-------|-----------|
+| Local — lint / typecheck / testes unitários / build / `git diff --check` | PASS · 163/163 |
+| Remota — `pricing-engine-test.mjs` (PRICE-H01..H50) | PASS · 50/50 |
+| Remota — `pricing-policy-integrity-test.mjs` (POL-H01..H27) | PASS · 33/33 |
+| Remota — `cost-integrity-test.mjs` (COST-H01..H18) | PASS · 34/34 |
+| Remota — `pricing-full-flow-test.mjs` (integrado end-to-end) | PASS · 49/49 |
+
+### 24.2 Auditores (sem defeitos encontrados)
+
+- **Imutabilidade das migrations:** `git diff c0a2b81^ c0a2b81 -- supabase/migrations` vazio; 31/31 migrations aplicadas local e remotamente (`supabase_migrations.schema_migrations`).
+- **Segredos:** nenhum secret em conteúdo versionado; credenciais de teste apenas via `process.env`; `.env.local` não versionado.
+- **Lógica financeira no frontend:** nenhuma fórmula de precificação replicada no frontend — apenas formatação de apresentação e guardas contra NaN/Infinity; `fn_simulate_price` é a **única** fonte de cálculo.
+- **Mutação de status:** zero escritas diretas de `status` em `pricing_policy_versions`; edição de rascunho via `updateDraftPricingPolicyVersion` usa whitelist de colunas (nunca envia `status`/`organization_id`/actor).
+
+### 24.3 Teste integrado (pricing-full-flow-test.mjs)
+
+Fluxo único e isolado (fornecedor/catálogo/custo/política dedicados no org de teste) validando: resolução na data atual; resolução de versão **futura programada** por data de referência (sem scheduler físico); invariância do resultado atual; reprodutibilidade histórica; determinismo de campos financeiros; **margem ≠ markup** (mesmo custo: 20% margem → 131,25 vs 20% markup → 126,00); custo desconhecido ≠ zero (nunca fabrica R$ 0,00); zero confirmado como custo real; violações autoritativas (`BELOW_COST`, `BELOW_MINIMUM_MARGIN`, `DISCOUNT_EXCEEDS_LIMIT`); denominador zero sem NaN/Infinity (`ZERO_COST_DENOMINATOR`); proveniência completa; rejeição de acesso cross-tenant e de mutação não autorizada na API.
+
+### 24.4 Correções de harness (não-técnicas; nenhum defeito de produto)
+
+- `tests/remote/sql/pricing_test_setup.sql` passou a conceder membership ao usuário E2E real (espelhando `pricing_engine_test_setup.sql`), para a suíte de integridade rodar como o usuário autenticado real.
+- Membership do usuário E2E provisionada no org de custos do PRC-03A para a suíte COST-H* (fixtures já existentes, sem reset de dados).
+
+### 24.5 UI — revisão de fumaça/responsivo/a11y/erros
+
+- Navegação completa (Home → /pricing → Políticas de Preço / Simulador), rotas registradas, páginas com `ErrorBoundary` e gating por permissão.
+- Responsivo: tabelas com `overflow-x: auto`, cabeçalhos com `flex-wrap`, grade de proveniência `auto-fit minmax`; app é desktop-first (sem media queries globais) — limitação conhecida, não bloqueante.
+- A11y: `aria-label` em todos os inputs/selects do simulador e listagem; menu do usuário com `aria-expanded`/`aria-haspopup`; banner offline `role="alert"`; botões de workflow com texto visível (não dependem de cor).
+- Estados de erro: loading, banners de erro com retry (listagem), validação de formulário com mensagens, `PRICE_NOT_CALCULABLE` exibido como mensagem explícita (nunca R$ 0,00), NaN/Infinity renderizados como "indisponível".
+- Formatação monetária: `Intl.NumberFormat("pt-BR", BRL)` em `utils/format.ts`.
