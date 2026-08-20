@@ -49,9 +49,9 @@ function log(label, ok, detail = "") {
 const F = {
   orgId: "a2222222-2222-2222-2222-222222222222",
   companyId: "b2222222-2222-2222-2222-222222222222",
-  catalogItemId: "0e632e26-010c-40f0-96a3-2ba6d0a4b035",
-  supplierCatalogItemId: "8c0471a0-916e-4373-8f9a-41675013f442",
-  costTableId: "9406fa37-e7ec-4e2a-8726-d71197a577e5",
+  catalogItemId: "c2222222-0000-0000-0000-000000000001",
+  supplierCatalogItemId: "c2222222-0000-0000-0000-000000000002",
+  costTableId: "c2222222-0000-0000-0000-000000000003",
   userId: "d7df8bb1-7da4-4926-8bd2-2fe6ad8ac060",
 };
 
@@ -133,7 +133,7 @@ async function createSecondMapping() {
       organization_id: F.orgId,
       code: "T03A-X-" + Date.now(),
       name: "Test Item X",
-      category_id: (await supabase.from("catalog_categories").select("id").limit(1).single()).data.id,
+      category_id: (await supabase.from("catalog_categories").select("id").eq("organization_id", F.orgId).limit(1).single()).data.id,
       item_type: "other_service",
       commercial_unit: "unit",
       execution_type: "own",

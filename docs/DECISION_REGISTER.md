@@ -365,3 +365,15 @@
 **Decisão:** PRC-05 cria tabelas comerciais reutilizáveis e NÃO inclui `client_id`/`customer_id`/override por cliente em itens comerciais. Atribuição de tabelas e overrides a clientes pertence ao PRC-06; precedência global (override de cliente > tabela atribuída > segmento/grupo/canal > tabela padrão) pertence ao PRC-07. Default de tabela (`is_default`) é adiado para PRC-07.
 **Contexto:** PRC-05A — fronteira de escopo; evitar acoplar PRC-05 ao design futuro do resolver global.
 **Consequência:** `commercial_price_items` sem dimensões de cliente/segmento/canal; resolver de tabela (`fn_resolve_commercial_table_price`) cobre apenas "item dentro de tabela em data", não precedência global.
+
+## DEC-051 — Commercial Price Schema: Integrity, RLS & RBAC with Dedicated NULL-Safe Workflow Gate (PRC-05B)
+
+**Data:** 2026-08-19
+**Decisão:** Implementar o modelo PRC-05A em migrations 032/033: 4 tabelas comerciais (`commercial_price_tables`, `commercial_price_table_versions`, `commercial_price_items`, `commercial_price_exceptions`); integridade estrutural/temporal/cross-tenant (EXCLUDE GiST, same-org triggers, proveniência com FKs RESTRICT, linhagem same-table, snapshot do catálogo server-derived); workflow controlado por gate dedicado **`app.commercial_price_rpc_active`**; imutabilidade de não-draft; hard-delete guards; RBAC `pricing.commercial.*` (7 permissões); RLS; auditoria. Checkpoint: `COMMERCIAL_PRICE_SCHEMA_VERIFIED` (COM-H01..H57, 61/61 checks).
+**Contexto:** PRC-05B — o schema precisa da mesma robustez já validada em custos (023) e políticas (026/027). Decisões normativas incorporadas:
+- **Gate NULL-safe:** `current_setting('app.commercial_price_rpc_active', true) = 'true'` retorna NULL quando ausente; `IF NOT v_is_rpc THEN RAISE` tratava NULL como falso e permitia transições sem RPC. Corrigido com `COALESCE(..., false)` nos 3 triggers de workflow (`fn_cptv_validate_status_transition`, `fn_cptv_protect_published_fields`, `fn_cpe_status_transition`) e verificado por repro SQL + COM-H48.
+- **Revokes:** triggers executam com o papel da DML (convenção 022/023/027) — REVOKE de `PUBLIC`/`anon` apenas; `authenticated` mantém EXECUTE (revogar quebrava os triggers).
+- **Normalizador encoding-safe:** `fn_normalize_commercial_code` implementada com `chr()` (ASCII puro) porque UTF-8 literals eram mojibake'd na entrega remota (`á` → `Ã¡`).
+- **Exceções append-only:** sem policy de DELETE (RLS filtra silenciosamente, 0 linhas) + `fn_cpe_delete_guard` no banco; decisão de status exige gate + `exception_approve`.
+- **`pricing.price.publish` deprecado:** placeholder legado permanece no banco com 0 mapeamentos; o conjunto ativo é `pricing.commercial.*`.
+**Consequência:** Migrations 032/033 aplicadas remotamente (33/33); testes remotos COM-H01..H57 passam; regressões pricing-engine 50/50, política 33/33 e custo 34/34 permanecem verdes; workflow RPCs/clone/publish/resolver permanecem em PRC-05C.

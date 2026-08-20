@@ -323,6 +323,87 @@ Componentes adicionais de custo da versão de política.
 
 **Integridade:** `chk_ppc_type_integrity` (cada tipo aceita somente seu campo); trigger cross-org (`fn_ppc_version_same_org`); trigger `fn_ppc_parent_draft` (somente versões draft aceitam componentes); hard delete protegido em versões não-draft.
 
+## Tabelas (PRC-05B — Tabelas Comerciais de Preço)
+
+### commercial_price_tables
+
+Identidade estável de uma tabela comercial. Não armazena preços (ficam nas versões/itens).
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | default gen_random_uuid() |
+| organization_id | uuid FK → organizations | tenant |
+| code | text | UNIQUE (organization_id, code) |
+| code_normalized | text | UNIQUE (organization_id, code_normalized); via fn_normalize_commercial_code |
+| name | text | |
+| description | text | nullable |
+| status | text | `active` \| `inactive` |
+| created_by / created_at | uuid FK / timestamptz | actor server-derived |
+| updated_by / updated_at | uuid FK / timestamptz | trigger fn_set_updated_at |
+
+**Integridade:** normalização via `fn_normalize_commercial_code` (case/acento/espaço, implementada com `chr()` por segurança de encoding); código imutável após existir versão/histórico (`fn_cpt_code_normalize`).
+
+### commercial_price_table_versions
+
+Versões temporalmente válidas com lifecycle próprio.
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | |
+| organization_id | uuid FK → organizations | tenant |
+| commercial_price_table_id | uuid FK → commercial_price_tables | |
+| version_number | integer | > 0; UNIQUE (commercial_price_table_id, version_number) |
+| version_label | text | nullable |
+| valid_from / valid_to | date | vigência `[valid_from, valid_to)` |
+| status | text | draft \| under_review \| approved \| scheduled \| active \| superseded \| cancelled |
+| notes | text | nullable |
+| created_by / created_at | uuid / timestamptz | |
+| approved_by / approved_at | uuid / timestamptz | |
+| published_by / published_at | uuid / timestamptz | |
+| superseded_by / superseded_at | uuid / timestamptz | |
+
+**Integridade:** `chk_cptv_version_number`; `chk_cptv_validity`; **EXCLUDE temporal `chk_cptv_no_overlap`** (GiST, `daterange('[)')`) sobre versões active/scheduled (adjacência permitida); triggers cross-org (`fn_cptv_table_same_org`), actor (`fn_cptv_actor`), transição de status (`fn_cptv_validate_status_transition`, gate `app.commercial_price_rpc_active` NULL-safe + completude ≥1 item), imutabilidade de não-draft (`fn_cptv_protect_published_fields`), hard delete só de draft (`fn_cptv_delete_guard`).
+
+### commercial_price_items
+
+UM item de catálogo + UM preço explícito + UMA versão de tabela.
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | |
+| organization_id | uuid FK → organizations | tenant |
+| commercial_price_table_version_id | uuid FK → commercial_price_table_versions | |
+| catalog_item_id | uuid FK → catalog_items | UNIQUE (version_id, catalog_item_id) |
+| price_amount | numeric(14,4) | >= 0 (ZERO permitido) |
+| currency | char(3) | CHECK = 'BRL' (v1) |
+| item_code_snapshot / item_name_snapshot / item_type_snapshot | text | snapshot do catálogo, server-derived |
+| origin_type | text | `manual` \| `pricing_engine` |
+| source_commercial_price_item_id | uuid FK → commercial_price_items | linhagem same-table |
+| Proveniência `source_*` | — | nullable p/ manual; obrigatória p/ engine (chk_cpi_engine_provenance) |
+| pricing_snapshot | jsonb | opcional; resultado autoritativo na criação |
+| created_by / created_at | uuid / timestamptz | |
+| updated_by / updated_at | uuid / timestamptz | |
+
+**Integridade:** `chk_cpi_price_amount` (>= 0); `chk_cpi_currency`; `chk_cpi_engine_provenance`; `idx_cpi_unique_item`; triggers cross-org: versão (`fn_cpi_version_same_org`), catálogo ativo e same-org (`fn_cpi_catalog_item_active`), snapshot (`fn_cpi_catalog_snapshot`), custo/política de origem (pertencimento e correspondência tabela↔versão), linhagem same-table (`fn_cpi_lineage_same_table`); imutabilidade em versões não-draft (`fn_cpi_immutable_when_published`).
+
+### commercial_price_exceptions
+
+Registro de exceção comercial auditável (append-only).
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | |
+| organization_id | uuid FK → organizations | tenant |
+| commercial_price_table_version_id | uuid FK → commercial_price_table_versions | |
+| commercial_price_item_id | uuid FK → commercial_price_items | |
+| violation_code | text | CHECK (BELOW_COST \| BELOW_MINIMUM_MARGIN \| COMMERCIAL_DEVIATION) |
+| status | text | `requested` \| `approved` \| `denied` |
+| reason | text | |
+| requested_by / requested_at | uuid / timestamptz | actor server-derived |
+| decided_by / decided_at | uuid / timestamptz | |
+
+**Integridade:** `idx_cpe_unique_item_code` (sem duplicata item+violation); cross-org (`fn_cpe_integrity`); transição de status com gate `app.commercial_price_rpc_active` + permissão `exception_approve` (`fn_cpe_status_transition`); **append-only** (`fn_cpe_delete_guard`; sem policy de DELETE → RLS bloqueia).
+
 ## Migrations
 
 | # | Arquivo | Descrição |
@@ -356,6 +437,8 @@ Componentes adicionais de custo da versão de política.
 | 027 | 027_pricing_policy_security | Permissões pricing.policy.* (6), mapeamentos RBAC, RLS (12 policies), audit triggers |
 | 028 | 028_pricing_policy_workflow_rpcs | Permissão pricing.calculate, RBAC mappings, RPCs de workflow: create policy/version, component writes, submit/approve/cancel/return-to-draft, publish, sync cutover |
 | 029 | 029_pricing_engine | Motor de precificação autoritativo: fn_resolve_pricing_policy (resolução por precedência de escopo), fn_calculate_price (cálculo numérico interno), fn_simulate_price (RPC pública de orquestração) |
+| 032 | 032_commercial_price_schema | commercial_price_tables, commercial_price_table_versions, commercial_price_items, commercial_price_exceptions + normalizador de código (chr-safe), integridade cross-org, EXCLUDE temporal, gate de workflow NULL-safe, snapshots/proveniência/linhagem, imutabilidade, hard-delete guards, índices |
+| 033 | 033_commercial_price_security | Permissões pricing.commercial.* (7), mapeamentos RBAC (admin 7 / manager 5 / operator 1 / viewer 1), RLS (12 policies), audit triggers, revokes de helpers internos (PUBLIC/anon) |
 
 ## Geração de Tipos TypeScript
 

@@ -60,8 +60,25 @@ BEGIN
   -- memberships (cascades membership_roles)
   DELETE FROM organization_memberships WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
 
-  -- catalog items/categories in test orgs (no aliases are created, so safe)
+  -- catalog items/categories in test orgs (no aliases are created, so safe).
+  -- supplier_* fixtures reference catalog_items and carry immutability triggers
+  -- (e.g. fn_sci_immutable_when_published), so disable USER triggers for the reset.
+  ALTER TABLE supplier_cost_items DISABLE TRIGGER USER;
+  ALTER TABLE supplier_cost_table_versions DISABLE TRIGGER USER;
+  ALTER TABLE supplier_cost_tables DISABLE TRIGGER USER;
+  ALTER TABLE supplier_profiles DISABLE TRIGGER USER;
+  ALTER TABLE supplier_catalog_items DISABLE TRIGGER USER;
+  DELETE FROM supplier_cost_items WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
+  DELETE FROM supplier_cost_table_versions WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
+  DELETE FROM supplier_cost_tables WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
+  DELETE FROM supplier_profiles WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
+  DELETE FROM supplier_catalog_items WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
   DELETE FROM catalog_items WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
+  ALTER TABLE supplier_catalog_items ENABLE TRIGGER USER;
+  ALTER TABLE supplier_profiles ENABLE TRIGGER USER;
+  ALTER TABLE supplier_cost_tables ENABLE TRIGGER USER;
+  ALTER TABLE supplier_cost_table_versions ENABLE TRIGGER USER;
+  ALTER TABLE supplier_cost_items ENABLE TRIGGER USER;
   DELETE FROM catalog_categories WHERE organization_id IN (v_p_org, v_x_org, v_y_org, v_z_org);
 
   -- ============================================================

@@ -1,7 +1,7 @@
 # Tabelas Comerciais de Preço — PRC-05
 
-**Status:** Especificação autoritativa (PRC-05A) · Schema/Integridade/RLS/RBAC em PRC-05B · Workflow/Clone/Publish/Resolver em PRC-05C · UI em PRC-05D · Verificação end-to-end em PRC-05E
-**Baseline:** PRC-04E fechado — `PRICING_ENGINE_VERIFIED` · Migrations 001–031 imutáveis
+**Status:** Especificação autoritativa (PRC-05A) · Schema/Integridade/RLS/RBAC **implementado e verificado (PRC-05B — `COMMERCIAL_PRICE_SCHEMA_VERIFIED`)** · Workflow/Clone/Publish/Resolver em PRC-05C · UI em PRC-05D · Verificação end-to-end em PRC-05E
+**Baseline:** PRC-04E fechado — `PRICING_ENGINE_VERIFIED` · Migrations 001–031 imutáveis · Migrations **032–033** (PRC-05B) · Testes remotos **COM-H01..COM-H57 (61/61 checks, 0 falhas)**
 **Fonte de custo autoritativa:** `fn_resolve_supplier_cost(...)` (PRC-03B)
 **Fonte de preço calculado autoritativa:** `fn_simulate_price(...)` (PRC-04C)
 **Documentos de referência:** `docs/PRICING_ENGINE.md` · `docs/PRICING_COSTS.md` · `docs/RBAC.md` · `docs/DATABASE.md` · `docs/DECISION_REGISTER.md`
@@ -769,3 +769,45 @@ Novas decisões PRC-05A: **DEC-045** a **DEC-050** (registradas em `docs/DECISIO
 | PRC-05E | Commercial Pricing End-to-End Hardening |
 | PRC-06 | Client Assignments & Overrides |
 | PRC-07 | Final Commercial Price Resolution |
+
+## 61. PRC-05B — Implementação e Verificação
+
+> Checkpoint: **`COMMERCIAL_PRICE_SCHEMA_VERIFIED`** · Migrations `032_commercial_price_schema.sql` e `033_commercial_price_security.sql` · Testes remotos `COM-H01..COM-H57` (`tests/remote/commercial-price-integrity-test.mjs` + `tests/remote/sql/commercial_price_test_setup.sql`).
+
+### 61.1 Schema (migration 032)
+
+- **`commercial_price_tables`** — identidade estável (`active|inactive`), `code_normalized` via `fn_normalize_commercial_code` (normalização case/acento/espaço, implementada com `chr()` para segurança de encoding UTF-8), unicidade `UNIQUE (organization_id, code)` + `UNIQUE (organization_id, code_normalized)`.
+- **`commercial_price_table_versions`** — lifecycle `draft|under_review|approved|scheduled|active|superseded|cancelled`; `version_number > 0` e `UNIQUE (commercial_price_table_id, version_number)`; vigência `[valid_from, valid_to)` com `chk_cptv_validity`; **EXCLUDE temporal GiST `chk_cptv_no_overlap`** sobre versões `active|scheduled` (adjacência permitida); cross-org trigger `fn_cptv_table_same_org`; actor server-derived `fn_cptv_actor`.
+- **`commercial_price_items`** — `price_amount numeric(14,4) >= 0` (ZERO permitido, DEC-047); `currency char(3) CHECK = 'BRL'` (seção 52); snapshot do catálogo server-derived (`fn_cpi_catalog_snapshot`, valores do cliente ignorados); `UNIQUE (version_id, catalog_item_id)` (`idx_cpi_unique_item`); `chk_cpi_engine_provenance` (itens `pricing_engine` exigem proveniência mínima: `source_reference_date`, `source_supplier_company_id`, `source_cost_version_id`, `source_pricing_policy_version_id`, `source_effective_price`); cross-org triggers para versão, item de catálogo (ativo obrigatório), custo/política de origem (pertencimento, correspondência tabela/versão), linhagem same-table (`source_commercial_price_item_id`).
+- **`commercial_price_exceptions`** — registro de exceção auditável (seção 35): `violation_code` CHECK (`BELOW_COST|BELOW_MINIMUM_MARGIN|COMMERCIAL_DEVIATION`), status `requested|approved|denied`, `idx_cpe_unique_item_code` impede duplicata `(item, violation_code)`, `requested_by/at`, `decided_by/at`; **append-only** (`fn_cpe_delete_guard`).
+
+### 61.2 Workflow, Imutabilidade e Gates
+
+- **Gate dedicado:** transições de status de versão e decisões de exceção exigem `app.commercial_price_rpc_active = 'true'` (GUC transacional setado por RPCs controladas de PRC-05C). Leitura é NULL-safe: `COALESCE((current_setting(...) = 'true'), false)` — corrigido em hotfix para impedir que `NOT NULL` fosse tratado como falso.
+- **`fn_cptv_validate_status_transition`** (SECURITY DEFINER): valida transições, permissões por etapa (`review/approve/publish/edit`), deriva `approved_by/at`, `published_by/at`, `superseded_by/at`, e aplica **completude da versão** (≥1 item para sair de draft, seção 37).
+- **`fn_cptv_protect_published_fields`**: drafts totalmente editáveis; versões não-draft imutáveis fora de RPC controlada; via RPC apenas campos de workflow/ator/temporal.
+- **`fn_cptv_delete_guard`**: hard delete apenas de versões `draft`.
+- **Itens:** `fn_cpi_immutable_when_published` — insert/update/delete de itens apenas em versões `draft`.
+- **`fn_cpt_code_normalize` + imutabilidade do código:** código editável sem histórico; imutável com versões/histórico.
+- **Append-only exceções:** decisão de status sem gate bloqueada; UPDATE de `reason` permitido; DELETE bloqueado (RLS sem policy + `fn_cpe_delete_guard`).
+
+### 61.3 Segurança (migration 033)
+
+- Permissões **`pricing.commercial.*`** (7): `view, create, edit, review, approve, publish, exception_approve`.
+- **Mapeamentos RBAC reais:** admin = 7 · manager = 5 (sem `publish`, sem `exception_approve`) · operator = 1 (`view`) · viewer = 1 (`view`). O placeholder legado `pricing.price.publish` permanece no banco com **0 mapeamentos** (deprecated, documentado em `docs/RBAC.md`).
+- **RLS (12 policies):** leitura por `is_member_of`; escrita por `has_permission(...)` com `WITH CHECK`; cross-tenant bloqueado (leitura retorna 0 linhas, escrita viola policy).
+- **Auditoria:** triggers `fn_audit_commercial_*` (INSERT/UPDATE/DELETE) via `log_audit()`.
+- **Revokes:** helpers internos e audit revogados de `PUBLIC`/`anon`; EXECUTE mantido para `authenticated` (triggers executam com o papel da DML — convenção 022/023/027).
+
+### 61.4 Verificação remota (COM-H01..COM-H57)
+
+| Grupo | Testes | Cobertura |
+|-------|--------|-----------|
+| Identidade de Tabela | COM-H01..H08 | insert, unicidade, normalização, RLS, status CHECK, actor server-derived, imutabilidade de código com histórico |
+| Versões | COM-H09..H20 | draft, version_number, unicidade, validade, cross-org, gate de transição sem RPC, imutabilidade não-draft, hard-delete guard, EXCLUDE (sobreposição/adjacência), delete de draft |
+| Itens | COM-H21..H35 | snapshot derivado do catálogo (valores do cliente ignorados), unicidade, CHECKs (preço/currency), catálogo ativo, cross-org, imutabilidade em versões não-draft, linhagem same-table |
+| Proveniência | COM-H36..H42 | fornecedor cross-org, custo ≠ fornecedor, versão de custo ≠ tabela, política ≠ versão, política cross-org, persistência de proveniência e `pricing_snapshot` |
+| Exceções | COM-H43..H50 | create `requested`, ator derivado, status ≠ requested, duplicata, violation_code inválido, versão cross-org, decisão sem gate, UPDATE de reason, append-only |
+| RLS/RBAC | COM-H51..H57 | cross-tenant 0 linhas, viewer/operator read-only, manager draft lifecycle completo, exceção por manager, decisão por manager bloqueada (RLS), exceção por viewer bloqueada |
+
+**Resultado:** `Passed: 61 · Failed: 0` (57 testes + sub-verificações), executado contra o projeto remoto `scyxgyewdokmsuehgwql` com o usuário E2E autenticado. Setup resetável: `commercial_price_test_setup.sql` (fixtures + verificação DO-block).
