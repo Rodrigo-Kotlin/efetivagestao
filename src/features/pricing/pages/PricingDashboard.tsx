@@ -48,8 +48,10 @@ const futureModules: FutureModule[] = [
   },
   {
     title: "Tabelas Comerciais",
-    description: "Tabelas Padrão, Assinante e Clube EFT.",
-    status: "coming-soon",
+    description: "Tabelas comerciais, versões, preços publicados e vigências.",
+    status: "available",
+    path: "/pricing/commercial",
+    permission: "pricing.commercial.view",
   },
   {
     title: "Clientes",

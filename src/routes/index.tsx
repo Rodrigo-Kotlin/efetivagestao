@@ -24,6 +24,12 @@ import { PricingPolicyDetailPage } from "@/features/pricing/policies/pages/Prici
 import { PricingPolicyVersionNewPage } from "@/features/pricing/policies/pages/PricingPolicyVersionNewPage";
 import { PricingPolicyVersionDetailPage } from "@/features/pricing/policies/pages/PricingPolicyVersionDetailPage";
 import { PriceSimulatorPage } from "@/features/pricing/policies/pages/PriceSimulatorPage";
+import { CommercialPriceTablesPage } from "@/features/pricing/commercial/pages/CommercialPriceTablesPage";
+import { CommercialPriceTableNewPage } from "@/features/pricing/commercial/pages/CommercialPriceTableNewPage";
+import { CommercialPriceTableDetailPage } from "@/features/pricing/commercial/pages/CommercialPriceTableDetailPage";
+import { CommercialPriceVersionNewPage } from "@/features/pricing/commercial/pages/CommercialPriceVersionNewPage";
+import { CommercialPriceVersionDetailPage } from "@/features/pricing/commercial/pages/CommercialPriceVersionDetailPage";
+import { CommercialPriceLookupPage } from "@/features/pricing/commercial/pages/CommercialPriceLookupPage";
 
 export const router = createBrowserRouter([
   {
@@ -123,6 +129,30 @@ export const router = createBrowserRouter([
           {
             path: "/pricing/simulator",
             element: <PriceSimulatorPage />,
+          },
+          {
+            path: "/pricing/commercial",
+            element: <CommercialPriceTablesPage />,
+          },
+          {
+            path: "/pricing/commercial/new",
+            element: <CommercialPriceTableNewPage />,
+          },
+          {
+            path: "/pricing/commercial/:id",
+            element: <CommercialPriceTableDetailPage />,
+          },
+          {
+            path: "/pricing/commercial/:id/versions/new",
+            element: <CommercialPriceVersionNewPage />,
+          },
+          {
+            path: "/pricing/commercial/versions/:id",
+            element: <CommercialPriceVersionDetailPage />,
+          },
+          {
+            path: "/pricing/commercial/lookup",
+            element: <CommercialPriceLookupPage />,
           },
         ],
       },

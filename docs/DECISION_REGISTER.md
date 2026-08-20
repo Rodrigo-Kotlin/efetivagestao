@@ -400,3 +400,29 @@
 - Local: lint/typecheck/test 163/163/build limpos.
 - Documentação atualizada (COMMERCIAL_PRICE_TABLES §62, DATABASE, RBAC, ROADMAP, DECISION_REGISTER).
 - PRC-05 permanece IN PROGRESS (PRC-05D/E pendentes); PRC-05C = COMPLETED.
+
+## DEC-053 — Commercial Price Table UI: Backend-Authoritative Frontend (PRC-05D)
+
+**Data:** 2026-08-20
+**Decisão:** Implementar a UI autoritativa de tabelas comerciais em `src/features/pricing/commercial/` como camada fina sobre as RPCs de PRC-05C. Princípios:
+- **Backend é autoritativo para tudo:** margem/markup/custo/min-margin/below-cost/validação/tie-break/preço-final. UI nunca recalcula nem valida regras de negócio.
+- **Mutação exclusivamente via RPC:** zero `UPDATE commercial_price_* status` no frontend. Wrappers em `api/commercialPrices.ts` chamam `fn_*_commercial_price_*`.
+- **Proveniência server-derived:** UI nunca envia `source_*`; somente parâmetros de negócio (catalog_item, supplier, ref_date, discount, commercial_price opcional). A2 do 034 fecha o gap no backend.
+- **Zero vs missing são distintos:** `formatCurrency(0)` = "R$ 0,00" (preço válido); `PRICE_NOT_FOUND` = texto explícito "Item sem preço nesta versão". Nunca converter missing → 0.
+- **Recálculo sempre autoritativo:** após clone/bulk/exception/workflow/publicação o componente chama `refetch()` + `refetchReadiness()`. UI não mantém estado otimista para mutações temporais.
+- **Resolver read-only:** `fn_resolve_commercial_table_price` é a única fonte de verdade para `RESOLVED|TABLE_NOT_FOUND|VERSION_NOT_FOUND|PRICE_NOT_FOUND`. UI não faz fallback nem override.
+- **RBAC UX-only:** 7 permissões `pricing.commercial.*` + `pricing.calculate` para o motor. Cada `CommercialWorkflowActions` é state + permission aware. Backend revalida.
+- **Validador é autoritativo:** `PublishReadinessPanel` exibe resultado de `fn_validate_commercial_price_version` mapeando blockers (`VERSION_NOT_APPROVED`, `VERSION_EMPTY`, `PENDING_EXCEPTIONS`, `DENIED_EXCEPTIONS`, `MISSING_APPROVED_EXCEPTIONS`) para pt-BR. UI não reimplementa regras.
+- **Version approval ≠ exception approval:** ações distintas ("Aprovar versão" vs "Aprovar exceção"); ambas requerem permissões distintas.
+
+**Contexto:** PRC-05D — a UI precisa preservar todos os invariantes do 032/033/034/035 sem reintroduzir deriva entre cliente e servidor. Reutiliza os padrões de `pricing/policies` (Inner/ErrorBoundary, `useAuth().can(perm)`, hooks com `{data,loading,error,refetch}`, audit em toda mutação).
+
+**Consequência:**
+- Migrations 001–035 **inalteradas**; 0 novas migrations (gate backend já cobre tudo).
+- 6 páginas + 17 componentes + 5 hooks + 6 rotas + dashboard card ativado.
+- 7 permissões frontend; 0 mutação fora de RPC.
+- Testes novos: `api.test.ts` (18), `rbac.test.tsx` (7), `resolver-readiness.test.tsx` (10), `workflow.test.tsx` (15), `engine-item.test.ts` (4) — **54/54 PASS**.
+- Total geral: 217/217 PASS · lint OK · typecheck OK · build OK · 0 deps adicionadas.
+- Auditoria estática: `service_role` ausente · UUIDs hardcoded ausentes · `UPDATE status` direto ausente · `.env` não versionado.
+- Checkpoint **`COMMERCIAL_PRICE_UI_VERIFIED`** atingido.
+- PRC-05E (Hardening full-stack) é o próximo passo.

@@ -920,3 +920,87 @@ Permissão exigida: `pricing.commercial.view`. Escopo: **apenas "item dentro de 
 | Segurança | CPW-H78..CPW-H85 | cross-tenant rejeitado, sem view rejeitado, manager sem publish, manager sem exception_approve, helpers internos não acessíveis |
 
 **Resultado:** `Passed: 85 · Failed: 0` (CPW-H01..CPW-H85), executado contra o projeto remoto `scyxgyewdokmsuehgwql`. COM-H01..H57 permanece em 61/61 (ajustes em COM-H29 [usa RPC de engine], COM-H41 [asserção de policy resolvida], COM-H43 [usa draft, não `pubVersion`]).
+
+### 62.7 PRC-05D — UI/Frontend (Módulo Comercial)
+
+Implementação frontend completa em `src/features/pricing/commercial/`.
+
+#### Estrutura
+```
+src/features/pricing/commercial/
+├── api/commercialPrices.ts          # Wrappers de todas as RPCs do PRC-05C
+├── components/
+│   ├── CommercialBadges.tsx
+│   ├── CommercialTableForm.tsx
+│   ├── CommercialTableList.tsx
+│   ├── CommercialTableDetail.tsx
+│   ├── CommercialVersionForm.tsx
+│   ├── CommercialVersionTimeline.tsx
+│   ├── CommercialItemTable.tsx
+│   ├── ManualPriceItemForm.tsx
+│   ├── EnginePriceItemForm.tsx
+│   ├── EnginePricePreview.tsx
+│   ├── CommercialItemProvenance.tsx
+│   ├── CommercialBulkAdjustment.tsx
+│   ├── CommercialExceptionPanel.tsx
+│   ├── CommercialWorkflowActions.tsx
+│   ├── PublishReadinessPanel.tsx
+│   └── CommercialPriceResolver.tsx
+├── hooks/useCommercial.ts             # useCommercialTables/Table/Version/Workflow/Resolver
+├── pages/                              # 6 páginas (list/new/detail/version-new/version-detail/lookup)
+├── types/commercial.types.ts           # Display constants + DTOs + permissions
+├── utils/format.ts                     # Formatação UI-only (BRL/date/percent)
+└── __tests__/                          # CUI-API/RBAC/ZERO/WF/READY/CLONE/BULK/ENG/EX
+```
+
+#### Rotas
+| Path | Página |
+|------|--------|
+| `/pricing/commercial` | Lista de tabelas estáveis |
+| `/pricing/commercial/new` | Criar tabela |
+| `/pricing/commercial/:id` | Detalhe da tabela |
+| `/pricing/commercial/:id/versions/new` | Criar versão (vazio ou clone via `?cloneFrom=`) |
+| `/pricing/commercial/versions/:id` | Workspace da versão |
+| `/pricing/commercial/lookup` | Resolver (consulta por tabela + item + data) |
+
+Todas sob `ProtectedRoute` + `MainLayout`. RBAC fica em cada página (padrão de `pricing/policies`).
+
+#### Permissões (frontend UX-only)
+| Permissão | Controle |
+|-----------|----------|
+| `pricing.commercial.view` | Acesso a todas as rotas |
+| `pricing.commercial.create` | Criação de tabela, versão, item |
+| `pricing.commercial.edit` | Edição de rascunho (itens, bulk, delete) |
+| `pricing.commercial.review` | Submit / solicitação de exceção |
+| `pricing.commercial.approve` | Aprovar versão |
+| `pricing.commercial.publish` | Publicar / agendar |
+| `pricing.commercial.exception_approve` | Aprovar/negação de exceções |
+| `pricing.calculate` | Pré-visualização + adição via motor |
+
+#### Princípios Arquiteturais
+- **Backend autoritativo:** UI nunca faz UPDATE direto em `commercial_price_*`; toda mutação vai por RPC.
+- **Proveniência server-derived:** UI nunca envia `source_*` fields; só parâmetros de negócio.
+- **Zero price é zero:** `formatCurrency(0)` renderiza `R$ 0,00` (não `Sem preço`). `PRICE_NOT_FOUND` é estado distinto (não vira 0).
+- **Recálculo autoritativo:** após cada RPC (clone/bulk/exception/workflow) o componente chama `refetch()` + `refetchReadiness()`. UI nunca recalcula nem persiste resultado de bulk localmente.
+- **Validador autoritativo:** `PublishReadinessPanel` exibe resultado de `fn_validate_commercial_price_version` mapeando blockers para pt-BR.
+- **Resolver read-only:** `CommercialPriceResolver` chama apenas `fn_resolve_commercial_table_price`; sem fallback nem override.
+- **RBAC explícito:** `CommercialWorkflowActions` é state + permission aware; `Aprovar versão` vs `Aprovar exceção` são ações distintas.
+
+#### Testes (54/54 PASS)
+| Suite | Cobertura | Status |
+|-------|-----------|--------|
+| `__tests__/api.test.ts` | CUI-API01..12 + helpers | 18/18 |
+| `__tests__/rbac.test.tsx` | CUI-RBAC01..08 | 7/7 |
+| `__tests__/resolver-readiness.test.tsx` | CUI-ZERO01..04 + CUI-READY01..05 | 10/10 |
+| `__tests__/workflow.test.tsx` | CUI-WF01..08 + CUI-CLONE01..04 + CUI-BULK01..05 + CUI-EX01..05 | 15/15 |
+| `__tests__/engine-item.test.ts` | CUI-ENG01..05 | 4/4 |
+
+Total geral: **217/217 PASS** (163 anteriores + 54 novos).
+
+#### Auditoria Estática de Segurança
+- `service_role`: NÃO REFERENCIADO em `src/`.
+- Hardcoded UUIDs/secrets: NENHUM em `src/`.
+- `origin_type='pricing_engine'` direto: SOMENTE em error-mapper (msg) + display badge (read) + teste (asserção negativa).
+- `UPDATE ... status`: ZERO em `commercial_price_*` (todas as transições via RPC).
+- `.env` versionado: NÃO.
+- `package.json` deps adicionadas: ZERO.
