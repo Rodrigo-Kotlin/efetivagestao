@@ -109,6 +109,42 @@ Cada permissão é verificada dentro de cada RPC SECURITY DEFINER (não apenas e
 
 > O placeholder legado `pricing.price.publish` **permanece no banco com 0 mapeamentos** (kept para retrocompatibilidade de lookup, marcado como deprecado). Nenhum role possui essa permissão; o conjunto ativo é `pricing.commercial.*`.
 
+### Precificação por Cliente × Papéis (PRC-06A — DEFINIDO, NÃO IMPLEMENTADO)
+
+Permissões planejadas para PRC-06B:
+
+| Code | Responsabilidade |
+|------|------------------|
+| `pricing.client.view` | Visualizar perfis cliente, atribuições e overrides; executar resolvers de componente |
+| `pricing.client.create` | Criar perfil cliente (status inicial active) e atribuições/overrides em draft |
+| `pricing.client.edit` | Editar perfil/status e registros draft; excluir draft seguro |
+| `pricing.client.review` | Submeter, retornar para draft e cancelar under_review |
+| `pricing.client.approve` | Aprovar atribuições e overrides |
+| `pricing.client.publish` | Publicar e operar cutover temporal |
+
+| Papel | view | create | edit | review | approve | publish |
+|-------|------|--------|------|--------|---------|---------|
+| admin | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| manager | ✔ | ✔ | ✔ | ✔ | ✔ | — |
+| operator | ✔ | — | — | — | — | — |
+| viewer | ✔ | — | — | — | — | — |
+
+`pricing.client.publish` será exclusivo do admin, consistente com `pricing.cost.publish`, `pricing.policy.publish` e `pricing.commercial.publish`.
+
+Não haverá `pricing.client.override_approve` em v1: o override é a própria exceção negociada (DEC-059), e `pricing.client.approve` aprova ambos os workflows. Isso não reutiliza `pricing.commercial.exception_approve`, que pertence às violações internas de tabelas PRC-05.
+
+As permissões acima são somente especificação PRC-06A. Serão criadas e mapeadas no banco em PRC-06B. Frontend continuará UX-only; RLS e RPCs `SECURITY DEFINER` deverão revalidar membership e a permissão exata, com ator derivado de `auth.uid()`.
+
+| Operação/Transição | Permissão PRC-06 |
+|--------------------|------------------|
+| Criar perfil ou draft | `pricing.client.create` |
+| Alterar perfil/status, editar/excluir draft, cancelar draft | `pricing.client.edit` |
+| Submeter, retornar under_review para draft, cancelar under_review | `pricing.client.review` |
+| Aprovar ou cancelar approved | `pricing.client.approve` |
+| Publicar, executar cutover e supersessão controlada | `pricing.client.publish` |
+
+Exibir razão social/nome fantasia exige também `core.company.view`; `pricing.client.view` sozinho autoriza apenas a projeção mínima do componente. Capturar baseline por `fn_resolve_commercial_table_price` exige ainda `pricing.commercial.view`. Toda transição é RPC-only, com gate de banco NULL-safe; nenhum mapeamento autoriza UPDATE direto de status.
+
 ### Permissões Futuras (NÃO implementadas)
 
 Permissões de outros domínios (CRM, Financeiro, SST, etc.) serão adicionadas quando cada módulo for implementado.

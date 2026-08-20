@@ -426,3 +426,52 @@
 - Auditoria estática: `service_role` ausente · UUIDs hardcoded ausentes · `UPDATE status` direto ausente · `.env` não versionado.
 - Checkpoint **`COMMERCIAL_PRICE_UI_VERIFIED`** atingido.
 - PRC-05E (Hardening full-stack) é o próximo passo.
+
+## DEC-054 — Client Is a Role of `companies` (PRC-06A)
+
+**Data:** 2026-08-20
+**Decisão:** Manter `companies` como identidade canônica de empresas externas e representar o papel cliente por `client_profiles`, em relação um-para-um análoga a `supplier_profiles`. A mesma `company` pode ter papel fornecedor, cliente ou ambos. `client_profiles` não duplica `legal_name`, `trade_name`, `tax_id` ou `tax_id_normalized` e usa o vocabulário canônico `client`.
+**Contexto:** PRC-06A precisa identificar clientes sem criar um segundo cadastro corporativo e sem expandir o domínio para CRM.
+**Consequência:** PRC-06B criará extensão tenant-scoped mínima (`company_id`, `organization_id`, status e metadados comerciais/auditoria), com integridade same-org. Novo perfil nasce `active`; `inactive|blocked` exige mutação posterior com `pricing.client.edit`. Histórico de precificação impede exclusão destrutiva do papel cliente.
+
+## DEC-055 — Client Assignment References Stable Commercial Table Identity (PRC-06A)
+
+**Data:** 2026-08-20
+**Decisão:** `client_commercial_table_assignments` referencia `commercial_price_tables.id`, nunca `commercial_price_table_versions.id` como alvo operacional. A atribuição representa a relação comercial com a tabela estável; PRC-05 continua selecionando a versão aplicável pela data.
+**Contexto:** Vincular cliente a uma versão obrigaria regravação a cada publicação e quebraria a autoridade temporal de PRC-05.
+**Consequência:** Publicar nova versão da tabela não altera a atribuição. IDs de versão/item podem existir apenas como evidência de uma resolução ou snapshot. Nova atribuição exige tabela ativa, mas inativação posterior não apaga a história.
+
+## DEC-056 — Client Assignments Are Temporal and Immutable After Publish (PRC-06A)
+
+**Data:** 2026-08-20
+**Decisão:** Atribuições usam `[valid_from, valid_to)`, lifecycle `draft|under_review|approved|scheduled|active|superseded|cancelled` e cardinalidade máxima de uma tabela efetiva por organização+cliente+data. Ranges `active|scheduled` não podem sobrepor; adjacência é válida. Publicação retroativa é proibida em v1 e agenda publicada não pode ser substituída silenciosamente. Registros publicados são imutáveis e correção exige sucessor.
+**Contexto:** Esta é a aplicação específica de DEC-008 ao relacionamento cliente→tabela, incluindo cardinalidade, workflow e publicação futura ainda não definidos pelas decisões globais.
+**Consequência:** Publicação futura mantém o predecessor ativo até `new.valid_from`, agenda o sucessor e permite resolução por data antes do cutover físico. Histórico `superseded` permanece resolvível e não pode ser hard-deleted. PRC-06B instala gate de workflow NULL-safe que força criação como draft e bloqueia transição direta antes das RPCs PRC-06C.
+
+## DEC-057 — Client Override Is an Explicit Item-Level Price Snapshot (PRC-06A)
+
+**Data:** 2026-08-20
+**Decisão:** `client_price_overrides` persiste preço explícito `price_amount numeric(14,4)` em BRL para `client_company_id + catalog_item_id`, com vigência, motivo obrigatório e snapshots server-derived de código/nome/tipo do item. O override é independente da tabela atribuída e pode existir sem atribuição base.
+**Contexto:** O valor negociado precisa permanecer reproduzível quando atribuição, tabela, custos, política ou recomendação do motor mudarem.
+**Consequência:** Não há fórmula viva, percentual, margem, markup ou recálculo dinâmico. Proveniência opcional de tabela (`source_reference_date`, table/version/item IDs e valor baseline) é evidência congelada, all-or-none e derivada por RPC confiável; DML direto não pode fabricá-la.
+
+## DEC-058 — Explicit Zero Override Stops Fallback; Missing Override Does Not (PRC-06A)
+
+**Data:** 2026-08-20
+**Decisão:** Aplicar DEC-047 especificamente à futura precedência por cliente: override publicado com `price_amount = 0` retorna `RESOLVED` e é valor comercial explícito; ausência retorna `OVERRIDE_NOT_FOUND`. Somente a ausência permite ao PRC-07 avaliar a tabela atribuída.
+**Contexto:** Em contratos, zero pode significar serviço incluído, cortesia ou pacote. Tratar zero como ausência mudaria a negociação e produziria fallback incorreto.
+**Consequência:** Banco, RPC e UI não usam `COALESCE(..., 0)` nem truthiness para presença. `OVERRIDE_NOT_FOUND` nunca materializa preço zero.
+
+## DEC-059 — Client Override Is the Negotiated Exception Record (PRC-06A)
+
+**Data:** 2026-08-20
+**Decisão:** Em PRC-06 v1, o próprio `client_price_overrides` é a exceção comercial negociada e percorre workflow de revisão/aprovação/publicação. Não criar `client_price_override_exceptions` sem um lifecycle empresarial separado e comprovado. A aprovação usa `pricing.client.approve`; não há `pricing.client.override_approve` em v1.
+**Contexto:** Um segundo registro de exceção repetiria cliente, item, preço e justificativa sem responsabilidade distinta e confundiria overrides com `commercial_price_exceptions` de PRC-05.
+**Consequência:** Seis permissões `pricing.client.view|create|edit|review|approve|publish`; admin possui todas, manager não publica, operator/viewer somente visualizam. Segregação adicional exige nova decisão futura.
+
+## DEC-060 — PRC-06 Component Resolvers; PRC-07 Owns Final Price Precedence (PRC-06A)
+
+**Data:** 2026-08-20
+**Decisão:** PRC-06C implementará dois resolvers isolados: `fn_resolve_client_table_assignment(org, client, date)` com `RESOLVED|CLIENT_NOT_FOUND|ASSIGNMENT_NOT_FOUND`, e `fn_resolve_client_price_override(org, client, item, date)` com `RESOLVED|CLIENT_NOT_FOUND|ITEM_NOT_FOUND|OVERRIDE_NOT_FOUND`. Ambos resolvem `active|scheduled|superseded` por `[valid_from, valid_to)` com tie-break determinístico. Nenhum compõe o preço final.
+**Contexto:** DEC-050/052 reservam precedência global para PRC-07; esta decisão fecha os contratos específicos dos dois componentes PRC-06 sem duplicar o resolver table-specific de PRC-05.
+**Consequência:** PRC-07 combinará override e tabela atribuída, inicialmente com override acima da tabela. Segmento, grupo, canal, default-table e `fn_resolve_final_client_price` ficam fora de PRC-06.
