@@ -72,7 +72,15 @@ Permission (permissions)
 | pricing.policy.approve | Aprovar Políticas de Preço | Políticas de Preço |
 | pricing.policy.publish | Publicar Políticas de Preço | Políticas de Preço |
 | pricing.calculate | Calcular/Simular Preços | Precificação |
-| pricing.price.publish | Publicar Preços | Preços (futuro) |
+| pricing.commercial.view | Visualizar Tabelas Comerciais | Tabelas Comerciais (PRC-05B) |
+| pricing.commercial.create | Criar Tabelas Comerciais | Tabelas Comerciais (PRC-05B) |
+| pricing.commercial.edit | Editar Tabelas Comerciais | Tabelas Comerciais (PRC-05B) |
+| pricing.commercial.review | Revisar Tabelas Comerciais | Tabelas Comerciais (PRC-05B) |
+| pricing.commercial.approve | Aprovar Tabelas Comerciais | Tabelas Comerciais (PRC-05B) |
+| pricing.commercial.publish | Publicar Tabelas Comerciais | Tabelas Comerciais (PRC-05B) |
+| pricing.commercial.exception_approve | Aprovar Exceções Comerciais | Tabelas Comerciais (PRC-05B) |
+
+> O placeholder anterior `pricing.price.publish` foi substituído pelo conjunto `pricing.commercial.*` (decisão PRC-05A — `docs/COMMERCIAL_PRICE_TABLES.md` seção 42).
 
 ### Políticas de Preço × Papéis (PRC-04B/C)
 
@@ -85,6 +93,17 @@ Permission (permissions)
 
 `pricing.policy.publish` é exclusivo do admin (consistente com `pricing.cost.publish`); operator/viewer não têm permissões de política de preço.
 `pricing.calculate` permite executar cálculos/simulações de preço sem necessidade de permissão para criar/publicar políticas.
+
+### Tabelas Comerciais × Papéis (PRC-05A — futuro, PRC-05B)
+
+| Papel | view | create | edit | review | approve | publish | exception_approve |
+|-------|------|--------|------|--------|---------|---------|-------------------|
+| admin | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| manager | ✔ | ✔ | ✔ | ✔ | ✔ | — | — |
+| operator | ✔ | — | — | — | — | — | — |
+| viewer | ✔ | — | — | — | — | — | — |
+
+`publish` e `exception_approve` são exclusivos do admin (consistente com custo/política); operator = somente leitura por default (governança pode estender create/edit a operator).
 
 ### Permissões Futuras (NÃO implementadas)
 

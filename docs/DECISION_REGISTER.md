@@ -323,3 +323,45 @@
 **Decisão:** `fn_create_pricing_policy_version` usa `SELECT ... FOR UPDATE` na row da política pai para serializar a alocação de `version_number`. Duas chamadas concorrentes para a mesma política produzem números distintos sem erros de duplicata.
 **Contexto:** PRC-04C — DEC-039 adiou a alocação para PRC-04C; o padrão idêntico já está validado no domínio de custos (`fn_create_cost_version` em 023). Sequências PostgreSQL não são aplicáveis porque o contador é por política, não global.
 **Consequência:** `FOR UPDATE` na row da política bloqueia concorrentes; `MAX(version_number) + 1` é atômico sob lock; transactions abortadas liberam o lock normalmente; dois INSERTs simultâneos para a mesma política recebem versões consecutivas.
+
+## DEC-045 — Commercial Price Is Explicit Published Snapshot (PRC-05A)
+
+**Data:** 2026-08-19
+**Decisão:** O preço comercial publicado (`commercial_price_items.price_amount`) é um valor explícito e congelado — um snapshot. O motor de precificação (PRC-04) nunca altera automaticamente um preço publicado; mudanças em custo/política/margem exige nova versão de tabela.
+**Contexto:** PRC-05A — `CALCULATED PRICE != PUBLISHED COMMERCIAL PRICE` (DEC-036). Preço derivado do motor é valor inicial (snapshot), não ponteiro vivo; preço manual é conceito de negócio permitido.
+**Consequência:** `price_amount numeric(14,4)` sempre explícito em PRC-05B; proveniência (`source_*`/`pricing_snapshot`) descreve o que era conhecido na publicação; nenhuma fórmula viva em tabelas publicadas.
+
+## DEC-046 — Commercial Table Stable Identity + Temporal Versions (PRC-05A)
+
+**Data:** 2026-08-19
+**Decisão:** `commercial_price_tables` é identidade estável (`active`/`inactive`, sem preços); `commercial_price_table_versions` carrega vigência `[valid_from, valid_to)` e lifecycle `draft→under_review→approved→scheduled/active→superseded/cancelled`; `commercial_price_items` carrega o preço por item.
+**Contexto:** PRC-05A — espelha os modelos já validados de custo (PRC-03) e política (PRC-04, DEC-037), reutilizando RPCs/telas de workflow. Semântica de publicação futura e resolução por data seguem PRC-03B (DEC-028/029).
+**Consequência:** Modelo de 3 tabelas (mais `commercial_price_exceptions` opcional); EXCLUDE temporal sobre versões active/scheduled; version_number server-side com FOR UPDATE (padrão DEC-044).
+
+## DEC-047 — Missing Commercial Price != Zero Commercial Price (PRC-05A)
+
+**Data:** 2026-08-19
+**Decisão:** Item de catálogo ausente de uma versão de tabela → `PRICE_NOT_FOUND`; linha explícita com `price_amount = 0` → `RESOLVED` com preço zero real (serviço incluído/gratuito). Nunca materializar preço ausente como 0.
+**Contexto:** PRC-05A — análogo a `UNKNOWN COST != ZERO` (DEC-034) no domínio de custo. CHECK do schema deve permitir `price_amount >= 0`, não `> 0`.
+**Consequência:** O resolver `fn_resolve_commercial_table_price` (PRC-05C) retorna status distintos para ausente vs zero; UI nunca mostra R$ 0,00 para item sem preço.
+
+## DEC-048 — Manual vs Pricing-Engine Commercial Origin (PRC-05A)
+
+**Data:** 2026-08-19
+**Decisão:** `origin_type` em itens comerciais: `manual` (usuário informa montante explícito) ou `pricing_engine` (preço iniciado a partir de `fn_simulate_price` como snapshot). Em ambos, o montante publicado é explícito; preço manual é permitido e não precisa igualar a recomendação do motor.
+**Contexto:** PRC-05A — separar origem comercial de cálculo de comparação; não rotular preços manuais como gerados pelo motor.
+**Consequência:** Proveniência do motor é NULL para manual; comparações de margem/risco usam exclusivamente saída autoritativa do motor, sem duplicar fórmulas.
+
+## DEC-049 — Published Commercial Version Immutability (PRC-05A)
+
+**Data:** 2026-08-19
+**Decisão:** Versões de tabela comercial fora de `draft` têm itens imutáveis; correção de preço exige nova versão. Aplicação concreta do princípio DEC-009 ao modelo de versões comerciais; clonagem de versão é o caminho de correção (copiar preços, ajustar selecionados).
+**Contexto:** PRC-05A — não reescrever história comercial; versioning por criação de nova versão, não edição.
+**Consequência:** PRC-05B implementa triggers/RLS de imutabilidade (padrão `fn_*_protect_published_fields`) e clonagem server-side atômica em PRC-05C; linhagem `source_commercial_price_item_id` distingue herança de valor novo.
+
+## DEC-050 — Client Assignment Deferred to PRC-06 / Final Resolution to PRC-07 (PRC-05A)
+
+**Data:** 2026-08-19
+**Decisão:** PRC-05 cria tabelas comerciais reutilizáveis e NÃO inclui `client_id`/`customer_id`/override por cliente em itens comerciais. Atribuição de tabelas e overrides a clientes pertence ao PRC-06; precedência global (override de cliente > tabela atribuída > segmento/grupo/canal > tabela padrão) pertence ao PRC-07. Default de tabela (`is_default`) é adiado para PRC-07.
+**Contexto:** PRC-05A — fronteira de escopo; evitar acoplar PRC-05 ao design futuro do resolver global.
+**Consequência:** `commercial_price_items` sem dimensões de cliente/segmento/canal; resolver de tabela (`fn_resolve_commercial_table_price`) cobre apenas "item dentro de tabela em data", não precedência global.

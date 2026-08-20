@@ -18,7 +18,12 @@
 | PRC-04C | Authoritative Pricing Engine & Workflow (RPC) | **COMPLETED** |
 | PRC-04D | Pricing Policy UI & Price Simulator | **COMPLETED** |
 | PRC-04E | Pricing End-to-End Hardening & Final Verification | **COMPLETED** |
-| PRC-05 | Tabelas Comerciais | NOT STARTED |
+| PRC-05 | Tabelas Comerciais | IN PROGRESS |
+| PRC-05A | Commercial Price Table Model & Business Rules | **COMPLETED** |
+| PRC-05B | Commercial Price Table Database, Integrity, RLS & RBAC | NOT STARTED |
+| PRC-05C | Commercial Price Workflow, Clone, Publish & Table Resolver | NOT STARTED |
+| PRC-05D | Commercial Price Table UI | NOT STARTED |
+| PRC-05E | Commercial Pricing End-to-End Hardening | NOT STARTED |
 | PRC-06 | Clientes e Exceções | NOT STARTED |
 | PRC-07 | Motor de Resolução | NOT STARTED |
 | PRC-08 | Importação | NOT STARTED |
@@ -60,3 +65,4 @@ Controla:
 | PRICING_ENGINE_CORE_VERIFIED | PRC-04C | Atingido |
 | PRICING_POLICY_UI_VERIFIED | PRC-04D | Atingido |
 | PRICING_ENGINE_VERIFIED | PRC-04E | Atingido |
+| COMMERCIAL_PRICING_MODEL_DEFINED | PRC-05A | Atingido |
