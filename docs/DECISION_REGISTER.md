@@ -377,3 +377,26 @@
 - **Exceções append-only:** sem policy de DELETE (RLS filtra silenciosamente, 0 linhas) + `fn_cpe_delete_guard` no banco; decisão de status exige gate + `exception_approve`.
 - **`pricing.price.publish` deprecado:** placeholder legado permanece no banco com 0 mapeamentos; o conjunto ativo é `pricing.commercial.*`.
 **Consequência:** Migrations 032/033 aplicadas remotamente (33/33); testes remotos COM-H01..H57 passam; regressões pricing-engine 50/50, política 33/33 e custo 34/34 permanecem verdes; workflow RPCs/clone/publish/resolver permanecem em PRC-05C.
+
+## DEC-052 — Commercial Price Workflow, Clone, Publish, Resolver + Forward Integrity Hardening (PRC-05C)
+
+**Data:** 2026-08-20
+**Decisão:** Implementar a camada de workflow autoritativa sobre o esquema PRC-05B em migrations **034** (workflow + forward integrity) e **035** (resolver):
+- **Forward-only hardening (3 triggers):**
+  - **A1** — `fn_cptv_parent_active` (BEFORE INSERT ON `commercial_price_table_versions`): inactive parent não recebe nova versão via RPC nem DML. Fecha a lacuna da PRC-05A §6 sem editar 032.
+  - **A2** — `fn_cpi_engine_provenance_guard` (BEFORE INSERT/UPDATE ON `commercial_price_items`): `origin_type='pricing_engine'` direto via REST é bloqueado; apenas `fn_add_commercial_price_item_from_engine` e o clone (gate setado internamente) podem inserir/atualizar itens com proveniência de motor.
+  - **A3** — `fn_cpe_parent_editable` (BEFORE INSERT ON `commercial_price_exceptions`): novos pedidos de exceção bloqueados quando o pai está em `scheduled|active|superseded|cancelled` — invariante incondicional.
+- **Workflow RPCs (034):** tabela (create/update/status), versão (concurrency-safe `FOR UPDATE`), itens (manual/engine/clone/bulk), exceções (request/decide), workflow (submit/return/approve/cancel), validador de publicação read-only, publish + sync cutover idempotente. Todas derivam `auth.uid()`, verificam `is_member_of` + `has_permission(permissão)` por chamada, são SECURITY DEFINER + `SET search_path = public`, REVOKE FROM PUBLIC/anon, GRANT TO authenticated (quando aplicante).
+- **Resolver (035):** `fn_resolve_commercial_table_price(org, table, item, ref_date)` retorna JSONB com status machine-readable `RESOLVED|TABLE_NOT_FOUND|VERSION_NOT_FOUND|PRICE_NOT_FOUND`. Tie-break determinístico (`valid_from DESC, version_number DESC, created_at DESC, id DESC`). Tabela inativa permanece historicamente resolúvel. Zero vs missing preservados (DEC-047). Permissão `pricing.commercial.view` exigida. Escopo table-specific — sem precedência global (PRC-07).
+- **Publicação e temporal:** imediata `valid_from <= today` → `active` + supersede; futura `valid_from > today` → `scheduled` + predecessora `active` com `valid_to = B.valid_from` + supersede scheduled sobreposta (DEC-028/029 aplicados a comercial). Cutover idempotente `fn_sync_commercial_price_version_status`.
+- **Validador:** `fn_validate_commercial_price_version` é o gate autoritativo para publicação; **NÃO reimplementa fórmulas** (DEC-040) — só inspeciona snapshot confiável para derivar exceções obrigatórias (BELOW_COST / BELOW_MINIMUM_MARGIN / COMMERCIAL_DEVIATION).
+
+**Contexto:** PRC-05C — auditoria de pré-implementação identificou três lacunas estruturais no 032/033 (A1, A2, A3) que não podiam ser adiadas: inativar pai continuava permitindo nova versão via DML direto; provenance de motor podia ser fabricada pelo browser; exceções podiam ser abertas contra versões já publicadas. A semântica temporal replica DEC-028/029 para evitar inventar um terceiro modelo. O validador consulta snapshots do motor (DEC-040), nunca recalcula margem/markup/custo no domínio comercial.
+
+**Consequência:** Migrations 034/035 aplicadas remotamente (35/35 LOCAL == REMOTE). Checkpoint **`COMMERCIAL_PRICE_CORE_VERIFIED`** atingido:
+- Regressões PRC-05B: COM-H01..H57 → 61/61 PASS (COM-H29 agora chama `fn_add_commercial_price_item_from_engine`; COM-H41 asserta policy resolvida via simulação; COM-H43 usa draft em vez de `pubVersion`).
+- Workflow novo: CPW-H01..CPW-H85 → 85/85 PASS.
+- Regressões de outros domínios: pricing-engine 50/50 · pricing-policy 33/33 · cost 34/34 · pricing-full-flow 49/49.
+- Local: lint/typecheck/test 163/163/build limpos.
+- Documentação atualizada (COMMERCIAL_PRICE_TABLES §62, DATABASE, RBAC, ROADMAP, DECISION_REGISTER).
+- PRC-05 permanece IN PROGRESS (PRC-05D/E pendentes); PRC-05C = COMPLETED.

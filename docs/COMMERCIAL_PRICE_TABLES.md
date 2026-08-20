@@ -1,7 +1,7 @@
 # Tabelas Comerciais de Preço — PRC-05
 
-**Status:** Especificação autoritativa (PRC-05A) · Schema/Integridade/RLS/RBAC **implementado e verificado (PRC-05B — `COMMERCIAL_PRICE_SCHEMA_VERIFIED`)** · Workflow/Clone/Publish/Resolver em PRC-05C · UI em PRC-05D · Verificação end-to-end em PRC-05E
-**Baseline:** PRC-04E fechado — `PRICING_ENGINE_VERIFIED` · Migrations 001–031 imutáveis · Migrations **032–033** (PRC-05B) · Testes remotos **COM-H01..COM-H57 (61/61 checks, 0 falhas)**
+**Status:** Especificação autoritativa (PRC-05A) · Schema/Integridade/RLS/RBAC **implementado e verificado (PRC-05B — `COMMERCIAL_PRICE_SCHEMA_VERIFIED`)** · **Workflow/Clone/Publish/Resolver implementados e verificados (PRC-05C — `COMMERCIAL_PRICE_CORE_VERIFIED`)** · UI em PRC-05D · Verificação end-to-end em PRC-05E
+**Baseline:** PRC-04E fechado — `PRICING_ENGINE_VERIFIED` · Migrations 001–033 imutáveis · Migrations **034–035** (PRC-05C) · Testes remotos **COM-H01..COM-H57 (61/61 checks)** + **CPW-H01..CPW-H85 (85/85 checks, 0 falhas)**
 **Fonte de custo autoritativa:** `fn_resolve_supplier_cost(...)` (PRC-03B)
 **Fonte de preço calculado autoritativa:** `fn_simulate_price(...)` (PRC-04C)
 **Documentos de referência:** `docs/PRICING_ENGINE.md` · `docs/PRICING_COSTS.md` · `docs/RBAC.md` · `docs/DATABASE.md` · `docs/DECISION_REGISTER.md`
@@ -811,3 +811,112 @@ Novas decisões PRC-05A: **DEC-045** a **DEC-050** (registradas em `docs/DECISIO
 | RLS/RBAC | COM-H51..H57 | cross-tenant 0 linhas, viewer/operator read-only, manager draft lifecycle completo, exceção por manager, decisão por manager bloqueada (RLS), exceção por viewer bloqueada |
 
 **Resultado:** `Passed: 61 · Failed: 0` (57 testes + sub-verificações), executado contra o projeto remoto `scyxgyewdokmsuehgwql` com o usuário E2E autenticado. Setup resetável: `commercial_price_test_setup.sql` (fixtures + verificação DO-block).
+
+## 62. PRC-05C — Implementação e Verificação
+
+> Checkpoint: **`COMMERCIAL_PRICE_CORE_VERIFIED`** · Migrations `034_commercial_price_workflow.sql` e `035_commercial_price_resolver.sql` · Testes remotos `CPW-H01..CPW-H85` (`tests/remote/commercial-price-workflow-test.mjs`).
+
+### 62.1 Forward Integrity Hardening (migration 034 — A1/A2/A3)
+
+Três lacunas descobertas na auditoria de pré-implementação foram fechadas forward-only em 034 sem editar 032/033:
+
+- **A1 — `fn_cptv_parent_active`** (BEFORE INSERT ON `commercial_price_table_versions`): uma `commercial_price_tables.status = 'inactive'` **não pode receber nova versão via RPC nem via DML direto**. A invariante da PRC-05A §6 passa a ser estrutural.
+- **A2 — `fn_cpi_engine_provenance_guard`** (BEFORE INSERT/UPDATE ON `commercial_price_items`): quando `origin_type = 'pricing_engine'` e o gate `app.commercial_price_rpc_active = 'true'` **não está setado**, a operação é bloqueada. Apenas o caminho controlado (RPC `fn_add_commercial_price_item_from_engine` e clone) consegue criar/atualizar itens de motor — DML do browser não fabrica proveniência.
+- **A3 — `fn_cpe_parent_editable`** (BEFORE INSERT ON `commercial_price_exceptions`): novos pedidos de exceção são rejeitados quando a versão pai está em `scheduled|active|superseded|cancelled` (apenas `draft|under_review|approved` permitem). Forward-only sem gate (invariante incondicional).
+
+### 62.2 RPCs de Workflow (migration 034)
+
+| RPC | Permissão | Notas |
+|-----|-----------|-------|
+| `fn_create_commercial_price_table` | `pricing.commercial.create` | identidade estável; código derivado via trigger; status inicial `active` |
+| `fn_update_commercial_price_table` | `pricing.commercial.edit` | `name`/`description` apenas; código imutável por 032 |
+| `fn_set_commercial_price_table_status` | `pricing.commercial.edit` | `active ↔ inactive`; **inativação NÃO muta/supersede versões publicadas** (resolver histórico permanece) |
+| `fn_create_commercial_price_table_version` | `pricing.commercial.create` | `FOR UPDATE` no pai → `version_number` concorrente-safe (DEC-044 aplicado a comercial) |
+| `fn_add_commercial_price_item_manual` | `pricing.commercial.create` | `origin_type='manual'`; snapshot server-derived |
+| `fn_update_commercial_price_item_price` | `pricing.commercial.edit` | apenas `price_amount` em item draft |
+| `fn_delete_commercial_price_item` | `pricing.commercial.edit` | apenas item draft |
+| `fn_add_commercial_price_item_from_engine` | `pricing.commercial.create` + `pricing.calculate` | **única fonte confiável de `origin_type='pricing_engine'`**; chama `fn_simulate_price` e extrai proveniência real |
+| `fn_clone_commercial_price_table_version` | `pricing.commercial.create` | atômico; refresh de snapshot via trigger; linhagem `source_commercial_price_item_id` SEMPRE aponta para item-fonte; aborta se houver item-fonte com catálogo inativo (`SOURCE_CONTAINS_INACTIVE_CATALOG_ITEM`); **NÃO copia exceções** |
+| `fn_bulk_adjust_commercial_prices` | `pricing.commercial.edit` | `percentage` / `fixed` / `round`; PostgreSQL `numeric` autoritativo; tudo-ou-nada atômico |
+| `fn_request_commercial_price_exception` | `pricing.commercial.review` | parent-state guardado por A3 |
+| `fn_decide_commercial_price_exception` | `pricing.commercial.exception_approve` | `approved`/`denied`; terminal (decided_by/at derivados) |
+| `fn_submit_commercial_price_version` | `pricing.commercial.review` | `draft → under_review`; ≥1 item obrigatório |
+| `fn_return_commercial_price_version_to_draft` | `pricing.commercial.edit` | `under_review → draft` |
+| `fn_approve_commercial_price_version` | `pricing.commercial.approve` | `under_review → approved`; pode ocorrer com exceções pendentes |
+| `fn_cancel_commercial_price_version` | `pricing.commercial.approve` | `draft|under_review|approved → cancelled` |
+| `fn_validate_commercial_price_version` | `pricing.commercial.view` | JSONB read-only; **NÃO reimplementa fórmulas** (DEC-040); só inspeciona snapshot confiável |
+| `fn_publish_commercial_price_version` | `pricing.commercial.publish` | validador autoritativo; predecessore continuity + supersede scheduled sobreposto |
+| `fn_sync_commercial_price_version_status` | `pricing.commercial.publish` | cutover idempotente `scheduled → active` |
+
+Todas as RPCs aplicam: `auth.uid()` server-derived · `is_member_of` + `has_permission` por chamada · `SECURITY DEFINER` + `SET search_path = public` · REVOKE FROM PUBLIC/anon · GRANT TO authenticated (quando aplicante).
+
+### 62.3 Publicação e Semântica Temporal
+
+Mesma convenção DEC-028/029 dos custos:
+
+- **Imediata (`valid_from <= current_date`)**: nova versão vira `active`; todas as outras `active|scheduled` da mesma tabela são `superseded` (satisfaz EXCLUDE porque saem do WHERE clause).
+- **Futura (`valid_from > current_date`)**: predecessora `active` permanece `active` com `valid_to = B.valid_from` (adjacente); apenas `scheduled` **sobrepostas** são superseded (daterange `'[)' && '[)'`).
+- **Cutover idempotente**: `fn_sync_commercial_price_version_status` ativa versões elegíveis; primeira execução retorna N>0, segunda retorna 0.
+
+### 62.4 Validador de Publicação (`fn_validate_commercial_price_version`)
+
+JSONB read-only com:
+
+- `ready` (boolean)
+- `blockers` (text[])
+- `item_count`, `pending_exception_count`, `denied_exception_count`, `required_exception_count`, `missing_exception_codes`
+
+Composição de blockers:
+- `VERSION_NOT_APPROVED:<status>` — não está `approved`
+- `VERSION_EMPTY` — sem itens
+- `PENDING_EXCEPTIONS` — exceção `requested`
+- `DENIED_EXCEPTIONS` — exceção `denied`
+- `MISSING_APPROVED_EXCEPTIONS` — exceção obrigatória ausente/não aprovada
+
+Exceções obrigatórias (apenas para itens `origin_type='pricing_engine'`, a partir do snapshot confiável):
+
+- `BELOW_COST` se `price_amount < source_total_cost`
+- `COMMERCIAL_DEVIATION` se `price_amount < source_effective_price`
+- `BELOW_MINIMUM_MARGIN` se `pricing_snapshot` contém a violação
+
+### 62.5 Resolver de Tabela (`fn_resolve_commercial_table_price`, migration 035)
+
+```
+fn_resolve_commercial_table_price(
+  p_organization_id,
+  p_commercial_price_table_id,
+  p_catalog_item_id,
+  p_reference_date DEFAULT current_date
+)
+```
+
+Status machine-readable: `RESOLVED | TABLE_NOT_FOUND | VERSION_NOT_FOUND | PRICE_NOT_FOUND`. `TABLE_NOT_FOUND` **só** é retornado para organizações acessíveis (sem leak cross-tenant).
+
+Ordem determinística do tie-break: `valid_from DESC, version_number DESC, created_at DESC, id DESC`. Versão elegível: status `active|scheduled|superseded` + `[valid_from, valid_to)`.
+
+Inativo histórico: tabela com `status='inactive'` permanece **historicamente resolúvel** (apenas criação de novas versões é bloqueada por A1). O `table.status` é devolvido no resultado.
+
+Zero vs missing (DEC-047):
+- Item ausente → `PRICE_NOT_FOUND` (nunca materializa 0).
+- Item com `price_amount = 0` → `RESOLVED` com 0 (serviço incluso/gratuito legítimo).
+
+Estrutura do resultado (JSONB): `status`, `organization_id`, `reference_date`, `commercial_price_table_id`, `catalog_item_id`, `table{id,code,name,status}`, `version{id,version_number,status,valid_from,valid_to}`, `item{commercial_price_item_id,catalog_item_id,snapshots}`, `price_amount`, `currency`, `origin_type`, `lineage{source_commercial_price_item_id}`, `provenance{source_*,pricing_snapshot}`, `approved_exceptions[]`.
+
+Permissão exigida: `pricing.commercial.view`. Escopo: **apenas "item dentro de tabela em data"** (DEC-050). Override de cliente / precedência global são PRC-06/07.
+
+### 62.6 Verificação Remota (CPW-H01..CPW-H85)
+
+| Grupo | Testes | Cobertura |
+|-------|--------|-----------|
+| Criação de versão | CPW-H01..H08 | actor derivado, version_number sequencial, concorrência paralela (5 chamadas), spoof bloqueado, inativo rejeitado via RPC e DML, status direto bloqueado |
+| Itens | CPW-H09..H18 | manual create/zero/update/delete, engine via RPC confiável, PRICE_NOT_CALCULABLE rejeitado, POLICY_NOT_FOUND rejeitado, **spoof de proveniência bloqueado**, snapshot confiável não substituível |
+| Clone | CPW-H19..H26 | versão próxima, copia preços, refresh de snapshot, linhagem ponto-a-ponto, cópia de proveniência, **NÃO copia exceções**, inativo-catálogo aborta, falha atômica sem parcial |
+| Bulk | CPW-H27..H35 | +5% numeric, fixed +/-/negativo rejeitado, round nearest/up/down, item-selection, não-draft rejeitado |
+| Exceções | CPW-H36..H44 | actor derivado, reason vazio rejeitado, publicação bloqueia novo pedido, decisão direta bloqueada, admin aprova/denega, terminal, duplicata rejeitada |
+| Workflow | CPW-H45..H51 | submit/return/approve/cancel, vazio rejeitado, RLS já cobre não-admin |
+| Validação | CPW-H52..H59 | approved pronto, requested/denied bloqueiam, exceção aprovada libera, BELOW_COST/COMMERCIAL_DEVIATION/BELOW_MINIMUM_MARGIN derivados do snapshot, manual sem proveniência é válido |
+| Temporal | CPW-H60..H68 | immediate→active, future→scheduled, predecessora `active`, valid_to=future.valid_from, scheduled sobreposta superseded, cutover idempotente |
+| Resolver | CPW-H69..CPW-H77 | current/future/historical, zero RESOLVED, PRICE_NOT_FOUND/VERSION_NOT_FOUND/TABLE_NOT_FOUND, inativo historicamente resolúvel, determinístico |
+| Segurança | CPW-H78..CPW-H85 | cross-tenant rejeitado, sem view rejeitado, manager sem publish, manager sem exception_approve, helpers internos não acessíveis |
+
+**Resultado:** `Passed: 85 · Failed: 0` (CPW-H01..CPW-H85), executado contra o projeto remoto `scyxgyewdokmsuehgwql`. COM-H01..H57 permanece em 61/61 (ajustes em COM-H29 [usa RPC de engine], COM-H41 [asserção de policy resolvida], COM-H43 [usa draft, não `pubVersion`]).

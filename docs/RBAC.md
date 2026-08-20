@@ -94,7 +94,7 @@ Permission (permissions)
 `pricing.policy.publish` é exclusivo do admin (consistente com `pricing.cost.publish`); operator/viewer não têm permissões de política de preço.
 `pricing.calculate` permite executar cálculos/simulações de preço sem necessidade de permissão para criar/publicar políticas.
 
-### Tabelas Comerciais × Papéis (PRC-05B — IMPLEMENTADO)
+### Tabelas Comerciais × Papéis (PRC-05B/PRC-05C — IMPLEMENTADO)
 
 | Papel | view | create | edit | review | approve | publish | exception_approve |
 |-------|------|--------|------|--------|---------|---------|-------------------|
@@ -105,7 +105,7 @@ Permission (permissions)
 
 Mapeamentos reais verificados no banco (migration 033): **admin = 7** permissões · **manager = 5** (sem `publish`, sem `exception_approve`) · **operator = 1** (`view`) · **viewer = 1** (`view`).
 
-`publish` e `exception_approve` são exclusivos do admin (consistente com custo/política); operator = somente leitura por default (governança pode estender create/edit a operator).
+Cada permissão é verificada dentro de cada RPC SECURITY DEFINER (não apenas em RLS). O conjunto ativo continua sendo `pricing.commercial.*` após PRC-05C.
 
 > O placeholder legado `pricing.price.publish` **permanece no banco com 0 mapeamentos** (kept para retrocompatibilidade de lookup, marcado como deprecado). Nenhum role possui essa permissão; o conjunto ativo é `pricing.commercial.*`.
 

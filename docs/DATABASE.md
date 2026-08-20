@@ -362,7 +362,7 @@ Versões temporalmente válidas com lifecycle próprio.
 | published_by / published_at | uuid / timestamptz | |
 | superseded_by / superseded_at | uuid / timestamptz | |
 
-**Integridade:** `chk_cptv_version_number`; `chk_cptv_validity`; **EXCLUDE temporal `chk_cptv_no_overlap`** (GiST, `daterange('[)')`) sobre versões active/scheduled (adjacência permitida); triggers cross-org (`fn_cptv_table_same_org`), actor (`fn_cptv_actor`), transição de status (`fn_cptv_validate_status_transition`, gate `app.commercial_price_rpc_active` NULL-safe + completude ≥1 item), imutabilidade de não-draft (`fn_cptv_protect_published_fields`), hard delete só de draft (`fn_cptv_delete_guard`).
+**Integridade:** `chk_cptv_version_number`; `chk_cptv_validity`; **EXCLUDE temporal `chk_cptv_no_overlap`** (GiST, `daterange('[)')`) sobre versões active/scheduled (adjacência permitida); triggers cross-org (`fn_cptv_table_same_org`), actor (`fn_cptv_actor`), transição de status (`fn_cptv_validate_status_transition`, gate `app.commercial_price_rpc_active` NULL-safe + completude ≥1 item), imutabilidade de não-draft (`fn_cptv_protect_published_fields`), hard delete só de draft (`fn_cptv_delete_guard`), **parent-active guard forward `fn_cptv_parent_active`** (PRC-05C — inactive parent não recebe versão via RPC nem DML).
 
 ### commercial_price_items
 
@@ -384,7 +384,7 @@ UM item de catálogo + UM preço explícito + UMA versão de tabela.
 | created_by / created_at | uuid / timestamptz | |
 | updated_by / updated_at | uuid / timestamptz | |
 
-**Integridade:** `chk_cpi_price_amount` (>= 0); `chk_cpi_currency`; `chk_cpi_engine_provenance`; `idx_cpi_unique_item`; triggers cross-org: versão (`fn_cpi_version_same_org`), catálogo ativo e same-org (`fn_cpi_catalog_item_active`), snapshot (`fn_cpi_catalog_snapshot`), custo/política de origem (pertencimento e correspondência tabela↔versão), linhagem same-table (`fn_cpi_lineage_same_table`); imutabilidade em versões não-draft (`fn_cpi_immutable_when_published`).
+**Integridade:** `chk_cpi_price_amount` (>= 0); `chk_cpi_currency`; `chk_cpi_engine_provenance`; `idx_cpi_unique_item`; triggers cross-org: versão (`fn_cpi_version_same_org`), catálogo ativo e same-org (`fn_cpi_catalog_item_active`), snapshot (`fn_cpi_catalog_snapshot`), custo/política de origem (pertencimento e correspondência tabela↔versão), linhagem same-table (`fn_cpi_lineage_same_table`); imutabilidade em versões não-draft (`fn_cpi_immutable_when_published`); **engine provenance guard forward `fn_cpi_engine_provenance_guard`** (PRC-05C — DML direto de `origin_type='pricing_engine'` é bloqueado sem o gate `app.commercial_price_rpc_active`).
 
 ### commercial_price_exceptions
 
@@ -402,7 +402,7 @@ Registro de exceção comercial auditável (append-only).
 | requested_by / requested_at | uuid / timestamptz | actor server-derived |
 | decided_by / decided_at | uuid / timestamptz | |
 
-**Integridade:** `idx_cpe_unique_item_code` (sem duplicata item+violation); cross-org (`fn_cpe_integrity`); transição de status com gate `app.commercial_price_rpc_active` + permissão `exception_approve` (`fn_cpe_status_transition`); **append-only** (`fn_cpe_delete_guard`; sem policy de DELETE → RLS bloqueia).
+**Integridade:** `idx_cpe_unique_item_code` (sem duplicata item+violation); cross-org (`fn_cpe_integrity`); transição de status com gate `app.commercial_price_rpc_active` + permissão `exception_approve` (`fn_cpe_status_transition`); **append-only** (`fn_cpe_delete_guard`; sem policy de DELETE → RLS bloqueia); **parent-editable guard forward `fn_cpe_parent_editable`** (PRC-05C — novas exceções bloqueadas para versões em `scheduled|active|superseded|cancelled`).
 
 ## Migrations
 
@@ -439,6 +439,8 @@ Registro de exceção comercial auditável (append-only).
 | 029 | 029_pricing_engine | Motor de precificação autoritativo: fn_resolve_pricing_policy (resolução por precedência de escopo), fn_calculate_price (cálculo numérico interno), fn_simulate_price (RPC pública de orquestração) |
 | 032 | 032_commercial_price_schema | commercial_price_tables, commercial_price_table_versions, commercial_price_items, commercial_price_exceptions + normalizador de código (chr-safe), integridade cross-org, EXCLUDE temporal, gate de workflow NULL-safe, snapshots/proveniência/linhagem, imutabilidade, hard-delete guards, índices |
 | 033 | 033_commercial_price_security | Permissões pricing.commercial.* (7), mapeamentos RBAC (admin 7 / manager 5 / operator 1 / viewer 1), RLS (12 policies), audit triggers, revokes de helpers internos (PUBLIC/anon) |
+| 034 | 034_commercial_price_workflow | Forward integrity hardening (parent-active, engine provenance guard, exception parent-state); RPCs de workflow: tabela (create/update/status), versão (concurrency-safe), itens (manual/engine/clone/bulk), exceções (request/decide), workflow (submit/return/approve/cancel), validador de publicação, publish + sync cutover |
+| 035 | 035_commercial_price_resolver | `fn_resolve_commercial_table_price` — RPC de resolução table-specific com status machine-readable (`RESOLVED`/`TABLE_NOT_FOUND`/`VERSION_NOT_FOUND`/`PRICE_NOT_FOUND`), tie-break determinístico, zero vs missing, histórico de tabela inativa, proveniência completa + exceções aprovadas |
 
 ## Geração de Tipos TypeScript
 

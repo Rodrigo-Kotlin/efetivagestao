@@ -480,19 +480,24 @@ async function runTests() {
     log("COM-H28", ok, `code=${data?.item_code_snapshot} name=${data?.item_name_snapshot} type=${data?.item_type_snapshot}`);
   }
 
-  // ---- H29: engine item with full provenance → ACCEPT ----
-  console.log("COM-H29: engine item with full provenance → ACCEPT");
+  // ---- H29: engine item via trusted RPC → ACCEPT ----
+  // After PRC-05C migration 034, direct REST inserts with origin_type=pricing_engine
+  // are blocked by the A2 forward guard. Engine provenance MUST come from the
+  // trusted fn_add_commercial_price_item_from_engine RPC.
+  console.log("COM-H29: engine item via trusted RPC → ACCEPT");
   let engineItemId;
   {
     const { versionId } = await freshDraft(F.cOrg, "ENG");
-    const { data, error } = await insertItem(versionId, F.cOrg, {
-      catalogItemId: F.itemB,
-      priceAmount: 120,
-      snapshot: { engine: "PRC-04C", note: "com-h29 fixture" },
-      provenance: ENGINE_PROV,
+    const { data, error } = await supabase.rpc("fn_add_commercial_price_item_from_engine", {
+      p_version_id: versionId,
+      p_catalog_item_id: F.itemB,
+      p_supplier_company_id: F.company,
+      p_reference_date: "2025-06-01",
+      p_discount_rate: 0,
+      p_commercial_price_amount: 120,
     });
-    engineItemId = data?.id;
-    log("COM-H29", data !== null && error === null, data?.id ? "accepted id=" + data.id : error?.message);
+    engineItemId = data;
+    log("COM-H29", data !== null && error === null, data ? "accepted id=" + data : error?.message);
   }
 
   // ---- H30: engine item missing effective price → REJECT ----
@@ -594,6 +599,11 @@ async function runTests() {
   }
 
   // ---- H41: engine provenance persisted ----
+  // After PRC-05C migration 034, engine provenance comes from the trusted
+  // fn_add_commercial_price_item_from_engine RPC. The RPC calls fn_simulate_price
+  // which resolves the actual pricing policy for the catalog item. For
+  // F.itemB, the catalog_item-scoped policy2 (F.policyVersion2) wins, not the
+  // default policy. The test now asserts the resolved shape.
   console.log("COM-H41: engine provenance persisted");
   {
     const { data } = await supabase.from("commercial_price_items").select("*").eq("id", engineItemId).single();
@@ -602,20 +612,27 @@ async function runTests() {
       data?.source_supplier_company_id === F.company &&
       data?.source_cost_table_id === F.costTable &&
       data?.source_cost_version_id === F.costVersion &&
-      data?.source_pricing_policy_id === F.policy &&
-      data?.source_pricing_policy_version_id === F.policyVersion &&
-      data?.source_effective_price === 120;
-    log("COM-H41", ok, `origin=${data?.origin_type} effective=${data?.source_effective_price}`);
+      data?.source_pricing_policy_id === F.policy2 &&
+      data?.source_pricing_policy_version_id === F.policyVersion2 &&
+      data?.source_effective_price !== null;
+    log("COM-H41", ok, `origin=${data?.origin_type} effective=${data?.source_effective_price} policy=${data?.source_pricing_policy_id}`);
   }
 
-  // ---- H42: pricing_snapshot jsonb persisted ----
+  // ---- H42: pricing_snapshot jsonb persisted (from trusted simulation) ----
   console.log("COM-H42: pricing_snapshot jsonb persisted");
   {
     const { data } = await supabase.from("commercial_price_items").select("pricing_snapshot").eq("id", engineItemId).single();
     const snap = data?.pricing_snapshot || {};
-    // jsonb normalises key order, so compare parsed values, not stringified text
-    const ok = snap.engine === "PRC-04C" && snap.note === "com-h29 fixture";
-    log("COM-H42", ok, JSON.stringify(data?.pricing_snapshot));
+    // After PRC-05C migration 034, engine provenance comes from fn_simulate_price
+    // which stores its full JSON result. Verify the trusted shape: provenance +
+    // authoritative pricing fields are present.
+    const ok =
+      snap &&
+      typeof snap === "object" &&
+      snap.provenance !== undefined &&
+      snap.effective_price !== undefined &&
+      snap.total_cost !== undefined;
+    log("COM-H42", ok, JSON.stringify(data?.pricing_snapshot).slice(0, 200));
   }
 
   // ============================================================
@@ -623,12 +640,26 @@ async function runTests() {
   // ============================================================
 
   // ---- H43: request exception → ACCEPT (requester derived) ----
+  // After PRC-05C migration 034, the A3 parent-state guard blocks new exceptions
+  // against published-lifecycle versions (scheduled/active/superseded/cancelled).
+  // The exception must be requested against an editable-lifecycle version
+  // (draft/under_review/approved). We use a fresh draft here.
   console.log("COM-H43: request exception → ACCEPT");
   let excId;
+  let excDraftItemId;
   {
-    const { data, error } = await insertException(F.pubVersion, F.pubItem, F.cOrg, { violationCode: "BELOW_COST" });
+    const { versionId: excDraftVersion } = await freshDraft(F.cOrg, "EXC");
+    const { data: excDraftItem } = await insertItem(excDraftVersion, F.cOrg, {
+      catalogItemId: F.itemA,
+      priceAmount: 50,
+    });
+    excDraftItemId = excDraftItem?.id;
+    const { data, error } = await insertException(excDraftVersion, excDraftItemId, F.cOrg, {
+      violationCode: "BELOW_COST",
+    });
     excId = data?.id;
-    const ok = data !== null && error === null && data?.status === "requested" && data?.requested_by === e2eUserId;
+    const ok =
+      data !== null && error === null && data?.status === "requested" && data?.requested_by === e2eUserId;
     log("COM-H43", ok, data?.id ? `accepted id=${data.id} requested_by=${data?.requested_by}` : error?.message);
   }
 

@@ -88,6 +88,14 @@ DECLARE
   v_h19_table   uuid := '55555555-4444-4444-4444-444444444461';
   v_h19_version uuid := '55555555-4444-4444-4444-444444444462';
 
+  -- Supplier catalog mappings + cost items (PRC-05C engine RPC fixtures)
+  v_sci_a  uuid := '55555555-aaaa-bbbb-cccc-0000000000a1'; -- v_item_a → v_company
+  v_sci_b  uuid := '55555555-aaaa-bbbb-cccc-0000000000b1'; -- v_item_b → v_company
+  v_sci_a2 uuid := '55555555-aaaa-bbbb-cccc-0000000000a2'; -- v_item_a → v_company2
+  v_ci_a   uuid := '55555555-cccc-cccc-cccc-00000000000a'; -- v_cost_version / item_a
+  v_ci_b   uuid := '55555555-cccc-cccc-cccc-00000000000b'; -- v_cost_version / item_b
+  v_ci_a2  uuid := '55555555-cccc-cccc-cccc-00000000001a'; -- v_cost_version2 / item_a
+
   v_admin_role uuid;
   v_manager_role uuid;
   v_operator_role uuid;
@@ -268,6 +276,29 @@ BEGIN
   VALUES
     (v_cost_version,  v_c_org, v_cost_table,  1, '2025-01-01', NULL, 'active', '2024-12-01', v_user_id, v_user_id, now()),
     (v_cost_version2, v_c_org, v_cost_table2, 1, '2025-01-01', NULL, 'active', '2024-12-01', v_user_id, v_user_id, now());
+
+  -- 7.1 SUPPLIER CATALOG MAPPINGS + COST ITEMS (PRC-05C — needed for engine RPC)
+  -- Re-disable parent-draft + immutability triggers because supplier_* triggers
+  -- were re-enabled after the bulk DELETE block above.
+  ALTER TABLE supplier_catalog_items DISABLE TRIGGER USER;
+  ALTER TABLE supplier_cost_items DISABLE TRIGGER USER;
+
+  INSERT INTO supplier_catalog_items (id, organization_id, supplier_company_id, catalog_item_id, external_code, external_name, normalized_external_name, external_unit, is_preferred, status, created_by, updated_by)
+  VALUES
+    (v_sci_a,  v_c_org, v_company,  v_item_a, 'EXT-PRC05B-A', 'External Item A', 'external item a', 'unit', true,  'active', v_user_id, v_user_id),
+    (v_sci_b,  v_c_org, v_company,  v_item_b, 'EXT-PRC05B-B', 'External Item B', 'external item b', 'unit', true,  'active', v_user_id, v_user_id),
+    (v_sci_a2, v_c_org, v_company2, v_item_a, 'EXT-PRC05B-A2','External Item A2','external item a2','unit', false, 'active', v_user_id, v_user_id)
+  ON CONFLICT (id) DO UPDATE SET external_name = EXCLUDED.external_name;
+
+  INSERT INTO supplier_cost_items (id, organization_id, cost_table_version_id, supplier_catalog_item_id, catalog_item_id, cost_status, amount, currency_code)
+  VALUES
+    (v_ci_a,  v_c_org, v_cost_version,  v_sci_a,  v_item_a, 'provided',  80.0000, 'BRL'),
+    (v_ci_b,  v_c_org, v_cost_version,  v_sci_b,  v_item_b, 'provided', 100.0000, 'BRL'),
+    (v_ci_a2, v_c_org, v_cost_version2, v_sci_a2, v_item_a, 'provided',  90.0000, 'BRL')
+  ON CONFLICT (id) DO UPDATE SET amount = EXCLUDED.amount;
+
+  ALTER TABLE supplier_catalog_items ENABLE TRIGGER USER;
+  ALTER TABLE supplier_cost_items ENABLE TRIGGER USER;
 
   -- ============================================================
   -- 8. PRICING POLICY PROVENANCE FIXTURES
