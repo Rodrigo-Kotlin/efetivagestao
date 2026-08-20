@@ -27,7 +27,7 @@
 | PRC-06 | Clientes e Exceções | **IN PROGRESS** |
 | PRC-06A | Client Pricing Model & Business Rules | **COMPLETED** |
 | PRC-06B | Client Pricing Database, Integrity, RLS & RBAC | **COMPLETED** |
-| PRC-06C | Client Assignment/Override Workflow & Component Resolvers | NOT STARTED |
+| PRC-06C | Client Assignment/Override Workflow & Component Resolvers | **COMPLETED** |
 | PRC-06D | Client Pricing UI | NOT STARTED |
 | PRC-06E | Client Pricing End-to-End Hardening | NOT STARTED |
 | PRC-07 | Motor de Resolução | NOT STARTED |
@@ -77,3 +77,4 @@ Controla:
 | COMMERCIAL_PRICING_VERIFIED | PRC-05E | Atingido |
 | CLIENT_PRICING_MODEL_DEFINED | PRC-06A | Atingido |
 | CLIENT_PRICING_SCHEMA_VERIFIED | PRC-06B | Atingido |
+| CLIENT_PRICING_CORE_VERIFIED | PRC-06C | Atingido |

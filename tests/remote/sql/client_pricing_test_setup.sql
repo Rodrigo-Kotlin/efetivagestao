@@ -2,8 +2,9 @@
 -- Deterministic 66666666 UUIDs. Idempotent and transactionally resettable.
 --
 -- TEST ONLY. Run as the database owner before client-pricing-integrity-test.mjs.
--- USER triggers are disabled only during cleanup of these dedicated fixtures.
--- Seeding and structural proof rows use the real integrity/audit triggers.
+-- USER triggers are disabled during cleanup and for complete historical/due
+-- resolver rows that the non-retroactive APIs cannot create at current_date.
+-- All ordinary seeding and structural proof rows use real integrity/audit triggers.
 
 BEGIN;
 
@@ -34,6 +35,10 @@ DECLARE
   v_operator_item uuid := '66666666-1000-0000-0000-000000000006';
   v_viewer_item uuid := '66666666-1000-0000-0000-000000000007';
   v_foreign_item uuid := '66666666-1000-0000-0000-000000000008';
+  v_workflow_item uuid := '66666666-1000-0000-0000-000000000011';
+  v_workflow_zero_item uuid := '66666666-1000-0000-0000-000000000012';
+  v_workflow_missing_item uuid := '66666666-1000-0000-0000-000000000013';
+  v_workflow_eligibility_item uuid := '66666666-1000-0000-0000-000000000014';
 
   v_client uuid := '66666666-2000-0000-0000-000000000001';
   v_dual_role_client uuid := '66666666-2000-0000-0000-000000000002';
@@ -47,6 +52,24 @@ DECLARE
   v_profile_candidate uuid := '66666666-2000-0000-0000-00000000000a';
   v_inactive_candidate uuid := '66666666-2000-0000-0000-00000000000b';
   v_manager_candidate uuid := '66666666-2000-0000-0000-00000000000c';
+  v_workflow_profile_client uuid := '66666666-2000-0000-0000-000000000021';
+  v_assignment_flow_client uuid := '66666666-2000-0000-0000-000000000022';
+  v_assignment_publish_client uuid := '66666666-2000-0000-0000-000000000023';
+  v_assignment_chain_client uuid := '66666666-2000-0000-0000-000000000024';
+  v_assignment_sync_client uuid := '66666666-2000-0000-0000-000000000025';
+  v_assignment_race_client uuid := '66666666-2000-0000-0000-000000000026';
+  v_assignment_eligibility_client uuid := '66666666-2000-0000-0000-000000000027';
+  v_override_flow_client uuid := '66666666-2000-0000-0000-000000000028';
+  v_override_publish_client uuid := '66666666-2000-0000-0000-000000000029';
+  v_override_chain_client uuid := '66666666-2000-0000-0000-00000000002a';
+  v_override_sync_client uuid := '66666666-2000-0000-0000-00000000002b';
+  v_override_race_client uuid := '66666666-2000-0000-0000-00000000002c';
+  v_override_eligibility_client uuid := '66666666-2000-0000-0000-00000000002d';
+  v_provenance_client uuid := '66666666-2000-0000-0000-00000000002e';
+  v_resolver_none_client uuid := '66666666-2000-0000-0000-00000000002f';
+  v_determinism_client uuid := '66666666-2000-0000-0000-000000000030';
+  v_zero_client uuid := '66666666-2000-0000-0000-000000000031';
+  v_manager_workflow_client uuid := '66666666-2000-0000-0000-000000000032';
 
   v_main_table uuid := '66666666-3000-0000-0000-000000000001';
   v_main_version uuid := '66666666-3000-0000-0000-000000000002';
@@ -57,6 +80,19 @@ DECLARE
   v_viewer_table uuid := '66666666-3000-0000-0000-000000000007';
   v_foreign_table uuid := '66666666-3000-0000-0000-000000000008';
   v_inactive_table uuid := '66666666-3000-0000-0000-000000000009';
+  v_workflow_table_a uuid := '66666666-3000-0000-0000-000000000011';
+  v_workflow_table_b uuid := '66666666-3000-0000-0000-000000000012';
+  v_workflow_missing_table uuid := '66666666-3000-0000-0000-000000000013';
+  v_workflow_eligibility_table uuid := '66666666-3000-0000-0000-000000000014';
+  v_workflow_version_a uuid := '66666666-3000-0000-0000-000000000021';
+  v_workflow_version_b uuid := '66666666-3000-0000-0000-000000000022';
+  v_workflow_missing_version uuid := '66666666-3000-0000-0000-000000000023';
+  v_workflow_eligibility_version uuid := '66666666-3000-0000-0000-000000000024';
+  v_workflow_price_a uuid := '66666666-3000-0000-0000-000000000031';
+  v_workflow_zero_price uuid := '66666666-3000-0000-0000-000000000032';
+  v_workflow_price_b uuid := '66666666-3000-0000-0000-000000000033';
+  v_workflow_missing_price uuid := '66666666-3000-0000-0000-000000000034';
+  v_workflow_eligibility_price uuid := '66666666-3000-0000-0000-000000000035';
 
   v_active_assignment uuid := '66666666-4000-0000-0000-000000000001';
   v_gate_assignment uuid := '66666666-4000-0000-0000-000000000002';
@@ -171,7 +207,8 @@ BEGIN
     ('66666666-6000-0000-0000-000000000004', v_operator_role),
     ('66666666-6000-0000-0000-000000000005', v_viewer_role);
 
-  -- All following fixture writes use the real actor/integrity/audit triggers.
+  -- Ordinary fixture writes use real actor/integrity/audit triggers. The one
+  -- explicitly documented historical/due block below is the only exception.
   PERFORM set_config('request.jwt.claim.sub', v_user::text, true);
 
   INSERT INTO catalog_categories (id, organization_id, code, name, is_active) VALUES
@@ -193,7 +230,11 @@ BEGIN
     (v_manager_item, v_manager_org, 'PRC06B-MITEM', 'PRC06B Manager Item', v_manager_category, 'other_service', 'unit', 'own', 'active', v_user, v_user),
     (v_operator_item, v_operator_org, 'PRC06B-OITEM', 'PRC06B Operator Item', v_operator_category, 'other_service', 'unit', 'own', 'active', v_user, v_user),
     (v_viewer_item, v_viewer_org, 'PRC06B-VITEM', 'PRC06B Viewer Item', v_viewer_category, 'other_service', 'unit', 'own', 'active', v_user, v_user),
-    (v_foreign_item, v_foreign_org, 'PRC06B-FITEM', 'PRC06B Foreign Item', v_foreign_category, 'other_service', 'unit', 'own', 'active', v_user, v_user);
+    (v_foreign_item, v_foreign_org, 'PRC06B-FITEM', 'PRC06B Foreign Item', v_foreign_category, 'other_service', 'unit', 'own', 'active', v_user, v_user),
+    (v_workflow_item, v_main_org, 'PRC06C-WF-ITEM', 'PRC06C Workflow Item', v_main_category, 'other_service', 'unit', 'own', 'active', v_user, v_user),
+    (v_workflow_zero_item, v_main_org, 'PRC06C-WF-ZERO', 'PRC06C Zero Item', v_main_category, 'other_service', 'unit', 'own', 'active', v_user, v_user),
+    (v_workflow_missing_item, v_main_org, 'PRC06C-WF-MISSING', 'PRC06C Missing Item', v_main_category, 'other_service', 'unit', 'own', 'active', v_user, v_user),
+    (v_workflow_eligibility_item, v_main_org, 'PRC06C-WF-INACTIVE', 'PRC06C Eligibility Item', v_main_category, 'other_service', 'unit', 'own', 'active', v_user, v_user);
 
   INSERT INTO companies (id, organization_id, legal_name, trade_name, status, created_by, updated_by) VALUES
     (v_client, v_main_org, 'PRC06B Main Client', 'Main Client', 'active', v_user, v_user),
@@ -207,7 +248,25 @@ BEGIN
     (v_foreign_client, v_foreign_org, 'PRC06B Foreign Client', 'Foreign Client', 'active', v_user, v_user),
     (v_profile_candidate, v_main_org, 'PRC06B Profile Candidate', 'Profile Candidate', 'active', v_user, v_user),
     (v_inactive_candidate, v_main_org, 'PRC06B Inactive Candidate', 'Inactive Candidate', 'inactive', v_user, v_user),
-    (v_manager_candidate, v_manager_org, 'PRC06B Manager Candidate', 'Manager Candidate', 'active', v_user, v_user);
+    (v_manager_candidate, v_manager_org, 'PRC06B Manager Candidate', 'Manager Candidate', 'active', v_user, v_user),
+    (v_workflow_profile_client, v_main_org, 'PRC06C Profile Client', 'WF Profile', 'active', v_user, v_user),
+    (v_assignment_flow_client, v_main_org, 'PRC06C Assignment Flow Client', 'WF Assignment Flow', 'active', v_user, v_user),
+    (v_assignment_publish_client, v_main_org, 'PRC06C Assignment Publish Client', 'WF Assignment Publish', 'active', v_user, v_user),
+    (v_assignment_chain_client, v_main_org, 'PRC06C Assignment Chain Client', 'WF Assignment Chain', 'active', v_user, v_user),
+    (v_assignment_sync_client, v_main_org, 'PRC06C Assignment Sync Client', 'WF Assignment Sync', 'active', v_user, v_user),
+    (v_assignment_race_client, v_main_org, 'PRC06C Assignment Race Client', 'WF Assignment Race', 'active', v_user, v_user),
+    (v_assignment_eligibility_client, v_main_org, 'PRC06C Assignment Eligibility Client', 'WF Assignment Eligibility', 'active', v_user, v_user),
+    (v_override_flow_client, v_main_org, 'PRC06C Override Flow Client', 'WF Override Flow', 'active', v_user, v_user),
+    (v_override_publish_client, v_main_org, 'PRC06C Override Publish Client', 'WF Override Publish', 'active', v_user, v_user),
+    (v_override_chain_client, v_main_org, 'PRC06C Override Chain Client', 'WF Override Chain', 'active', v_user, v_user),
+    (v_override_sync_client, v_main_org, 'PRC06C Override Sync Client', 'WF Override Sync', 'active', v_user, v_user),
+    (v_override_race_client, v_main_org, 'PRC06C Override Race Client', 'WF Override Race', 'active', v_user, v_user),
+    (v_override_eligibility_client, v_main_org, 'PRC06C Override Eligibility Client', 'WF Override Eligibility', 'active', v_user, v_user),
+    (v_provenance_client, v_main_org, 'PRC06C Provenance Client', 'WF Provenance', 'active', v_user, v_user),
+    (v_resolver_none_client, v_main_org, 'PRC06C Resolver Empty Client', 'WF Resolver Empty', 'active', v_user, v_user),
+    (v_determinism_client, v_main_org, 'PRC06C Determinism Client', 'WF Determinism', 'active', v_user, v_user),
+    (v_zero_client, v_main_org, 'PRC06C Zero Client', 'WF Zero', 'active', v_user, v_user),
+    (v_manager_workflow_client, v_manager_org, 'PRC06C Manager Workflow Client', 'WF Manager', 'active', v_user, v_user);
 
   -- One company intentionally carries supplier and client roles simultaneously.
   INSERT INTO supplier_profiles (
@@ -223,7 +282,25 @@ BEGIN
     (v_manager_client, v_manager_org, 'manager fixture'),
     (v_operator_client, v_operator_org, 'operator fixture'),
     (v_viewer_client, v_viewer_org, 'viewer fixture'),
-    (v_foreign_client, v_foreign_org, 'foreign fixture');
+    (v_foreign_client, v_foreign_org, 'foreign fixture'),
+    (v_workflow_profile_client, v_main_org, 'workflow profile status fixture'),
+    (v_assignment_flow_client, v_main_org, 'workflow assignment transitions'),
+    (v_assignment_publish_client, v_main_org, 'workflow assignment publication'),
+    (v_assignment_chain_client, v_main_org, 'workflow assignment timeline'),
+    (v_assignment_sync_client, v_main_org, 'workflow assignment sync'),
+    (v_assignment_race_client, v_main_org, 'workflow assignment concurrency'),
+    (v_assignment_eligibility_client, v_main_org, 'workflow assignment eligibility'),
+    (v_override_flow_client, v_main_org, 'workflow override transitions'),
+    (v_override_publish_client, v_main_org, 'workflow override publication'),
+    (v_override_chain_client, v_main_org, 'workflow override timeline'),
+    (v_override_sync_client, v_main_org, 'workflow override sync'),
+    (v_override_race_client, v_main_org, 'workflow override concurrency'),
+    (v_override_eligibility_client, v_main_org, 'workflow override eligibility'),
+    (v_provenance_client, v_main_org, 'workflow provenance'),
+    (v_resolver_none_client, v_main_org, 'workflow resolver empty'),
+    (v_determinism_client, v_main_org, 'workflow resolver tie-break'),
+    (v_zero_client, v_main_org, 'workflow explicit zero'),
+    (v_manager_workflow_client, v_manager_org, 'workflow manager permissions');
 
   -- Stable commercial identities in each security topology organization.
   INSERT INTO commercial_price_tables (id, organization_id, code, name, status) VALUES
@@ -233,7 +310,11 @@ BEGIN
     (v_operator_table, v_operator_org, 'PRC06B-OPERATOR-TABLE', 'PRC06B Operator Table', 'active'),
     (v_viewer_table, v_viewer_org, 'PRC06B-VIEWER-TABLE', 'PRC06B Viewer Table', 'active'),
     (v_foreign_table, v_foreign_org, 'PRC06B-FOREIGN-TABLE', 'PRC06B Foreign Table', 'active'),
-    (v_inactive_table, v_main_org, 'PRC06B-INACTIVE-TABLE', 'PRC06B Inactive Table', 'inactive');
+    (v_inactive_table, v_main_org, 'PRC06B-INACTIVE-TABLE', 'PRC06B Inactive Table', 'inactive'),
+    (v_workflow_table_a, v_main_org, 'PRC06C-WF-TABLE-A', 'PRC06C Workflow Table A', 'active'),
+    (v_workflow_table_b, v_main_org, 'PRC06C-WF-TABLE-B', 'PRC06C Workflow Table B', 'active'),
+    (v_workflow_missing_table, v_main_org, 'PRC06C-WF-TABLE-MISSING', 'PRC06C Missing Price Table', 'active'),
+    (v_workflow_eligibility_table, v_main_org, 'PRC06C-WF-TABLE-INACTIVE', 'PRC06C Eligibility Table', 'active');
 
   -- Main table has a real published version/item used by trusted provenance.
   INSERT INTO commercial_price_table_versions (
@@ -254,6 +335,34 @@ BEGIN
   UPDATE commercial_price_table_versions SET status = 'under_review' WHERE id = v_main_version;
   UPDATE commercial_price_table_versions SET status = 'approved' WHERE id = v_main_version;
   UPDATE commercial_price_table_versions SET status = 'active' WHERE id = v_main_version;
+  PERFORM set_config('app.commercial_price_rpc_active', 'false', true);
+
+  -- Workflow tables expose two distinct baselines, an explicit zero, and one
+  -- catalog item intentionally absent from the missing-price table.
+  INSERT INTO commercial_price_table_versions (
+    id, organization_id, commercial_price_table_id, version_number,
+    valid_from, valid_to, status, version_label
+  ) VALUES
+    (v_workflow_version_a, v_main_org, v_workflow_table_a, 1, DATE '2020-01-01', NULL, 'draft', 'PRC06C-A-v1'),
+    (v_workflow_version_b, v_main_org, v_workflow_table_b, 1, DATE '2020-01-01', NULL, 'draft', 'PRC06C-B-v1'),
+    (v_workflow_missing_version, v_main_org, v_workflow_missing_table, 1, DATE '2020-01-01', NULL, 'draft', 'PRC06C-MISSING-v1'),
+    (v_workflow_eligibility_version, v_main_org, v_workflow_eligibility_table, 1, DATE '2020-01-01', NULL, 'draft', 'PRC06C-INACTIVE-v1');
+  INSERT INTO commercial_price_items (
+    id, organization_id, commercial_price_table_version_id, catalog_item_id,
+    price_amount, currency, origin_type
+  ) VALUES
+    (v_workflow_price_a, v_main_org, v_workflow_version_a, v_workflow_item, 125.0000, 'BRL', 'manual'),
+    (v_workflow_zero_price, v_main_org, v_workflow_version_a, v_workflow_zero_item, 0.0000, 'BRL', 'manual'),
+    (v_workflow_price_b, v_main_org, v_workflow_version_b, v_workflow_item, 150.0000, 'BRL', 'manual'),
+    (v_workflow_missing_price, v_main_org, v_workflow_missing_version, v_workflow_item, 175.0000, 'BRL', 'manual'),
+    (v_workflow_eligibility_price, v_main_org, v_workflow_eligibility_version, v_workflow_eligibility_item, 200.0000, 'BRL', 'manual');
+  PERFORM set_config('app.commercial_price_rpc_active', 'true', true);
+  UPDATE commercial_price_table_versions SET status = 'under_review'
+  WHERE id IN (v_workflow_version_a, v_workflow_version_b, v_workflow_missing_version, v_workflow_eligibility_version);
+  UPDATE commercial_price_table_versions SET status = 'approved'
+  WHERE id IN (v_workflow_version_a, v_workflow_version_b, v_workflow_missing_version, v_workflow_eligibility_version);
+  UPDATE commercial_price_table_versions SET status = 'active'
+  WHERE id IN (v_workflow_version_a, v_workflow_version_b, v_workflow_missing_version, v_workflow_eligibility_version);
   PERFORM set_config('app.commercial_price_rpc_active', 'false', true);
 
   -- Publish client-pricing history before inactivating the company. The rows
@@ -598,6 +707,127 @@ BEGIN
     (v_viewer_override, v_viewer_org, v_viewer_client, v_viewer_item, 30, 'BRL', 'viewer read fixture', 'draft', DATE '2027-01-01', 'x', 'x', 'x'),
     (v_foreign_override, v_foreign_org, v_foreign_client, v_foreign_item, 40, 'BRL', 'foreign hidden fixture', 'draft', DATE '2027-01-01', 'x', 'x', 'x'),
     (v_cross_override, v_cross_org, v_cross_client, v_cross_item, 50, 'BRL', 'cross admin fixture', 'draft', DATE '2027-01-01', 'x', 'x', 'x');
+
+  -- Eligibility is changed after ordinary draft creation so the workflow RPCs
+  -- must recheck dependencies instead of relying on insert-time validation.
+  INSERT INTO client_commercial_table_assignments (
+    id, organization_id, client_company_id, commercial_price_table_id,
+    status, valid_from, notes
+  ) VALUES (
+    '66666666-4000-0000-0000-000000000019', v_main_org,
+    v_assignment_eligibility_client, v_workflow_eligibility_table,
+    'draft', current_date + 50, 'table becomes inactive after draft creation'
+  );
+  INSERT INTO client_price_overrides (
+    id, organization_id, client_company_id, catalog_item_id,
+    price_amount, currency, reason, status, valid_from,
+    item_code_snapshot, item_name_snapshot, item_type_snapshot
+  ) VALUES (
+    '66666666-5000-0000-0000-000000000019', v_main_org,
+    v_override_eligibility_client, v_workflow_eligibility_item,
+    99, 'BRL', 'item becomes inactive after draft creation', 'draft', current_date + 50,
+    'derived', 'derived', 'derived'
+  );
+  UPDATE commercial_price_tables SET status = 'inactive' WHERE id = v_workflow_eligibility_table;
+  UPDATE catalog_items SET status = 'inactive' WHERE id = v_workflow_eligibility_item;
+
+  -- Resolver history, deterministic ties, and due sync rows cannot be produced
+  -- today through the non-retroactive publication APIs. Suppression is scoped
+  -- to these complete deterministic rows; runtime transitions use real RPCs.
+  ALTER TABLE client_commercial_table_assignments DISABLE TRIGGER USER;
+  ALTER TABLE client_price_overrides DISABLE TRIGGER USER;
+
+  INSERT INTO client_commercial_table_assignments (
+    id, organization_id, client_company_id, commercial_price_table_id,
+    status, valid_from, valid_to, notes,
+    created_by, created_at, updated_by, updated_at,
+    submitted_by, submitted_at, approved_by, approved_at,
+    published_by, published_at, superseded_by, superseded_at
+  ) VALUES
+    ('66666666-4000-0000-0000-000000000011', v_main_org, v_assignment_chain_client, v_workflow_table_a,
+     'superseded', current_date - 20, current_date - 10, 'historical assignment',
+     v_user, now() - interval '20 days', v_user, now() - interval '20 days', v_user, now() - interval '20 days',
+     v_user, now() - interval '20 days', v_user, now() - interval '20 days', v_user, now() - interval '10 days'),
+    ('66666666-4000-0000-0000-000000000012', v_main_org, v_assignment_chain_client, v_workflow_table_a,
+     'active', current_date - 10, current_date + 10, 'current assignment',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', v_user, now() - interval '10 days',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', NULL, NULL),
+    ('66666666-4000-0000-0000-000000000013', v_main_org, v_assignment_chain_client, v_workflow_table_b,
+     'scheduled', current_date + 10, current_date + 30, 'future assignment',
+     v_user, now(), v_user, now(), v_user, now(), v_user, now(), v_user, now(), NULL, NULL),
+    ('66666666-4000-0000-0000-000000000014', v_main_org, v_assignment_sync_client, v_workflow_table_a,
+     'active', current_date - 10, current_date, 'sync predecessor',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', v_user, now() - interval '10 days',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', NULL, NULL),
+    ('66666666-4000-0000-0000-000000000015', v_main_org, v_assignment_sync_client, v_workflow_table_b,
+     'scheduled', current_date, current_date + 10, 'due assignment',
+     v_user, now(), v_user, now(), v_user, now(), v_user, now(), v_user, now(), NULL, NULL),
+    ('66666666-4000-0000-0000-000000000016', v_main_org, v_determinism_client, v_workflow_table_a,
+     'superseded', current_date - 5, current_date + 5, 'deterministic lower id',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00'),
+    ('66666666-4000-0000-0000-000000000017', v_main_org, v_determinism_client, v_workflow_table_b,
+     'superseded', current_date - 5, current_date + 5, 'deterministic higher id',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00'),
+    ('66666666-4000-0000-0000-000000000018', v_main_org, v_provenance_client, v_workflow_table_a,
+     'active', current_date - 10, current_date + 10, 'provenance baseline assignment',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', v_user, now() - interval '10 days',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', NULL, NULL);
+
+  INSERT INTO client_price_overrides (
+    id, organization_id, client_company_id, catalog_item_id,
+    price_amount, currency, reason, status, valid_from, valid_to,
+    item_code_snapshot, item_name_snapshot, item_type_snapshot,
+    created_by, created_at, updated_by, updated_at,
+    submitted_by, submitted_at, approved_by, approved_at,
+    published_by, published_at, superseded_by, superseded_at
+  ) VALUES
+    ('66666666-5000-0000-0000-000000000011', v_main_org, v_override_chain_client, v_workflow_item,
+     80, 'BRL', 'historical override', 'superseded', current_date - 20, current_date - 10,
+     'PRC06C-WF-ITEM', 'PRC06C Workflow Item', 'other_service',
+     v_user, now() - interval '20 days', v_user, now() - interval '20 days', v_user, now() - interval '20 days',
+     v_user, now() - interval '20 days', v_user, now() - interval '20 days', v_user, now() - interval '10 days'),
+    ('66666666-5000-0000-0000-000000000012', v_main_org, v_override_chain_client, v_workflow_item,
+     85, 'BRL', 'current override', 'active', current_date - 10, current_date + 10,
+     'PRC06C-WF-ITEM', 'PRC06C Workflow Item', 'other_service',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', v_user, now() - interval '10 days',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', NULL, NULL),
+    ('66666666-5000-0000-0000-000000000013', v_main_org, v_override_chain_client, v_workflow_item,
+     90, 'BRL', 'future override', 'scheduled', current_date + 10, current_date + 30,
+     'PRC06C-WF-ITEM', 'PRC06C Workflow Item', 'other_service',
+     v_user, now(), v_user, now(), v_user, now(), v_user, now(), v_user, now(), NULL, NULL),
+    ('66666666-5000-0000-0000-000000000014', v_main_org, v_override_sync_client, v_workflow_item,
+     95, 'BRL', 'sync predecessor', 'active', current_date - 10, current_date,
+     'PRC06C-WF-ITEM', 'PRC06C Workflow Item', 'other_service',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', v_user, now() - interval '10 days',
+     v_user, now() - interval '10 days', v_user, now() - interval '10 days', NULL, NULL),
+    ('66666666-5000-0000-0000-000000000015', v_main_org, v_override_sync_client, v_workflow_item,
+     100, 'BRL', 'due override', 'scheduled', current_date, current_date + 10,
+     'PRC06C-WF-ITEM', 'PRC06C Workflow Item', 'other_service',
+     v_user, now(), v_user, now(), v_user, now(), v_user, now(), v_user, now(), NULL, NULL),
+    ('66666666-5000-0000-0000-000000000016', v_main_org, v_zero_client, v_workflow_zero_item,
+     0, 'BRL', 'explicit zero override', 'active', current_date - 5, current_date + 5,
+     'PRC06C-WF-ZERO', 'PRC06C Zero Item', 'other_service',
+     v_user, now() - interval '5 days', v_user, now() - interval '5 days', v_user, now() - interval '5 days',
+     v_user, now() - interval '5 days', v_user, now() - interval '5 days', NULL, NULL),
+    ('66666666-5000-0000-0000-000000000017', v_main_org, v_determinism_client, v_workflow_item,
+     101, 'BRL', 'deterministic lower id', 'superseded', current_date - 5, current_date + 5,
+     'PRC06C-WF-ITEM', 'PRC06C Workflow Item', 'other_service',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00'),
+    ('66666666-5000-0000-0000-000000000018', v_main_org, v_determinism_client, v_workflow_item,
+     102, 'BRL', 'deterministic higher id', 'superseded', current_date - 5, current_date + 5,
+     'PRC06C-WF-ITEM', 'PRC06C Workflow Item', 'other_service',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00',
+     v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00', v_user, TIMESTAMPTZ '2026-01-01 00:00:00+00');
+
+  ALTER TABLE client_price_overrides ENABLE TRIGGER USER;
+  ALTER TABLE client_commercial_table_assignments ENABLE TRIGGER USER;
 
   -- Structural role-map checks fail the setup instead of becoming soft test passes.
   IF (SELECT count(*) FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id

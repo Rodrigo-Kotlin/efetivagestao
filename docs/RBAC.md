@@ -109,7 +109,7 @@ Cada permissão é verificada dentro de cada RPC SECURITY DEFINER (não apenas e
 
 > O placeholder legado `pricing.price.publish` **permanece no banco com 0 mapeamentos** (kept para retrocompatibilidade de lookup, marcado como deprecado). Nenhum role possui essa permissão; o conjunto ativo é `pricing.commercial.*`.
 
-### Precificação por Cliente × Papéis (PRC-06B — IMPLEMENTADO)
+### Precificação por Cliente × Papéis (PRC-06B/PRC-06C — IMPLEMENTADO)
 
 Permissões implementadas na migration 038:
 
@@ -129,11 +129,11 @@ Permissões implementadas na migration 038:
 | operator | ✔ | — | — | — | — | — |
 | viewer | ✔ | — | — | — | — | — |
 
-`pricing.client.publish` será exclusivo do admin, consistente com `pricing.cost.publish`, `pricing.policy.publish` e `pricing.commercial.publish`.
+`pricing.client.publish` é exclusivo do admin, consistente com `pricing.cost.publish`, `pricing.policy.publish` e `pricing.commercial.publish`.
 
 Não haverá `pricing.client.override_approve` em v1: o override é a própria exceção negociada (DEC-059), e `pricing.client.approve` aprova ambos os workflows. Isso não reutiliza `pricing.commercial.exception_approve`, que pertence às violações internas de tabelas PRC-05.
 
-Mapeamentos remotos verificados: **admin = 6**, **manager = 5** (sem publish), **operator = 1** e **viewer = 1**. `pricing.client.override_approve` não foi criada. RLS está ativo nas três entidades; futuras RPCs PRC-06C deverão revalidar membership e a permissão exata, com ator derivado de `auth.uid()`.
+Mapeamentos remotos verificados: **admin = 6**, **manager = 5** (sem publish), **operator = 1** e **viewer = 1**. `pricing.client.override_approve` não foi criada. RLS está ativo nas três entidades; as 16 RPCs públicas PRC-06C revalidam membership e a permissão exata, com ator derivado de `auth.uid()`.
 
 | Operação/Transição | Permissão PRC-06 |
 |--------------------|------------------|
@@ -143,7 +143,7 @@ Mapeamentos remotos verificados: **admin = 6**, **manager = 5** (sem publish), *
 | Aprovar ou cancelar approved | `pricing.client.approve` |
 | Publicar, executar cutover e supersessão controlada | `pricing.client.publish` |
 
-Exibir razão social/nome fantasia exige também `core.company.view`; `pricing.client.view` sozinho autoriza apenas a projeção mínima do componente. Capturar baseline por `fn_resolve_commercial_table_price` exige ainda `pricing.commercial.view`. Toda transição é RPC-only, com gate de banco NULL-safe; nenhum mapeamento autoriza UPDATE direto de status.
+Exibir razão social/nome fantasia exige também `core.company.view`; `pricing.client.view` sozinho autoriza apenas a projeção mínima do componente. Capturar baseline exige `pricing.client.edit`, `pricing.client.view` e `pricing.commercial.view`. Toda transição é RPC-only, com gate de banco NULL-safe; nenhum mapeamento autoriza UPDATE direto de status.
 
 ### Permissões Futuras (NÃO implementadas)
 

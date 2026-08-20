@@ -457,9 +457,11 @@ Preço explícito negociado por cliente+item, independente da tabela base.
 
 **Integridade:** INSERT somente draft; item/cliente ativos e same-org; EXCLUDE GiST `active|scheduled` por organização+cliente+item; snapshots não confiados ao caller; proveniência não nula exige gate e comprova atribuição aplicável, tabela/versão/item/data/catálogo/valor exatos por triggers + FKs compostas; não-draft e histórico imutáveis; hard-delete somente draft.
 
-### Segurança PRC-06B
+### Segurança e workflow PRC-06B/PRC-06C
 
-RLS nas três tabelas: `view` para SELECT, `create` para INSERT e `edit` para UPDATE/DELETE, sempre com membership. Permissões de review/approve/publish serão verificadas dentro das RPCs futuras PRC-06C. Auditoria registra eventos `pricing.client.profile.*`, `pricing.client.assignment.*` e `pricing.client.override.*` com ator derivado.
+RLS nas três tabelas: `view` para SELECT, `create` para INSERT e `edit` para UPDATE/DELETE, sempre com membership. As RPCs PRC-06C revalidam membership e a permissão exata de edit/review/approve/publish, derivam o ator de `auth.uid()` e abrem somente o gate transacional `app.client_pricing_rpc_active`. Auditoria registra eventos `pricing.client.profile.*`, `pricing.client.assignment.*` e `pricing.client.override.*` com ator derivado.
+
+Publicação e sync mantêm timelines `[valid_from, valid_to)` de atribuição e override; resolvers selecionam componentes `active|scheduled|superseded` por data sem compor preço final. A captura de proveniência resolve a atribuição e o item da tabela autoritativamente e congela o grupo `source_*` no draft.
 
 ## Migrations
 
@@ -501,6 +503,8 @@ RLS nas três tabelas: `view` para SELECT, `create` para INSERT e `edit` para UP
 | 036 | 036_commercial_price_resolver_valid_to_fix | Fix forward-only do predicado temporal do resolver (035): `v_valid_to` (variável não atribuída) → `v.valid_to` (coluna) no `WHERE (v.valid_to IS NULL OR v.valid_to > p_reference_date)`, corrigindo resolução de versões anteriores/sucessoras sem alterar contrato/grants |
 | 037 | 037_client_pricing_schema | `client_profiles`, atribuições e overrides; FKs compostas same-org/RESTRICT, actors/snapshots server-derived, gate NULL-safe, lifecycle/imutabilidade/delete guards, proveniência confiável, GiST temporal, RLS fail-closed |
 | 038 | 038_client_pricing_security | Seis permissões `pricing.client.*`, mapeamentos 6/5/1/1, 12 policies RLS, policy restritiva de audit payload, audit triggers e hardening de privilégios |
+| 039 | 039_client_pricing_workflow | 14 RPCs autoritativas: status de perfil, workflows de atribuição/override, publicação temporal concorrente, sync idempotente e captura confiável de proveniência |
+| 040 | 040_client_pricing_resolvers | Resolvers isolados de atribuição de tabela e override por cliente+item, com resolução atual/futura/histórica, zero explícito, desempate determinístico e payload de proveniência |
 
 ## Geração de Tipos TypeScript
 

@@ -1,9 +1,9 @@
 # Precificação por Cliente — PRC-06
 
-**Status:** PRC-06A/PRC-06B concluídas — modelo e fundação PostgreSQL verificados
-**Baseline:** `22dbef9ebab2b30160cd7eda049eb2cfcd300af0` (`COMMERCIAL_PRICING_VERIFIED`)
-**Checkpoint:** `CLIENT_PRICING_MODEL_DEFINED`
-**Implementação:** nenhuma nesta fase; migrations 001–036 permanecem imutáveis
+**Status:** PRC-06A/PRC-06B/PRC-06C concluídas — modelo, fundação PostgreSQL, workflow e resolvers de componente verificados
+**Baseline PRC-06B:** `4bb3b217d80f0a18d84372b614da9cd89cc219ce` (`CLIENT_PRICING_SCHEMA_VERIFIED`)
+**Checkpoint:** `CLIENT_PRICING_CORE_VERIFIED`
+**Implementação:** migrations 037–040 instaladas e imutáveis; LOCAL == REMOTE 40/40
 
 ## 1. Propósito
 
@@ -27,8 +27,8 @@ PRC-06 é dividido em:
 | Fase | Entrega | Checkpoint |
 |------|---------|------------|
 | PRC-06A | Modelo e regras de negócio | `CLIENT_PRICING_MODEL_DEFINED` |
-| PRC-06B | Banco, integridade, RLS e RBAC | a definir na fase |
-| PRC-06C | Workflow e resolvers de componentes | a definir na fase |
+| PRC-06B | Banco, integridade, RLS e RBAC | `CLIENT_PRICING_SCHEMA_VERIFIED` |
+| PRC-06C | Workflow e resolvers de componentes | `CLIENT_PRICING_CORE_VERIFIED` |
 | PRC-06D | UI de precificação por cliente | a definir na fase |
 | PRC-06E | Hardening end-to-end | `CLIENT_PRICING_VERIFIED` |
 
@@ -120,7 +120,7 @@ Não são campos de `client_profiles`:
 | `inactive` | Não recebe nova configuração comercial; perfil e histórico permanecem legíveis e resolvíveis. |
 | `blocked` | Não recebe nova configuração comercial; indica bloqueio operacional mais forte, sem apagar ou invalidar a história. |
 
-Reativação ou alteração de status será uma mutação controlada e auditada em PRC-06B/C.
+Reativação ou alteração de status ocorre por `fn_set_client_profile_status`, com mutação controlada e auditada.
 
 Todo novo `client_profiles` nasce `active`, independentemente de valor enviado pelo cliente. Definir `inactive|blocked` ou reativar exige operação posterior com `pricing.client.edit`, ator server-derived, motivo operacional e auditoria.
 
@@ -147,7 +147,7 @@ Autorizar uma nova transação para cliente atualmente `inactive` ou `blocked` �
 
 ### 5.3 Revalidação de elegibilidade no workflow
 
-Elegibilidade não é verificada apenas na criação do draft. As RPCs futuras devem revalidar nos gates `submit`, `approve` e `publish`:
+Elegibilidade não é verificada apenas na criação do draft. As RPCs revalidam nos gates `submit`, `approve` e `publish`:
 
 - empresa e perfil cliente ativos para atribuição e override;
 - tabela comercial ativa para atribuição;
@@ -390,7 +390,7 @@ As regras da atribuição para publicação não retroativa, fechamento de prede
 
 ## 10. Motivo e exceção comercial
 
-`reason` pode ficar nulo durante a edição inicial de `draft`, mas a transição `draft → under_review` exige texto normalizado não vazio (`btrim(reason) <> ''`). Aprovação e publicação revalidam a condição. Exemplos:
+`reason` é obrigatório e não vazio desde a criação do `draft` (`btrim(reason) <> ''`). Submissão, aprovação e publicação revalidam a condição. Exemplos:
 
 - negociação contratual;
 - condição comercial específica;
@@ -402,7 +402,7 @@ O registro `client_price_overrides` é a própria exceção negociada de v1. Nã
 
 Isso não se confunde com `commercial_price_exceptions` de PRC-05, que controla violações de publicação de uma tabela comercial. A aprovação do override usa o workflow do próprio override.
 
-Motivos operacionais de bloqueio/inativação do perfil, retorno, cancelamento ou decisão são parâmetros das RPCs e são persistidos no audit log; não substituem o `reason` comercial permanente do override.
+O motivo operacional de bloqueio/inativação do perfil é recebido por `fn_set_client_profile_status` e persistido em `status_reason` e no evento de auditoria. Retorno, cancelamento e decisão usam as assinaturas fechadas do workflow e geram eventos auditáveis; não substituem o `reason` comercial permanente do override.
 
 ## 11. Zero versus ausente
 
@@ -439,7 +439,7 @@ Se o item ficar inativo depois da publicação:
 - `item_name_snapshot`;
 - `item_type_snapshot`.
 
-Os valores serão derivados no servidor a partir de `catalog_items` na criação do override. O frontend não é fonte confiável. Após publicação, os snapshots são imutáveis.
+Os valores são derivados no servidor a partir de `catalog_items` na criação do override. O frontend não é fonte confiável. Após publicação, os snapshots são imutáveis.
 
 Não se duplicam `legal_name` ou `trade_name` do cliente em cada atribuição/override. Snapshot de nome do cliente em nível transacional é responsabilidade de pedidos, propostas ou faturas futuros.
 
@@ -464,13 +464,13 @@ O grupo é opcional, mas segue regra all-or-none. Quando utilizado, deve ser der
 - `source_commercial_price_item.catalog_item_id` igual ao `catalog_item_id` do override;
 - `source_table_price_amount` exatamente igual ao preço explícito imutável retornado por PRC-05.
 
-PRC-06B deve bloquear qualquer proveniência não nula em DML direto, com gate dedicado NULL-safe. Enquanto PRC-06C não entregar a RPC confiável, somente overrides sem proveniência (`source_*` todos nulos) podem ser criados. FKs históricas usam comportamento restritivo, nunca cascade-delete.
+PRC-06B bloqueia proveniência não nula em DML direto com gate dedicado NULL-safe. PRC-06C entrega `fn_capture_client_override_table_provenance`, que abre o gate local somente após resolver e validar toda a cadeia de origem; FKs históricas usam comportamento restritivo, nunca cascade-delete.
 
 Essa proveniência é evidência, não dependência de cálculo. Supersessão da versão de origem não invalida nem recalcula o override.
 
 ## 14. Integridade cross-tenant
 
-RLS não substitui integridade relacional. PRC-06B deverá impedir no banco:
+RLS não substitui integridade relacional. PRC-06B impede no banco:
 
 - perfil cliente com `organization_id` diferente da empresa;
 - atribuição de cliente da organização A para tabela da organização B;
@@ -481,13 +481,13 @@ RLS não substitui integridade relacional. PRC-06B deverá impedir no banco:
 
 Cada entidade tenant-scoped carrega `organization_id`. FKs, constraints e/ou triggers same-org garantem coerência, enquanto RLS controla visibilidade e mutação.
 
-Resolvers `SECURITY DEFINER` deverão verificar autenticação, membership e permissão sem revelar existência de dados de outro tenant.
+Resolvers `SECURITY DEFINER` verificam autenticação, membership e permissão sem revelar existência de dados de outro tenant.
 
 As relações históricas usam FKs `ON DELETE RESTRICT`: `client_profiles → companies`, atribuição/override → `client_profiles`, atribuição → `commercial_price_tables`, override → `catalog_items` e proveniência → tabela/versão/item comercial. Triggers de delete impedem remoção de empresa/perfil quando houver história. Não se copia o `ON DELETE CASCADE` legado de `supplier_profiles`.
 
 ## 15. Resolver de atribuição
 
-PRC-06C deverá implementar, sem fazê-lo nesta fase:
+PRC-06C implementa na migration 040:
 
 ```text
 fn_resolve_client_table_assignment(
@@ -526,7 +526,7 @@ Overlap publicado é proibido; o tie-break final garante determinismo defensivo.
 
 ## 16. Resolver de override
 
-PRC-06C deverá implementar, sem fazê-lo nesta fase:
+PRC-06C implementa na migration 040:
 
 ```text
 fn_resolve_client_price_override(
@@ -563,7 +563,7 @@ ORDER BY valid_from DESC, created_at DESC, id DESC
 
 O resultado inclui perfil/status do cliente, override, item/snapshots, valor, moeda, vigência, motivo, atores e proveniência opcional. Não consulta fallback de tabela.
 
-Criar proveniência por baseline de tabela exige `pricing.client.create` (ou `edit`, conforme a operação) e `pricing.commercial.view`, pois a RPC PRC-06C consumirá o resolver autoritativo PRC-05. Override sem baseline não exige permissão comercial. Exibir nomes corporativos continua exigindo `core.company.view`.
+Capturar proveniência por baseline de tabela exige `pricing.client.edit`, `pricing.client.view` e `pricing.commercial.view`; a RPC consome o resolver autoritativo PRC-05. Override sem baseline não exige permissão comercial. Exibir nomes corporativos continua exigindo `core.company.view`.
 
 ## 17. Resolução dirigida por data
 
@@ -577,7 +577,7 @@ Ambos os resolvers devem suportar datas atuais, futuras e históricas:
 
 ## 18. RBAC
 
-Permissões conceituais PRC-06, ainda não implementadas:
+Permissões PRC-06 implementadas e verificadas:
 
 | Permissão | Responsabilidade |
 |-----------|------------------|
@@ -775,9 +775,54 @@ Suite: `tests/remote/client-pricing-integrity-test.mjs`
 
 Regressões remotas: commercial full-flow 27/27, workflow 85/85, integrity 61/61, pricing engine 50/50, policy 33/33, cost 34/34 e PRC-04 full-flow 49/49.
 
-PRC-06B não criou RPC de workflow, resolver de componente, resolver final, UI nem dimensões de segmento/grupo/canal/default. Esses limites permanecem para PRC-06C/PRC-07.
+No checkpoint PRC-06B, workflow e resolvers de componente foram diferidos para PRC-06C. Resolver final, UI e dimensões de segmento/grupo/canal/default permaneceram fora do escopo e continuam reservados para PRC-06D/PRC-07.
 
-## 25. Decisões relacionadas
+## 25. Implementação PRC-06C
+
+**Checkpoint:** `CLIENT_PRICING_CORE_VERIFIED`
+**Migrations:** `039_client_pricing_workflow.sql` e `040_client_pricing_resolvers.sql`
+**Remoto:** 40/40 LOCAL == REMOTE
+
+### 25.1 Workflow autoritativo (039)
+
+A migration 039 entrega 14 RPCs públicas autenticadas com `SECURITY DEFINER`, `search_path = public`, ator derivado de `auth.uid()`, membership e permissão pontual:
+
+- status de perfil: `fn_set_client_profile_status`;
+- atribuições: submit, return-to-draft, approve, cancel, publish e sync;
+- overrides: submit, return-to-draft, approve, cancel, publish e sync;
+- proveniência: `fn_capture_client_override_table_provenance`.
+
+Publicação serializa a timeline por perfil cliente, rejeita retroatividade e due backlog, fecha predecessoras monotonicamente e preserva sucessoras agendadas. Sync rejeita datas futuras, processa somente organizações autorizadas por `pricing.client.publish` e é idempotente. Captura de proveniência exige `pricing.client.edit`, `pricing.client.view` e `pricing.commercial.view`, resolve atribuição e preço de tabela pelas RPCs autoritativas e nunca altera `price_amount`.
+
+### 25.2 Resolvers de componente (040)
+
+- `fn_resolve_client_table_assignment` retorna `RESOLVED`, `CLIENT_NOT_FOUND` ou `ASSIGNMENT_NOT_FOUND`;
+- `fn_resolve_client_price_override` retorna `RESOLVED`, `CLIENT_NOT_FOUND`, `ITEM_NOT_FOUND` ou `OVERRIDE_NOT_FOUND`;
+- ambos resolvem `active|scheduled|superseded` por `[valid_from, valid_to)`, com desempate determinístico e sem depender do cutover físico;
+- o resolver de override preserva zero explícito e devolve proveniência congelada quando presente;
+- nenhum deles compõe fontes, aplica fallback ou implementa a precedência global de PRC-07.
+
+### 25.3 Verificação remota
+
+Fixture dedicada: `tests/remote/sql/client_pricing_test_setup.sql`
+Suite: `tests/remote/client-pricing-workflow-test.mjs`
+
+| Grupo | Casos | Assertions |
+|-------|-------|------------|
+| Status do perfil | 6/6 | 15/15 |
+| Workflow de atribuição | 14/14 | 38/38 |
+| Workflow de override | 14/14 | 38/38 |
+| Resolvers | 12/12 | 32/32 |
+| Sync | 6/6 | 18/18 |
+| Proveniência | 8/8 | 27/27 |
+| RBAC e exposição | 8/8 | 34/34 |
+| **Total** | **68/68** | **202/202** |
+
+A regressão PRC-06B permaneceu em 60/60 casos e 139/139 assertions. Também passaram commercial full-flow 27/27, workflow 85/85, integrity 61/61, pricing engine 50/50, policy 33/33, PRC-04 full-flow 49/49 e cost 34/34.
+
+PRC-06C não criou frontend, fórmulas, dimensões de segmento/grupo/canal/default nem resolver final. Esses limites permanecem para PRC-06D/PRC-07.
+
+## 26. Decisões relacionadas
 
 - DEC-008 — intervalos `[valid_from, valid_to)`;
 - DEC-022 — identidade de ator derivada no servidor;
