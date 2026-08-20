@@ -879,7 +879,9 @@ Exceções obrigatórias (apenas para itens `origin_type='pricing_engine'`, a pa
 - `COMMERCIAL_DEVIATION` se `price_amount < source_effective_price`
 - `BELOW_MINIMUM_MARGIN` se `pricing_snapshot` contém a violação
 
-### 62.5 Resolver de Tabela (`fn_resolve_commercial_table_price`, migration 035)
+### 62.5 Resolver de Tabela (`fn_resolve_commercial_table_price`, migration 035 + fix 036)
+
+> **PRC-05E-R1 (migration 036):** a versão original (035) comparava `p_reference_date` com a variável PL/pgSQL `v_valid_to` — ainda `NULL` durante a avaliação do `WHERE` — em `(v.valid_to IS NULL OR v_valid_to > p_reference_date)`, impedindo a resolução de versões com `valid_to` fechado (histórico/sucessoras). A migration **036** recria a função com **apenas** essa correção: `(v.valid_to IS NULL OR v.valid_to > p_reference_date)`. Contrato, retornos, tie-break, `SECURITY DEFINER`, `STABLE`, `search_path` e grants são idênticos. Migrations 001-035 permanecem imutáveis.
 
 ```
 fn_resolve_commercial_table_price(
@@ -920,6 +922,23 @@ Permissão exigida: `pricing.commercial.view`. Escopo: **apenas "item dentro de 
 | Segurança | CPW-H78..CPW-H85 | cross-tenant rejeitado, sem view rejeitado, manager sem publish, manager sem exception_approve, helpers internos não acessíveis |
 
 **Resultado:** `Passed: 85 · Failed: 0` (CPW-H01..CPW-H85), executado contra o projeto remoto `scyxgyewdokmsuehgwql`. COM-H01..H57 permanece em 61/61 (ajustes em COM-H29 [usa RPC de engine], COM-H41 [asserção de policy resolvida], COM-H43 [usa draft, não `pubVersion`]).
+
+### 62.8 PRC-05E — End-to-End Hardening (full-flow CPF-H01..H27 + migration 036)
+
+Suite integrada `tests/remote/commercial-pricing-full-flow-test.mjs` exercita um cenário único do catálogo ao resolver temporal (PRC-03 → PRC-04 → PRC-05), complementando CPW/COM sem duplicar:
+
+| Grupo | Testes | Cobertura |
+|-------|--------|-----------|
+| Custos/política | CPF-H01..H03 | custo confirmado, política aplicável, `fn_simulate_price` autoritativo |
+| Tabela/versão | CPF-H04..H08 | criação de tabela/versão, item via engine com proveniência confiável, item manual com preço zero |
+| Exceções | CPF-H09..H14 | request/approve BELOW_COST, submit/approve/validate/publish |
+| Resolução atual | CPF-H15..H16 | preço corrente RESOLVED, zero vs PRICE_NOT_FOUND |
+| Clone/temporal | CPF-H17..H26 | clone + linhagem + bulk, publish futuro scheduled, current→v1, future→v2, cutover idempotente, pós-cutover→v2, histórico→v1 superseded, determinismo |
+| Segurança | CPF-H27 | resolução cross-tenant rejeitada (sem leak) |
+
+**Resultado:** `Passed: 27 · Failed: 0` (CPF-H01..H27) contra `scyxgyewdokmsuehgwql`. Antes da migration 036, CPF-H15/H22/H25 falhavam (resolver retornava `VERSION_NOT_FOUND` por causa de `v_valid_to`); após 036, current/future/histórico resolvem corretamente.
+
+Frontend: `decideCommercialException` envia `p_decision_notes` (assinatura real do RPC `fn_decide_commercial_price_exception`); CUI-API08 agora assere payload exato `{p_exception_id, p_decision, p_decision_notes}` e impede regressão a `p_notes`.
 
 ### 62.7 PRC-05D — UI/Frontend (Módulo Comercial)
 

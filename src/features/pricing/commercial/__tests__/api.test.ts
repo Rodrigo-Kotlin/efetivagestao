@@ -171,12 +171,17 @@ describe("API contract (CUI-API01..12)", () => {
     await decideCommercialException({
       exceptionId: "e1",
       decision: "approved",
-      notes: null,
+      notes: "Aprovada no teste",
     });
     expect(h.rpc).toHaveBeenCalledWith(
       "fn_decide_commercial_price_exception",
-      expect.objectContaining({ p_decision: "approved" })
+      {
+        p_exception_id: "e1",
+        p_decision: "approved",
+        p_decision_notes: "Aprovada no teste",
+      }
     );
+    expect(h.rpc.mock.calls.at(-1)?.[1]).not.toHaveProperty("p_notes");
   });
 
   it("CUI-API09: workflow uses fn_*_commercial_price_version RPCs", async () => {

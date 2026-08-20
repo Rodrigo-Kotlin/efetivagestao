@@ -593,7 +593,7 @@ export async function decideCommercialException(
     {
       p_exception_id: exceptionId,
       p_decision: decision,
-      p_notes: notes,
+      p_decision_notes: notes,
     }
   );
 

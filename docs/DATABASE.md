@@ -441,6 +441,7 @@ Registro de exceção comercial auditável (append-only).
 | 033 | 033_commercial_price_security | Permissões pricing.commercial.* (7), mapeamentos RBAC (admin 7 / manager 5 / operator 1 / viewer 1), RLS (12 policies), audit triggers, revokes de helpers internos (PUBLIC/anon) |
 | 034 | 034_commercial_price_workflow | Forward integrity hardening (parent-active, engine provenance guard, exception parent-state); RPCs de workflow: tabela (create/update/status), versão (concurrency-safe), itens (manual/engine/clone/bulk), exceções (request/decide), workflow (submit/return/approve/cancel), validador de publicação, publish + sync cutover |
 | 035 | 035_commercial_price_resolver | `fn_resolve_commercial_table_price` — RPC de resolução table-specific com status machine-readable (`RESOLVED`/`TABLE_NOT_FOUND`/`VERSION_NOT_FOUND`/`PRICE_NOT_FOUND`), tie-break determinístico, zero vs missing, histórico de tabela inativa, proveniência completa + exceções aprovadas |
+| 036 | 036_commercial_price_resolver_valid_to_fix | Fix forward-only do predicado temporal do resolver (035): `v_valid_to` (variável não atribuída) → `v.valid_to` (coluna) no `WHERE (v.valid_to IS NULL OR v.valid_to > p_reference_date)`, corrigindo resolução de versões anteriores/sucessoras sem alterar contrato/grants |
 
 ## Geração de Tipos TypeScript
 
