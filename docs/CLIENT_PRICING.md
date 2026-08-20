@@ -1,6 +1,6 @@
 # Precificação por Cliente — PRC-06
 
-**Status:** PRC-06A concluída — modelo e regras de negócio definidos
+**Status:** PRC-06A/PRC-06B concluídas — modelo e fundação PostgreSQL verificados
 **Baseline:** `22dbef9ebab2b30160cd7eda049eb2cfcd300af0` (`COMMERCIAL_PRICING_VERIFIED`)
 **Checkpoint:** `CLIENT_PRICING_MODEL_DEFINED`
 **Implementação:** nenhuma nesta fase; migrations 001–036 permanecem imutáveis
@@ -725,7 +725,59 @@ PRC-06B deverá transformar este modelo em schema e segurança, sem mudar as dec
 - não criar resolver global antes de PRC-07;
 - preservar migrations 001–036 e entregar mudanças somente em migration forward-only futura.
 
-## 24. Decisões relacionadas
+## 24. Implementação PRC-06B
+
+**Checkpoint:** `CLIENT_PRICING_SCHEMA_VERIFIED`
+**Migrations:** `037_client_pricing_schema.sql` e `038_client_pricing_security.sql`
+**Remoto:** 38/38 LOCAL == REMOTE
+
+### 24.1 Schema e integridade (037)
+
+Foram criadas somente as três entidades aprovadas:
+
+- `client_profiles` — extensão de papel de `companies`, status inicial forçado `active`, `status_reason`, atores/timestamps server-derived e delete bloqueado quando há histórico;
+- `client_commercial_table_assignments` — atribuição à identidade estável `commercial_price_tables.id`, lifecycle completo, vigência `[)`, exclusão GiST para `active|scheduled`, imutabilidade não-draft e hard-delete somente draft;
+- `client_price_overrides` — preço explícito `numeric(14,4)`, BRL, zero válido, motivo obrigatório, snapshots de catálogo server-derived, vigência/exclusão temporal e proveniência opcional all-or-none.
+
+Integridade cross-tenant é contínua, não apenas validada no INSERT: FKs compostas vinculam IDs e `organization_id` em empresa/perfil, tabela, catálogo, versão/item de origem e valor fonte. Todas as referências históricas usam `ON DELETE RESTRICT`.
+
+O gate dedicado é:
+
+```text
+COALESCE(
+  current_setting('app.client_pricing_rpc_active', true) = 'true',
+  false
+)
+```
+
+Sem gate, status não-draft e proveniência não nula são bloqueados. Mesmo com gate, o banco valida o grafo de transições, elegibilidade, proveniência e fechamento monotônico de `valid_to`; não há gate-setter público. RLS foi habilitado fail-closed em 037.
+
+### 24.2 Segurança (038)
+
+Foram criadas exatamente seis permissões `pricing.client.*` e mapeadas como definido: admin 6, manager 5 (sem publish), operator 1 e viewer 1. Não existe `pricing.client.override_approve`.
+
+As três tabelas possuem policies RLS de SELECT/INSERT/UPDATE/DELETE com membership e permissão exata. Auditoria usa o contrato atual de seis argumentos de `log_audit`, que deriva o ator de `auth.uid()`. Uma policy restritiva exige `pricing.client.view` para ler payloads de auditoria das entidades PRC-06.
+
+### 24.3 Verificação remota
+
+Fixture dedicada: `tests/remote/sql/client_pricing_test_setup.sql`
+Suite: `tests/remote/client-pricing-integrity-test.mjs`
+
+| Grupo | Casos | Assertions |
+|-------|-------|------------|
+| Perfil e papel empresa | 10/10 | 20/20 |
+| Atribuições e gate | 13/13 | 29/29 |
+| Overrides e snapshots | 16/16 | 27/27 |
+| Proveniência confiável | 8/8 | 20/20 |
+| Lifecycle, delete e audit | 6/6 | 15/15 |
+| RLS e RBAC | 7/7 | 28/28 |
+| **Total** | **60/60** | **139/139** |
+
+Regressões remotas: commercial full-flow 27/27, workflow 85/85, integrity 61/61, pricing engine 50/50, policy 33/33, cost 34/34 e PRC-04 full-flow 49/49.
+
+PRC-06B não criou RPC de workflow, resolver de componente, resolver final, UI nem dimensões de segmento/grupo/canal/default. Esses limites permanecem para PRC-06C/PRC-07.
+
+## 25. Decisões relacionadas
 
 - DEC-008 — intervalos `[valid_from, valid_to)`;
 - DEC-022 — identidade de ator derivada no servidor;

@@ -404,6 +404,63 @@ Registro de exceção comercial auditável (append-only).
 
 **Integridade:** `idx_cpe_unique_item_code` (sem duplicata item+violation); cross-org (`fn_cpe_integrity`); transição de status com gate `app.commercial_price_rpc_active` + permissão `exception_approve` (`fn_cpe_status_transition`); **append-only** (`fn_cpe_delete_guard`; sem policy de DELETE → RLS bloqueia); **parent-editable guard forward `fn_cpe_parent_editable`** (PRC-05C — novas exceções bloqueadas para versões em `scheduled|active|superseded|cancelled`).
 
+## Tabelas (PRC-06B — Precificação por Cliente)
+
+### client_profiles
+
+Papel cliente de uma empresa existente; não duplica identidade corporativa.
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| company_id | uuid PK/FK → companies | `ON DELETE RESTRICT`; pode coexistir com supplier_profiles |
+| organization_id | uuid FK → organizations | tenant; FK composta com company |
+| status | text | `active` \| `inactive` \| `blocked`; INSERT força `active` |
+| commercial_notes / status_reason | text | status_reason muda somente com status sob gate |
+| created_by / created_at | uuid / timestamptz | server-derived |
+| updated_by / updated_at | uuid / timestamptz | server-derived |
+
+**Integridade:** empresa ativa para criação/reativação; organização da empresa obrigatoriamente igual; status direto bloqueado pelo gate NULL-safe; perfil com atribuição/override não pode ser excluído.
+
+### client_commercial_table_assignments
+
+Atribuição temporal do cliente à identidade estável de tabela comercial.
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | default gen_random_uuid() |
+| organization_id | uuid FK | tenant |
+| client_company_id | uuid FK → client_profiles | `ON DELETE RESTRICT` |
+| commercial_price_table_id | uuid FK → commercial_price_tables | tabela estável, não versão |
+| status | text | draft \| under_review \| approved \| scheduled \| active \| superseded \| cancelled |
+| valid_from / valid_to | date | `[valid_from, valid_to)` |
+| contract_reference / notes | text | opcionais |
+| atores/timestamps | uuid / timestamptz | criação, atualização e workflow server-derived |
+
+**Integridade:** INSERT somente draft; empresa/perfil/tabela ativos e same-org; FK composta contra drift de tenant; EXCLUDE GiST `active|scheduled` por organização+cliente (adjacência permitida); grafo de status sob `app.client_pricing_rpc_active`; fechamento `valid_to` somente monotônico; não-draft imutável; hard-delete somente draft.
+
+### client_price_overrides
+
+Preço explícito negociado por cliente+item, independente da tabela base.
+
+| Coluna | Tipo | Observações |
+|--------|------|-------------|
+| id | uuid PK | default gen_random_uuid() |
+| organization_id / client_company_id / catalog_item_id | uuid FK | relações same-org e `ON DELETE RESTRICT` |
+| price_amount | numeric(14,4) | >= 0; zero é valor válido |
+| currency | char(3) | somente BRL |
+| reason | text | obrigatório, não vazio/whitespace |
+| status | text | mesmo lifecycle das atribuições |
+| valid_from / valid_to | date | `[valid_from, valid_to)` |
+| item_*_snapshot | text | código/nome/tipo derivados do catálogo |
+| source_* | date/uuid/numeric | baseline opcional all-or-none |
+| atores/timestamps | uuid / timestamptz | server-derived |
+
+**Integridade:** INSERT somente draft; item/cliente ativos e same-org; EXCLUDE GiST `active|scheduled` por organização+cliente+item; snapshots não confiados ao caller; proveniência não nula exige gate e comprova atribuição aplicável, tabela/versão/item/data/catálogo/valor exatos por triggers + FKs compostas; não-draft e histórico imutáveis; hard-delete somente draft.
+
+### Segurança PRC-06B
+
+RLS nas três tabelas: `view` para SELECT, `create` para INSERT e `edit` para UPDATE/DELETE, sempre com membership. Permissões de review/approve/publish serão verificadas dentro das RPCs futuras PRC-06C. Auditoria registra eventos `pricing.client.profile.*`, `pricing.client.assignment.*` e `pricing.client.override.*` com ator derivado.
+
 ## Migrations
 
 | # | Arquivo | Descrição |
@@ -442,6 +499,8 @@ Registro de exceção comercial auditável (append-only).
 | 034 | 034_commercial_price_workflow | Forward integrity hardening (parent-active, engine provenance guard, exception parent-state); RPCs de workflow: tabela (create/update/status), versão (concurrency-safe), itens (manual/engine/clone/bulk), exceções (request/decide), workflow (submit/return/approve/cancel), validador de publicação, publish + sync cutover |
 | 035 | 035_commercial_price_resolver | `fn_resolve_commercial_table_price` — RPC de resolução table-specific com status machine-readable (`RESOLVED`/`TABLE_NOT_FOUND`/`VERSION_NOT_FOUND`/`PRICE_NOT_FOUND`), tie-break determinístico, zero vs missing, histórico de tabela inativa, proveniência completa + exceções aprovadas |
 | 036 | 036_commercial_price_resolver_valid_to_fix | Fix forward-only do predicado temporal do resolver (035): `v_valid_to` (variável não atribuída) → `v.valid_to` (coluna) no `WHERE (v.valid_to IS NULL OR v.valid_to > p_reference_date)`, corrigindo resolução de versões anteriores/sucessoras sem alterar contrato/grants |
+| 037 | 037_client_pricing_schema | `client_profiles`, atribuições e overrides; FKs compostas same-org/RESTRICT, actors/snapshots server-derived, gate NULL-safe, lifecycle/imutabilidade/delete guards, proveniência confiável, GiST temporal, RLS fail-closed |
+| 038 | 038_client_pricing_security | Seis permissões `pricing.client.*`, mapeamentos 6/5/1/1, 12 policies RLS, policy restritiva de audit payload, audit triggers e hardening de privilégios |
 
 ## Geração de Tipos TypeScript
 
