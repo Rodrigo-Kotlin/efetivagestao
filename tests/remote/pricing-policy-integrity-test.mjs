@@ -12,15 +12,15 @@
  *
  * Credentials come from environment variables (never hardcoded):
  *   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY,
- *   PRC03A_TEST_EMAIL, PRC03A_TEST_PASSWORD
+ *   E2E_TEST_EMAIL, E2E_TEST_PASSWORD
  */
 
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-const TEST_EMAIL = process.env.PRC03A_TEST_EMAIL;
-const TEST_PASSWORD = process.env.PRC03A_TEST_PASSWORD;
+const TEST_EMAIL = process.env.E2E_TEST_EMAIL || process.env.PRC03A_TEST_EMAIL;
+const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD || process.env.PRC03A_TEST_PASSWORD;
 
 if (!SUPABASE_URL) {
   console.error("Missing required env var: VITE_SUPABASE_URL");
@@ -32,7 +32,7 @@ if (!SUPABASE_ANON_KEY) {
 }
 if (!TEST_EMAIL || !TEST_PASSWORD) {
   console.error(
-    "Missing required env vars: PRC03A_TEST_EMAIL and PRC03A_TEST_PASSWORD (use rotated credentials, never commit them)"
+    "Missing E2E_TEST_EMAIL/E2E_TEST_PASSWORD (legacy PRC03A fallback is supported)"
   );
   process.exit(1);
 }

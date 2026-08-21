@@ -890,7 +890,7 @@ Typecheck: PASS. Lint: apenas warnings pre-existentes no módulo comercial. Buil
 | Item | Resultado |
 |------|-----------|
 | Branch | main |
-| HEAD | `5bb84c8` |
+| Baseline PRC-06E-R2 | `c0c10d7ef530fbb40ff35d33e6261bcd34ccfdd6` |
 | HEAD == origin/main | SIM |
 | Worktree | CLEAN |
 | Migrations | 40/40 LOCAL == REMOTE |
@@ -953,6 +953,7 @@ Observações de baixa severidade: `is_member_of`/`has_permission` (preexistente
 | typecheck | PASS |
 | lint | PASS (apenas warnings pre-existentes) |
 | test:run | 300/300 PASS |
+| Cost PostgREST relationship | 3/3 PASS |
 | build | PASS |
 | PWA verify | PASS |
 
@@ -960,18 +961,24 @@ Observações de baixa severidade: `is_member_of`/`has_permission` (preexistente
 
 | Suite | Resultado |
 |-------|-----------|
-| client-pricing-full-flow-test.mjs | 33/33 PASS (CPF-F01..F33) |
-| client-pricing-integrity-test.mjs | 139/139 assertions PASS |
-| client-pricing-workflow-test.mjs | 47/68 cases PASS (fixture contamination from prior runs; baseline 68/68 at commit015c3f2) |
+| client-pricing-full-flow-test.mjs — run 1 | 33/33 PASS (CPF-F01..F33) |
+| client-pricing-full-flow-test.mjs — run 2 | 33/33 PASS (CPF-F01..F33) |
+| client-pricing-workflow-test.mjs | 68/68 cases; 202/202 assertions PASS |
+| client-pricing-integrity-test.mjs | 60/60 cases; 139/139 assertions PASS |
 | commercial-pricing-full-flow-test.mjs | 27/27 PASS |
 | commercial-price-workflow-test.mjs | 85/85 PASS |
 | commercial-price-integrity-test.mjs | 61/61 PASS |
 | pricing-engine-test.mjs | 50/50 PASS |
-| pricing-policy-integrity-test.mjs | fixture contamination (unique constraint violations from accumulated test data) |
-| cost-integrity-test.mjs | fixture contamination (same cause) |
+| pricing-policy-integrity-test.mjs | 33/33 PASS |
+| cost-integrity-test.mjs — run 1 | 34/34 PASS |
+| cost-integrity-test.mjs — run 2 | 34/34 PASS |
 | pricing-full-flow-test.mjs | 49/49 PASS |
 
-7/10 suites FULL PASS. 3 suites with fixture contamination from accumulated E2E test data in the shared Supabase instance — not caused by PRC-06 code changes. Verified via VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY against remote database.
+**Evidência:** EXECUTED AGAINST REMOTE SUPABASE.
+
+As 10/10 suítes remotas obrigatórias passaram integralmente. Cada suíte mutável foi precedida por seu setup/reset autoritativo e tenant-scoped. O full-flow passou duas vezes com reset entre execuções; o workflow recebeu novo reset antes de rodar. O setup de custos também foi provado idempotente em duas execuções independentes. Contaminação de fixtures: nenhuma.
+
+Auditoria de credenciais rastreadas: PASS. Referências legadas a contas reais foram removidas; credenciais E2E permanecem somente em variáveis ignoradas. A compatibilidade temporária com aliases `PRC03A_*` não contém valores literais.
 
 ### 27.8 PRC-06 Architecture Statement
 

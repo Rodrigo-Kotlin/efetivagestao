@@ -80,3 +80,13 @@ Controla:
 | CLIENT_PRICING_CORE_VERIFIED | PRC-06C | Atingido |
 | CLIENT_PRICING_UI_VERIFIED | PRC-06D | Atingido |
 | CLIENT_PRICING_VERIFIED | PRC-06E | Atingido |
+
+## Gate de Continuidade
+
+| Item | Status |
+|------|--------|
+| PRC-06 | COMPLETED |
+| PRC-06E | COMPLETED — 10/10 suítes executadas contra o Supabase remoto |
+| CLIENT_PRICING_VERIFIED | ATINGIDO |
+| PRC-07 | NOT STARTED |
+| READY FOR PRC-07 | YES |

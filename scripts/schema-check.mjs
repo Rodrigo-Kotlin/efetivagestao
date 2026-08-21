@@ -3,7 +3,7 @@ const c = new pg.Client({
   host: "aws-0-sa-east-1.pooler.supabase.com",
   port: 6543,
   user: "postgres.scyxgyewdokmsuehgwql",
-  password: process.env.SUPABASE_DB_PASSWORD,
+  password: process.env.SUPABASE_DB_PASSWORD || process.env.DATABASE_PASSWORD,
   database: "postgres",
   ssl: { rejectUnauthorized: false },
 });

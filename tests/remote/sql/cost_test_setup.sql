@@ -1,6 +1,8 @@
 -- PRC-03A: Remote Test Setup
 -- Creates fixtures using the known auth user UUID
 
+BEGIN;
+
 DO $$
 DECLARE
   v_user_id uuid := 'd7df8bb1-7da4-4926-8bd2-2fe6ad8ac060';
@@ -21,6 +23,7 @@ BEGIN
   ALTER TABLE supplier_cost_tables DISABLE TRIGGER USER;
   ALTER TABLE supplier_profiles DISABLE TRIGGER USER;
   ALTER TABLE supplier_catalog_items DISABLE TRIGGER USER;
+  ALTER TABLE audit_logs DISABLE TRIGGER USER;
   DELETE FROM supplier_cost_items WHERE organization_id = v_org_id;
   DELETE FROM supplier_cost_table_versions WHERE organization_id = v_org_id;
   DELETE FROM supplier_cost_tables WHERE organization_id = v_org_id;
@@ -33,9 +36,7 @@ BEGIN
   );
   DELETE FROM organization_memberships WHERE organization_id = v_org_id;
   DELETE FROM companies WHERE id = v_company_id;
-  -- deleting the org SET NULLs audit_logs.organization_id (FK action), which the
-  -- append-only audit trigger forbids — disable it just for this cleanup.
-  ALTER TABLE audit_logs DISABLE TRIGGER USER;
+  DELETE FROM audit_logs WHERE organization_id = v_org_id;
   DELETE FROM organizations WHERE id = v_org_id;
   ALTER TABLE audit_logs ENABLE TRIGGER USER;
   ALTER TABLE supplier_catalog_items ENABLE TRIGGER USER;
@@ -46,7 +47,7 @@ BEGIN
 
   -- Organization (no RLS INSERT policy — postgres can insert)
   INSERT INTO organizations (id, name, slug, status)
-  VALUES (v_org_id, 'PRC03A Test Org', 'prc03a-' || floor(random()*100000)::int, 'active');
+  VALUES (v_org_id, 'PRC03A Test Org', 'prc03a-cost-integrity', 'active');
   RAISE NOTICE 'Org created: %', v_org_id;
 
   -- Membership + admin role
@@ -59,9 +60,8 @@ BEGIN
   VALUES (v_mem_id, v_role_id);
   RAISE NOTICE 'Membership + admin role assigned';
 
-  -- E2E user (rodrockr@gmail.com / 1933891b) is the active test actor and is
-  -- granted admin in the same org so the remote harness can run with those
-  -- credentials (PRC03A legacy user prc03atest@proton.me retained for history).
+  -- Dedicated rotated E2E user configured through environment variables.
+  -- Grant it admin in the isolated test organization.
   INSERT INTO organization_memberships (id, organization_id, user_id, status)
   VALUES (gen_random_uuid(), v_org_id, '1933891b-e0b9-42fc-afaa-641966824742', 'active')
   RETURNING id INTO v_mem_id;
@@ -106,3 +106,5 @@ BEGIN
   RAISE NOTICE '=== SETUP IDS === org=% company=% catalog_item=% mapping=% cost_table=% user=%',
     v_org_id, v_company_id, v_ci_id, v_map_id, v_cost_table_id, v_user_id;
 END $$;
+
+COMMIT;

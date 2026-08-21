@@ -1,6 +1,5 @@
-﻿#!/usr/bin/env node
-/**
- * PRC-06E-R1: Client Pricing Full-Flow Test (CPF-F01..F33)
+﻿/**
+ * PRC-06E-R2: Client Pricing Full-Flow Test (CPF-F01..F33)
  *
  * Exercises one complete PRC-06 lifecycle end-to-end against remote Supabase:
  *   company identity -> client profile -> assignment workflow -> override workflow
@@ -65,6 +64,9 @@ async function getRow(table, filter) {
 
 const F = {
   mainOrg: "66666666-6666-6666-6666-666666666661",
+  managerOrg: "66666666-6666-6666-6666-666666666663",
+  operatorOrg: "66666666-6666-6666-6666-666666666664",
+  testUser: "1933891b-e0b9-42fc-afaa-641966824742",
   itemA: "66666666-1000-0000-0000-000000000001",
   workflowItem: "66666666-1000-0000-0000-000000000011",
   workflowZeroItem: "66666666-1000-0000-0000-000000000012",
@@ -77,7 +79,13 @@ const F = {
   overrideChainClient: "66666666-2000-0000-0000-00000000002a",
   determinismClient: "66666666-2000-0000-0000-000000000030",
   zeroClient: "66666666-2000-0000-0000-000000000031",
+  managerClient: "66666666-2000-0000-0000-000000000032",
+  operatorClient: "66666666-2000-0000-0000-000000000007",
   mainTable: "66666666-3000-0000-0000-000000000001",
+  managerTable: "66666666-3000-0000-0000-000000000005",
+  managerItem: "66666666-1000-0000-0000-000000000005",
+  operatorItem: "66666666-1000-0000-0000-000000000006",
+  operatorOverride: "66666666-5000-0000-0000-000000000002",
   activeAssignment: "66666666-4000-0000-0000-000000000001",
   chainAssignmentHistory: "66666666-4000-0000-0000-000000000011",
   chainAssignmentCurrent: "66666666-4000-0000-0000-000000000012",
@@ -96,12 +104,18 @@ async function authenticate() {
   return data.user.id;
 }
 
+function addDays(referenceDate, days) {
+  const date = new Date(`${referenceDate}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 async function run() {
   console.log("\n=== CPF-F01..F33 CLIENT PRICING FULL-FLOW ===\n");
   const today = new Date().toISOString().slice(0, 10);
   console.log(`  (today: ${today})\n`);
 
-  await authenticate();
+  const actorId = await authenticate();
   console.log("  Authenticated.\n");
 
   // ====================================================================
@@ -226,9 +240,7 @@ async function run() {
   console.log("\n[C] ASSIGNMENT END-TO-END");
 
   {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 40);
-    const futureFrom = futureDate.toISOString().slice(0, 10);
+    const futureFrom = addDays(today, 40);
     const draftId = randomUUID();
     await supabase.from("client_commercial_table_assignments").insert({
       id: draftId,
@@ -321,10 +333,8 @@ async function run() {
 
   {
     const oid = randomUUID();
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 40);
-    const futureFrom = futureDate.toISOString().slice(0, 10);
-    await supabase.from("client_price_overrides").insert({
+    const futureFrom = addDays(today, 40);
+    const inserted = await supabase.from("client_price_overrides").insert({
       id: oid,
       organization_id: F.mainOrg,
       client_company_id: F.determinismClient,
@@ -344,7 +354,7 @@ async function run() {
     const { data: o } = await supabase.from("client_price_overrides")
       .select("status, price_amount").eq("id", oid).maybeSingle();
     const publishOk = !r3.error && !(r3.data?.success === false);
-    log("CPF-F13", !r1.error && !r2.error && publishOk && (o?.status === "active" || o?.status === "scheduled"),
+    log("CPF-F13", !inserted.error && !r1.error && !r2.error && publishOk && (o?.status === "active" || o?.status === "scheduled"),
       `draft->submit->approve->publish status=${o?.status} price=${o?.price_amount}`);
   }
 
@@ -431,9 +441,7 @@ async function run() {
   }
 
   {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 20);
-    const fd = futureDate.toISOString().slice(0, 10);
+    const fd = addDays(today, 20);
     const r = await rpc("fn_resolve_client_table_assignment", {
       p_organization_id: F.mainOrg,
       p_client_company_id: F.assignmentChainClient,
@@ -448,7 +456,7 @@ async function run() {
     const r = await rpc("fn_resolve_client_table_assignment", {
       p_organization_id: F.mainOrg,
       p_client_company_id: F.assignmentChainClient,
-      p_reference_date: "2026-08-05",
+      p_reference_date: addDays(today, -15),
     });
     const d = Array.isArray(r.data) ? r.data[0] : r.data;
     log("CPF-F21", !r.error && d?.status === "RESOLVED" && d?.assignment?.id === F.chainAssignmentHistory,
@@ -468,9 +476,7 @@ async function run() {
   }
 
   {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 20);
-    const fd = futureDate.toISOString().slice(0, 10);
+    const fd = addDays(today, 20);
     const r = await rpc("fn_resolve_client_price_override", {
       p_organization_id: F.mainOrg,
       p_client_company_id: F.overrideChainClient,
@@ -491,10 +497,12 @@ async function run() {
     const { data: o } = await supabase.from("client_price_overrides")
       .select("source_reference_date, source_commercial_price_table_id, source_commercial_price_table_version_id, source_commercial_price_item_id, source_table_price_amount, status")
       .eq("id", F.provenanceOverride).maybeSingle();
-    log("CPF-F24", !!o?.source_commercial_price_table_id
+    log("CPF-F24", !!o?.source_reference_date
+      && !!o?.source_commercial_price_table_id
       && !!o?.source_commercial_price_table_version_id
-      && !!o?.source_commercial_price_item_id,
-      `provenance fields present: table=${!!o?.source_commercial_price_table_id} version=${!!o?.source_commercial_price_table_version_id} item=${!!o?.source_commercial_price_item_id} status=${o?.status}`);
+      && !!o?.source_commercial_price_item_id
+      && Number(o?.source_table_price_amount) === 100,
+      `all five provenance fields present; status=${o?.status}`);
   }
 
   {
@@ -506,7 +514,7 @@ async function run() {
 
   {
     const oid = randomUUID();
-    await supabase.from("client_price_overrides").insert({
+    const inserted = await supabase.from("client_price_overrides").insert({
       id: oid,
       organization_id: F.mainOrg,
       client_company_id: F.zeroClient,
@@ -522,9 +530,10 @@ async function run() {
       p_override_id: oid,
       p_reference_date: today,
     });
-    const rejected = r.error || r.data?.success === false;
-    log("CPF-F26", rejected,
-      `no-assignment capture rejected: ${rejected} ${r.data?.error?.message || ""}`);
+    const rejected = r.error?.message.includes("No client table assignment resolves")
+      && r.error.message.includes("ASSIGNMENT_NOT_FOUND");
+    log("CPF-F26", !inserted.error && rejected,
+      `draft inserted=${!inserted.error}; no-assignment rejected=${Boolean(rejected)} ${r.error?.message || ""}`);
   }
 
   {
@@ -548,9 +557,11 @@ async function run() {
       .eq("id", oid);
     const { data: after } = await supabase.from("client_price_overrides")
       .select("source_reference_date").eq("id", oid).maybeSingle();
-    const dmlAllowed = !dmlErr && after?.source_reference_date === today;
-    log("CPF-F27", true,
-      `direct DML on source_reference_date: ${dmlAllowed ? "allowed (RPC-level gate)" : "blocked by RLS"}`);
+    const blocked = before?.source_reference_date === null
+      && Boolean(dmlErr)
+      && after?.source_reference_date === null;
+    log("CPF-F27", blocked,
+      `direct provenance DML blocked=${blocked}`);
   }
   // ====================================================================
   // GROUP G: SYNC IDEMPOTENCY
@@ -560,15 +571,15 @@ async function run() {
   {
     const r1 = await rpc("fn_sync_client_assignment_status", { p_reference_date: today });
     const r2 = await rpc("fn_sync_client_assignment_status", { p_reference_date: today });
-    log("CPF-F28", !r1.error && !r2.error,
-      `assignment sync run1=${!r1.error} run2=${!r2.error}`);
+    log("CPF-F28", !r1.error && !r2.error && Number(r1.data) >= 1 && Number(r2.data) === 0,
+      `assignment sync changed=${r1.data}; repeat=${r2.data}`);
   }
 
   {
     const r1 = await rpc("fn_sync_client_price_override_status", { p_reference_date: today });
     const r2 = await rpc("fn_sync_client_price_override_status", { p_reference_date: today });
-    log("CPF-F29", !r1.error && !r2.error,
-      `override sync run1=${!r1.error} run2=${!r2.error}`);
+    log("CPF-F29", !r1.error && !r2.error && Number(r1.data) >= 1 && Number(r2.data) === 0,
+      `override sync changed=${r1.data}; repeat=${r2.data}`);
   }
 
   // ====================================================================
@@ -577,32 +588,69 @@ async function run() {
   console.log("\n[H] RBAC - BACKEND");
 
   {
-    log("CPF-F30", true, "admin identity confirmed for previous RPC calls");
+    const permission = await rpc("has_permission", {
+      permission_code: "pricing.client.publish",
+      org_id: F.mainOrg,
+    });
+    log("CPF-F30", actorId === F.testUser && !permission.error && permission.data === true,
+      `canonical actor=${actorId === F.testUser}; admin publish=${permission.data}`);
   }
 
   {
-    const r = await rpc("fn_publish_client_assignment", {
-      p_assignment_id: F.activeAssignment,
+    const id = randomUUID();
+    const created = await supabase.from("client_commercial_table_assignments").insert({
+      id,
+      organization_id: F.managerOrg,
+      client_company_id: F.managerClient,
+      commercial_price_table_id: F.managerTable,
+      status: "draft",
+      valid_from: today,
     });
-    log("CPF-F31", !!r.error,
-      `publish active assignment blocked: ${!!r.error}`);
+    const submitted = await rpc("fn_submit_client_assignment", { p_assignment_id: id });
+    const approved = await rpc("fn_approve_client_assignment", { p_assignment_id: id });
+    const published = await rpc("fn_publish_client_assignment", { p_assignment_id: id });
+    const { data: row } = await supabase.from("client_commercial_table_assignments")
+      .select("status").eq("id", id).maybeSingle();
+    log("CPF-F31", !created.error && !submitted.error && !approved.error
+      && published.error?.message.includes("pricing.client.publish")
+      && row?.status === "approved",
+      `manager publish denied=${published.error?.message || "no"}; status=${row?.status}`);
   }
 
   {
-    const r = await rpc("fn_publish_client_price_override", {
-      p_override_id: F.provenanceOverride,
+    const id = randomUUID();
+    const created = await supabase.from("client_price_overrides").insert({
+      id,
+      organization_id: F.managerOrg,
+      client_company_id: F.managerClient,
+      catalog_item_id: F.managerItem,
+      price_amount: 40,
+      currency: "BRL",
+      reason: "manager publish denial",
+      status: "draft",
+      valid_from: today,
+      item_code_snapshot: "E2E",
+      item_name_snapshot: "E2E",
+      item_type_snapshot: "other_service",
     });
-    log("CPF-F32", !!r.error,
-      `publish active override blocked: ${!!r.error}`);
+    const submitted = await rpc("fn_submit_client_price_override", { p_override_id: id });
+    const approved = await rpc("fn_approve_client_price_override", { p_override_id: id });
+    const published = await rpc("fn_publish_client_price_override", { p_override_id: id });
+    const { data: row } = await supabase.from("client_price_overrides")
+      .select("status").eq("id", id).maybeSingle();
+    log("CPF-F32", !created.error && !submitted.error && !approved.error
+      && published.error?.message.includes("pricing.client.publish")
+      && row?.status === "approved",
+      `manager override publish denied=${published.error?.message || "no"}; status=${row?.status}`);
   }
 
   {
     const r = await rpc("fn_capture_client_override_table_provenance", {
-      p_override_id: F.provenanceOverride,
+      p_override_id: F.operatorOverride,
       p_reference_date: today,
     });
-    log("CPF-F33", !!r.error,
-      `capture provenance on active override blocked: ${!!r.error}`);
+    log("CPF-F33", r.error?.message.includes("pricing.client.edit"),
+      `operator provenance capture denied=${r.error?.message || "no"}`);
   }
 }
 
