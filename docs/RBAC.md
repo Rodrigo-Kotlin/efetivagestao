@@ -145,6 +145,19 @@ Mapeamentos remotos verificados: **admin = 6**, **manager = 5** (sem publish), *
 
 Exibir razão social/nome fantasia exige também `core.company.view`; `pricing.client.view` sozinho autoriza apenas a projeção mínima do componente. Capturar baseline exige `pricing.client.edit`, `pricing.client.view` e `pricing.commercial.view`. Toda transição é RPC-only, com gate de banco NULL-safe; nenhum mapeamento autoriza UPDATE direto de status.
 
+## Composição de Permissões — PRC-07
+
+Executar o resolver final exige cumulativamente, na mesma organização:
+
+```text
+pricing.client.view
+AND pricing.commercial.view
+```
+
+PRC-07B deverá revalidar membership e ambas as permissões dentro da RPC `SECURITY DEFINER`. PRC-07C poderá espelhar o mesmo AND apenas para UX; ocultar ação na UI não substitui autorização backend.
+
+O contrato compõe permissões existentes: nenhuma permission row ou role mapping é criada em PRC-07A. Custom roles precisam possuir ambas. Roles padrão já possuem as capacidades de visualização conforme os mapeamentos PRC-05/06 atuais. `pricing.calculate` não é exigida porque resolução final seleciona snapshots comerciais publicados e não calcula/simula preço. `core.company.view` continua necessário somente para enriquecimento com nomes corporativos, ausente do payload mínimo.
+
 ### Permissões Futuras (NÃO implementadas)
 
 Permissões de outros domínios (CRM, Financeiro, SST, etc.) serão adicionadas quando cada módulo for implementado.

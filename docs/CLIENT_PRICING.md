@@ -207,7 +207,7 @@ Se uma tabela anteriormente atribuída ficar `inactive`:
 - a atribuição publicada não é reescrita;
 - preços publicados não são apagados;
 - resolução histórica permanece possível;
-- PRC-07 definirá eventual bloqueio adicional para transações atuais.
+- eventual bloqueio de transações atuais pertence a domínio transacional futuro; PRC-07 v1 apenas resolve e devolve o status do cliente como contexto.
 
 ## 7. Temporalidade e lifecycle da atribuição
 
@@ -991,6 +991,8 @@ PRC-06 NÃO determina:
 - O preço comercial final do cliente
 
 PRC-07 será responsável por compor as fontes e determinar a precedência.
+
+O contrato normativo dessa composição está em `docs/FINAL_PRICE_RESOLUTION.md`: v1 usa `CLIENT_OVERRIDE > ASSIGNED_COMMERCIAL_TABLE`, zero explícito vence e somente `OVERRIDE_NOT_FOUND` permite fallback.
 
 ## 28. Decisões relacionadas
 

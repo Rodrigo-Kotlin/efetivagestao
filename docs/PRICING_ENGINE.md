@@ -18,7 +18,7 @@ O PRC-04 responde:
 
 > "Dado um custo válido e uma política de preço, qual deve ser o preço comercial calculado?"
 
-O PRC-04 **não** publica tabelas de preço comercial para clientes. Publicação, vigência de venda, versionamento de tabela comercial, atribuição a clientes e distribuição final pertencem ao PRC-05.
+O PRC-04 **não** publica tabelas de preço comercial para clientes. Publicação, vigência de venda e versionamento de tabela comercial pertencem ao PRC-05; atribuição e overrides de cliente pertencem ao PRC-06; composição final pertence ao PRC-07.
 
 **`CALCULATED PRICE != PUBLISHED COMMERCIAL PRICE`** — esta separação é explícita e deve ser preservada em banco, RPC, frontend, rótulos, testes e documentação.
 
@@ -635,13 +635,15 @@ margin  = calculável se price > 0 (divisão pelo preço)
 
 | Aspecto | PRC-04 | PRC-05 |
 |---------|--------|--------|
-| Pergunta | "Qual o preço calculado dado um custo e uma política?" | "Qual o preço comercial publicado para o cliente?" |
+| Pergunta | "Qual o preço calculado dado um custo e uma política?" | "Qual o preço comercial publicado na tabela?" |
 | Produto | Resultado de cálculo simulado (proveniente, determinístico) | Tabela comercial com vigência de venda |
-| Persistência | Não persiste preços comerciais | Persiste tabelas, versões, atribuição a clientes |
-| Publicação | Não publica | Publica e distribui |
+| Persistência | Não persiste preços comerciais | Persiste tabelas, versões e itens; não atribui clientes |
+| Publicação | Não publica | Publica tabelas comerciais reutilizáveis |
 | Responsável pelas regras | Motor de precificação (RPC autoritativa) | Gestão de tabelas comerciais |
 
 **`CALCULATED PRICE != PUBLISHED COMMERCIAL PRICE`** — preservada explicitamente em todos os artefatos futuros.
+
+Atribuição e overrides são responsabilidade do PRC-06. A composição autoritativa dessas fontes é responsabilidade do PRC-07, conforme `docs/FINAL_PRICE_RESOLUTION.md`.
 
 ## 22. Decisões para PRC-04B
 

@@ -41,7 +41,7 @@ As três fronteiras devem permanecer explícitas em banco, RPC, frontend, rótul
 ### C. Resolução para Cliente (PRC-06 + PRC-07)
 
 - PRC-06 pergunta **"Qual tabela/preço comercial se aplica a este cliente?"** — atribui tabelas e overrides explícitos a clientes.
-- PRC-07 pergunta **"Dado todas as regras aplicáveis, qual é o preço comercial final?"** — resolve precedência global (override de cliente > tabela atribuída > segmento/grupo/canal > tabela padrão).
+- PRC-07 pergunta **"Dadas as fontes comerciais implementadas, qual é o preço comercial final?"** — em v1 resolve `CLIENT_OVERRIDE > ASSIGNED_COMMERCIAL_TABLE`. Segmento/grupo/canal/default permanecem expansão futura sem placeholders.
 
 | Pergunta | Fase |
 |----------|------|
@@ -75,10 +75,10 @@ As três fronteiras devem permanecer explícitas em banco, RPC, frontend, rótul
 - Frontend (PRC-05D)
 - Overrides específicos de cliente (PRC-06)
 - Atribuição de tabela a cliente (PRC-06)
-- Segmentos, grupos, canais (PRC-06/07)
+- Segmentos, grupos, canais (fase futura, fora de PRC-07 v1)
 - Contratos, transações de venda, cotações, pedidos, faturamento (fora do domínio)
 - Precedência global de resolução entre clientes (PRC-07)
-- Workflow de aprovação de desconto (PRC-07)
+- Workflow transacional de aprovação de desconto (fase futura, fora de PRC-07 v1)
 
 ## 4. Identidade Estável — `commercial_price_tables`
 
@@ -609,16 +609,14 @@ Leituras puras **não** são auditadas.
 ## 47. Resolução Final de Preço é PRC-07
 
 - PRC-05 pode resolver "preço do item X dentro da tabela comercial Y na data D" (seção 48).
-- **Não** implementa precedência global:
+- **Não** implementa a precedência final v1:
 
 ```
 override explícito de cliente
 > tabela atribuída ao cliente
-> segmento/grupo/canal
-> tabela comercial padrão
 ```
 
-Isso pertence ao PRC-07.
+Essa composição pertence ao PRC-07. DEC-050 antecipava uma hierarquia futura mais ampla; DEC-062 limita explicitamente v1 às duas fontes que possuem modelo verificado. Segmento, grupo, canal e tabela padrão exigem decisão/modelo futuro e não possuem placeholders.
 
 ## 48. Resolver de Tabela (conceitual)
 
@@ -665,7 +663,7 @@ linha explícita com price_amount = 0 → RESOLVED com preço zero
 ## 50. Default de Tabela / Atribuição
 
 - **Não** criar prematuramente precedência de tabela padrão da organização.
-- Avaliação: o flag `is_default` pertence ao PRC-07 (seleção de tabela padrão e precedência), **não** ao PRC-05.
+- Avaliação futura: eventual flag `is_default` exige decisão/modelo próprio posterior; não pertence ao PRC-05 nem ao PRC-07 v1.
 - Evitar acoplar PRC-05 ao design futuro do resolver global.
 
 ## 51. Canal / Segmento / Grupo
@@ -905,6 +903,8 @@ Zero vs missing (DEC-047):
 Estrutura do resultado (JSONB): `status`, `organization_id`, `reference_date`, `commercial_price_table_id`, `catalog_item_id`, `table{id,code,name,status}`, `version{id,version_number,status,valid_from,valid_to}`, `item{commercial_price_item_id,catalog_item_id,snapshots}`, `price_amount`, `currency`, `origin_type`, `lineage{source_commercial_price_item_id}`, `provenance{source_*,pricing_snapshot}`, `approved_exceptions[]`.
 
 Permissão exigida: `pricing.commercial.view`. Escopo: **apenas "item dentro de tabela em data"** (DEC-050). Override de cliente / precedência global são PRC-06/07.
+
+PRC-07A mantém esse resolver como fonte table-specific canônica. O contrato de composição final, sem pricing-engine fallback, está em `docs/FINAL_PRICE_RESOLUTION.md`.
 
 ### 62.6 Verificação Remota (CPW-H01..CPW-H85)
 

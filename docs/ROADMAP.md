@@ -30,7 +30,11 @@
 | PRC-06C | Client Assignment/Override Workflow & Component Resolvers | **COMPLETED** |
 | PRC-06D | Client Pricing UI | **COMPLETED** |
 | PRC-06E | Client Pricing End-to-End Hardening | **COMPLETED** |
-| PRC-07 | Motor de Resolução | NOT STARTED |
+| PRC-07 | Motor de Resolução | **IN PROGRESS** |
+| PRC-07A | Final Price Resolution Model & Business Rules | **COMPLETED** |
+| PRC-07B | Final Price Resolver Backend & Security | NOT STARTED |
+| PRC-07C | Final Price Resolution UI | NOT STARTED |
+| PRC-07D | End-to-End Hardening & Final Verification | NOT STARTED |
 | PRC-08 | Importação | NOT STARTED |
 | PRC-09 | Conciliação | NOT STARTED |
 | PRC-10 | Inteligência de Mercado | NOT STARTED |
@@ -80,6 +84,7 @@ Controla:
 | CLIENT_PRICING_CORE_VERIFIED | PRC-06C | Atingido |
 | CLIENT_PRICING_UI_VERIFIED | PRC-06D | Atingido |
 | CLIENT_PRICING_VERIFIED | PRC-06E | Atingido |
+| FINAL_PRICE_RESOLUTION_MODEL_DEFINED | PRC-07A | Atingido |
 
 ## Gate de Continuidade
 
@@ -88,5 +93,8 @@ Controla:
 | PRC-06 | COMPLETED |
 | PRC-06E | COMPLETED — 10/10 suítes executadas contra o Supabase remoto |
 | CLIENT_PRICING_VERIFIED | ATINGIDO |
-| PRC-07 | NOT STARTED |
-| READY FOR PRC-07 | YES |
+| PRC-07 | IN PROGRESS |
+| PRC-07A | COMPLETED |
+| FINAL_PRICE_RESOLUTION_MODEL_DEFINED | ATINGIDO |
+| PRC-07B | NOT STARTED |
+| READY FOR PRC-07B | YES |

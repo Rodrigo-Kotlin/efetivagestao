@@ -475,3 +475,52 @@
 **Decisão:** PRC-06C implementará dois resolvers isolados: `fn_resolve_client_table_assignment(org, client, date)` com `RESOLVED|CLIENT_NOT_FOUND|ASSIGNMENT_NOT_FOUND`, e `fn_resolve_client_price_override(org, client, item, date)` com `RESOLVED|CLIENT_NOT_FOUND|ITEM_NOT_FOUND|OVERRIDE_NOT_FOUND`. Ambos resolvem `active|scheduled|superseded` por `[valid_from, valid_to)` com tie-break determinístico. Nenhum compõe o preço final.
 **Contexto:** DEC-050/052 reservam precedência global para PRC-07; esta decisão fecha os contratos específicos dos dois componentes PRC-06 sem duplicar o resolver table-specific de PRC-05.
 **Consequência:** PRC-07 combinará override e tabela atribuída, inicialmente com override acima da tabela. Segmento, grupo, canal, default-table e `fn_resolve_final_client_price` ficam fora de PRC-06.
+
+## DEC-061 — Final Price Resolver Owns Source Composition (PRC-07A)
+
+**Data:** 2026-08-21
+**Decisão:** PRC-07 é o único domínio que compõe autoridade comercial final. O resolver final reutiliza `fn_resolve_client_price_override`, `fn_resolve_client_table_assignment` e `fn_resolve_commercial_table_price`, transmitindo a mesma data de referência e sem consultar diretamente as tabelas-base para reproduzir lógica temporal.
+**Contexto:** DEC-050/052/060 reservaram precedência global para PRC-07 e mantiveram os resolvers PRC-05/06 deliberadamente component-specific.
+**Consequência:** PRC-07B implementará uma fina camada de composição; nenhum resolver temporal alternativo, SQL duplicado ou fallback fora das fontes verificadas.
+
+## DEC-062 — Client Override Has Highest V1 Precedence (PRC-07A)
+
+**Data:** 2026-08-21
+**Decisão:** A precedência v1 é `CLIENT_OVERRIDE > ASSIGNED_COMMERCIAL_TABLE`. Override `RESOLVED` é autoridade final independente de atribuição e encerra a resolução sem avaliar assignment ou preço de tabela.
+**Contexto:** Override PRC-06 é snapshot negociado explícito e pode existir sem tabela atribuída (DEC-057/059). Esta decisão refina para v1 a previsão ampla de DEC-050: dimensões sem modelo implementado não participam da primeira versão.
+**Consequência:** Trace de override vencedor mantém `assignment_status` e `table_price_status` nulos. Default, grupo, segmento e canal permanecem fora de escopo v1 e exigem decisão futura explícita.
+
+## DEC-063 — Only OVERRIDE_NOT_FOUND Allows Table Fallback (PRC-07A)
+
+**Data:** 2026-08-21
+**Decisão:** Somente o status exato `OVERRIDE_NOT_FOUND` permite chamar o resolver de atribuição. `CLIENT_NOT_FOUND`, `ITEM_NOT_FOUND`, falha de segurança, erro de banco ou status inesperado são terminais.
+**Contexto:** PRC-06 distingue ausência de override da ausência de cliente/item para evitar fallback e disclosure incorretos.
+**Consequência:** Erros não viram `PRICE_NOT_FOUND`; a cadeia interrompe imediatamente e preserva a separação entre resultado de negócio e falha de infraestrutura/autorização.
+
+## DEC-064 — Zero Is an Authoritative Final Price (PRC-07A)
+
+**Data:** 2026-08-21
+**Decisão:** Override `RESOLVED` com `price_amount = 0` produz preço final zero com source `CLIENT_OVERRIDE`; nunca é tratado como ausência nem substituído por tabela.
+**Contexto:** DEC-047/058 já estabelecem zero explícito distinto de preço ausente em tabelas e overrides.
+**Consequência:** Implementação não usa truthiness ou `COALESCE(..., 0)` para presença e deve testar short-circuit de zero explicitamente.
+
+## DEC-065 — PRC-07 Does Not Calculate Prices (PRC-07A)
+
+**Data:** 2026-08-21
+**Decisão:** PRC-07 seleciona preço comercial explícito já publicado; não calcula custo, margem, markup, desconto ou recomendação e não usa pricing engine como fallback.
+**Contexto:** PRC-04 calcula/recomenda e PRC-05 publica snapshot comercial explícito (DEC-036/045/048).
+**Consequência:** `pricing.calculate`, `fn_calculate_price`, `fn_simulate_price`, custos e políticas não integram a resolução final v1. Ausência comercial termina em `PRICE_NOT_FOUND`.
+
+## DEC-066 — Final Resolution Is Date-Driven and Sync-Independent (PRC-07A)
+
+**Data:** 2026-08-21
+**Decisão:** A mesma `DATE` é usada em toda a cadeia; componentes `active|scheduled|superseded` são resolvidos por `[valid_from, valid_to)`. Resultado futuro funciona antes do cutover físico e resultado histórico permanece reproduzível.
+**Contexto:** PRC-03B, PRC-05 e PRC-06 já validaram resolução por data independente de sync e imutabilidade de história publicada.
+**Consequência:** O resultado canônico é determinístico, sem `resolved_at = now()`, e não reinterpreta `valid_to` como inclusivo nem invalida história por status atual de cliente/tabela/item.
+
+## DEC-067 — Final Resolver Requires Client View + Commercial View (PRC-07A)
+
+**Data:** 2026-08-21
+**Decisão:** Resolver preço final exige cumulativamente membership no tenant, `pricing.client.view` e `pricing.commercial.view`. Não criar permissão nova e não exigir `pricing.calculate`.
+**Contexto:** O resultado compõe os dois domínios comerciais verificados e não executa cálculo. Permissões de UI não substituem revalidação backend.
+**Consequência:** Custom roles precisam das duas permissões; falha de autenticação/membership/permissão é erro, não ausência. O payload mínimo não inclui PII corporativa, portanto `core.company.view` não integra o contrato base.
