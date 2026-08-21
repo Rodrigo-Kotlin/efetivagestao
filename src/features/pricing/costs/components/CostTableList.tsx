@@ -39,8 +39,8 @@ export function CostTableList() {
   const hasFilters = search || supplierFilter || status;
 
   const uniqueSuppliers = data.reduce<{ id: string; name: string }[]>((acc, ct) => {
-    const supplierId = ct.supplier?.company_id;
-    const supplierName = ct.supplier?.company?.legal_name ?? "—";
+    const supplierId = ct.supplier?.id;
+    const supplierName = ct.supplier?.legal_name ?? "—";
     if (supplierId && !acc.some((s) => s.id === supplierId)) {
       acc.push({ id: supplierId, name: supplierName });
     }
@@ -229,7 +229,7 @@ export function CostTableList() {
                       onClick={() => navigate(`/pricing/costs/${ct.id}`)}
                     >
                       <td style={{ padding: "var(--space-3)", fontWeight: "var(--font-medium)" }}>
-                        {ct.supplier?.company?.legal_name ?? "—"}
+                        {ct.supplier?.legal_name ?? "—"}
                       </td>
                       <td style={{ padding: "var(--space-3)", fontFamily: "monospace" }}>{ct.code}</td>
                       <td style={{ padding: "var(--space-3)" }}>{ct.name}</td>

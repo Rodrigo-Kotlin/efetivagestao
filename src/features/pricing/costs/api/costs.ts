@@ -32,6 +32,9 @@ interface PaginatedResult<T> {
   totalPages: number;
 }
 
+const COST_TABLE_SUPPLIER_SELECT =
+  "supplier:companies!supplier_cost_tables_supplier_company_id_fkey(*, supplier_profile:supplier_profiles!supplier_profiles_company_id_fkey(*))";
+
 export async function fetchCostTables(
   params: FetchCostTablesParams
 ): Promise<PaginatedResult<CostTableWithSupplier>> {
@@ -39,7 +42,7 @@ export async function fetchCostTables(
 
   let query = supabase
     .from("supplier_cost_tables")
-    .select("*, supplier:supplier_profiles!supplier_cost_tables_supplier_company_id_fkey(*, company:companies(*))", { count: "exact" })
+    .select(`*, ${COST_TABLE_SUPPLIER_SELECT}`, { count: "exact" })
     .eq("organization_id", orgId);
 
   if (search) {
@@ -87,7 +90,7 @@ export async function fetchCostTable(
 ): Promise<CostTableWithSupplier | null> {
   const { data, error } = await supabase
     .from("supplier_cost_tables")
-    .select("*, supplier:supplier_profiles!supplier_cost_tables_supplier_company_id_fkey(*, company:companies(*)), versions:supplier_cost_table_versions(*)")
+    .select(`*, ${COST_TABLE_SUPPLIER_SELECT}, versions:supplier_cost_table_versions(*)`)
     .eq("id", id)
     .eq("organization_id", orgId)
     .single();
@@ -181,7 +184,7 @@ export async function fetchCostTableVersion(
 ): Promise<CostTableVersionWithItems | null> {
   const { data, error } = await supabase
     .from("supplier_cost_table_versions")
-    .select("*, cost_table:supplier_cost_tables(*, supplier:supplier_profiles!supplier_cost_tables_supplier_company_id_fkey(*, company:companies(*))), items:supplier_cost_items(*)")
+    .select(`*, cost_table:supplier_cost_tables(*, ${COST_TABLE_SUPPLIER_SELECT}), items:supplier_cost_items(*)`)
     .eq("id", id)
     .eq("organization_id", orgId)
     .single();

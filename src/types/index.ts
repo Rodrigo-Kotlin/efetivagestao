@@ -202,6 +202,10 @@ export type CostTable = Database["public"]["Tables"]["supplier_cost_tables"]["Ro
 export type CostTableInsert = Database["public"]["Tables"]["supplier_cost_tables"]["Insert"];
 export type CostTableUpdate = Database["public"]["Tables"]["supplier_cost_tables"]["Update"];
 
+export type SupplierCompanyWithProfile = Company & {
+  supplier_profile: SupplierProfile | null;
+};
+
 export type CostTableVersion = Database["public"]["Tables"]["supplier_cost_table_versions"]["Row"];
 export type CostTableVersionInsert = Database["public"]["Tables"]["supplier_cost_table_versions"]["Insert"];
 export type CostTableVersionUpdate = Database["public"]["Tables"]["supplier_cost_table_versions"]["Update"];
@@ -214,7 +218,7 @@ export type CostItemUpdate = Database["public"]["Tables"]["supplier_cost_items"]
 // Cost composite types
 // ============================================================
 export type CostTableWithSupplier = CostTable & {
-  supplier: SupplierWithCompany;
+  supplier: SupplierCompanyWithProfile | null;
   versions?: CostTableVersion[];
 };
 

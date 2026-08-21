@@ -188,7 +188,7 @@ export function CostTableDetail({ costTable, onAction }: Props) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "var(--space-4)" }}>
               <div>
                 <p style={labelStyle}>Fornecedor</p>
-                <p style={valueStyle}>{costTable.supplier?.company?.legal_name ?? "—"}</p>
+                <p style={valueStyle}>{costTable.supplier?.legal_name ?? "—"}</p>
               </div>
               <div>
                 <p style={labelStyle}>Código</p>

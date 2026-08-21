@@ -65,7 +65,7 @@ RLS está habilitado em todas as tabelas:
 
 - Service worker cacheia apenas recursos estáticos (JS, CSS, HTML, SVG, fontes)
 - Dados financeiros, custos e sensíveis NÃO são cacheados pelo service worker
-- Política explícita: NetworkFirst para API do Supabase
+- Requisições à API do Supabase permanecem network-only e fora do Workbox
 
 ## Auditoria
 
