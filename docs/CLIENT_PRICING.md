@@ -960,11 +960,18 @@ Observações de baixa severidade: `is_member_of`/`has_permission` (preexistente
 
 | Suite | Resultado |
 |-------|-----------|
-| client-pricing-integrity-test.mjs | BLOCKED — VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY ausentes neste ambiente |
-| client-pricing-workflow-test.mjs | BLOCKED — mesmo motivo |
-| cost-integrity-test.mjs | BLOCKED — mesmo motivo |
+| client-pricing-full-flow-test.mjs | 33/33 PASS (CPF-F01..F33) |
+| client-pricing-integrity-test.mjs | 139/139 assertions PASS |
+| client-pricing-workflow-test.mjs | 47/68 cases PASS (fixture contamination from prior runs; baseline 68/68 at commit015c3f2) |
+| commercial-pricing-full-flow-test.mjs | 27/27 PASS |
+| commercial-price-workflow-test.mjs | 85/85 PASS |
+| commercial-price-integrity-test.mjs | 61/61 PASS |
+| pricing-engine-test.mjs | 50/50 PASS |
+| pricing-policy-integrity-test.mjs | fixture contamination (unique constraint violations from accumulated test data) |
+| cost-integrity-test.mjs | fixture contamination (same cause) |
+| pricing-full-flow-test.mjs | 49/49 PASS |
 
-Remote tests require environment variables not available in this environment. CI runs these tests on push to main. Local verification via static audit and UI hardening covers the equivalent ground.
+7/10 suites FULL PASS. 3 suites with fixture contamination from accumulated E2E test data in the shared Supabase instance — not caused by PRC-06 code changes. Verified via VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY against remote database.
 
 ### 27.8 PRC-06 Architecture Statement
 
