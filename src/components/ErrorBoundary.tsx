@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Button } from "@/components/ui";
 import { logger } from "@/lib/logger";
 
 interface Props {
@@ -56,21 +57,9 @@ export class ErrorBoundary extends Component<Props, State> {
               Ocorreu um erro inesperado. Por favor, recarregue a página ou entre em contato
               com o suporte.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: "var(--space-3) var(--space-6)",
-                backgroundColor: "var(--color-primary)",
-                color: "var(--color-text-inverse)",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                fontSize: "var(--text-base)",
-                fontWeight: "var(--font-medium)",
-                cursor: "pointer",
-              }}
-            >
+            <Button onClick={() => window.location.reload()}>
               Recarregar Página
-            </button>
+            </Button>
           </div>
         )
       );

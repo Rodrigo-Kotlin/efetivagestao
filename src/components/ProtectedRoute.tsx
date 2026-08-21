@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { Spinner } from "@/components/ui";
 import { useAuth } from "@/features/core/useAuth";
 
 export function ProtectedRoute() {
@@ -13,10 +14,8 @@ export function ProtectedRoute() {
           justifyContent: "center",
           minHeight: "100vh",
         }}
-        role="status"
-        aria-label="Carregando"
       >
-        <p style={{ color: "var(--color-text-secondary)" }}>Carregando...</p>
+        <Spinner label="Carregando aplicação" size="large" />
       </div>
     );
   }

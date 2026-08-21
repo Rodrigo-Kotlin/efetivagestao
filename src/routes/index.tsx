@@ -39,6 +39,16 @@ import { ClientOverrideNewPage } from "@/features/pricing/clients/pages/ClientOv
 import { ClientOverrideDetailPage } from "@/features/pricing/clients/pages/ClientOverrideDetailPage";
 import { ClientLookupPage } from "@/features/pricing/clients/pages/ClientLookupPage";
 
+const developmentRoutes = import.meta.env.DEV
+  ? [{
+      path: "/design-system",
+      lazy: async () => {
+        const { DesignSystemPage } = await import("@/pages/dev/DesignSystemPage");
+        return { Component: DesignSystemPage };
+      },
+    }]
+  : [];
+
 export const router = createBrowserRouter([
   {
     path: "/login",
@@ -54,6 +64,7 @@ export const router = createBrowserRouter([
             path: "/",
             element: <HomePage />,
           },
+          ...developmentRoutes,
           {
             path: "/pricing",
             element: <PricingDashboard />,

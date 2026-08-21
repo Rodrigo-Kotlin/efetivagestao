@@ -1,4 +1,6 @@
 @import "./tokens.css";
+@import "../components/ui/ui.css";
+@import "../components/layout/layout.css";
 
 *,
 *::before,
@@ -10,27 +12,30 @@
 
 html {
   font-size: 16px;
+  background: var(--md-sys-color-surface);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   font-family: var(--font-sans);
-  font-size: var(--text-base);
-  line-height: 1.6;
-  color: var(--color-text);
-  background-color: var(--color-bg);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-surface);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--md-sys-color-primary);
   text-decoration: none;
 }
 
@@ -43,6 +48,10 @@ button {
   font-family: inherit;
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
 input,
 select,
 textarea {
@@ -51,8 +60,33 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline: var(--md-sys-focus-ring-width) solid var(--md-sys-focus-ring-color) !important;
+  outline-offset: var(--md-sys-focus-ring-offset) !important;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--md-sys-color-on-surface);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--md-sys-typescale-headline-large-size);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+}
+
+h2 {
+  font-size: var(--md-sys-typescale-headline-small-size);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+}
+
+::selection {
+  color: var(--md-sys-color-on-primary-container);
+  background: var(--md-sys-color-primary-container);
 }
 
 .sr-only {
@@ -65,4 +99,15 @@ textarea {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

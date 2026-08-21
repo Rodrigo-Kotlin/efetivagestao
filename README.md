@@ -66,6 +66,7 @@ docs/           # Documentação do projeto
 - [Segurança](docs/SECURITY.md)
 - [RBAC](docs/RBAC.md)
 - [Desenvolvimento](docs/DEVELOPMENT.md)
+- [Design System](docs/DESIGN_SYSTEM.md)
 - [Deploy](docs/DEPLOYMENT.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Registro de Decisões](docs/DECISION_REGISTER.md)

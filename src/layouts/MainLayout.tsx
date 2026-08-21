@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { Alert } from "@/components/ui";
 import { useAuth } from "@/features/core/useAuth";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
@@ -17,19 +18,9 @@ export function MainLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       {!isOnline && (
-        <div
-          role="alert"
-          style={{
-            backgroundColor: "var(--color-warning)",
-            color: "var(--color-text)",
-            textAlign: "center",
-            padding: "var(--space-2)",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-          }}
-        >
+        <Alert tone="warning" role="alert" className="eg-offline-banner">
           Você está offline. Algumas funcionalidades podem estar indisponíveis.
-        </div>
+        </Alert>
       )}
 
       <header
