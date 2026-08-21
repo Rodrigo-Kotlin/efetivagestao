@@ -1,14 +1,52 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { Alert } from "@/components/ui";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Drawer, IconButton } from "@/components/ui";
 import { useAuth } from "@/features/core/useAuth";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { AppIcon } from "./app-shell/AppIcon";
+import { AppNavigation } from "./app-shell/AppNavigation";
+import { getRouteContext } from "./app-shell/routeContext";
+import { UserMenu } from "./app-shell/UserMenu";
+import "./app-shell/app-shell.css";
 
 export function MainLayout() {
   const { user, profile, activeOrganization, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isOnline = useOnlineStatus();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const restoreMobileNavigationFocus = useRef(true);
+  const routeContext = getRouteContext(location.pathname);
+  const userName = profile?.full_name ?? user?.email ?? "Usuário";
+
+  useEffect(() => {
+    restoreMobileNavigationFocus.current = false;
+    setMobileNavigationOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const persistentNavigation = window.matchMedia("(min-width: 48rem)");
+    const closeTemporaryNavigation = (event: MediaQueryListEvent | MediaQueryList) => {
+      if (!event.matches) return;
+      restoreMobileNavigationFocus.current = false;
+      setMobileNavigationOpen(false);
+    };
+    persistentNavigation.addEventListener("change", closeTemporaryNavigation);
+    closeTemporaryNavigation(persistentNavigation);
+    return () => persistentNavigation.removeEventListener("change", closeTemporaryNavigation);
+  }, []);
+
+  const openMobileNavigation = () => {
+    restoreMobileNavigationFocus.current = true;
+    setMobileNavigationOpen(true);
+  };
+
+  const handleMobileNavigation = () => {
+    restoreMobileNavigationFocus.current = false;
+    setMobileNavigationOpen(false);
+    requestAnimationFrame(() => document.getElementById("main-content")?.focus());
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -16,203 +54,73 @@ export function MainLayout() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      {!isOnline && (
-        <Alert tone="warning" role="alert" className="eg-offline-banner">
-          Você está offline. Algumas funcionalidades podem estar indisponíveis.
-        </Alert>
-      )}
+    <div className="eg-app-shell">
+      <a className="eg-skip-link" href="#main-content">Ir para o conteúdo</a>
 
-      <header
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderBottom: "1px solid var(--color-border)",
-          padding: "var(--space-4) var(--space-6)",
-          position: "sticky",
-          top: 0,
-          zIndex: "var(--z-header)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            maxWidth: "1400px",
-            margin: "0 auto",
-          }}
-        >
-          <Link
-            to="/"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-3)",
-              textDecoration: "none",
-              color: "var(--color-text)",
-            }}
-          >
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                backgroundColor: "var(--color-primary)",
-                borderRadius: "var(--radius-md)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--color-text-inverse)",
-                fontWeight: "var(--font-bold)",
-                fontSize: "var(--text-lg)",
-              }}
-              aria-hidden="true"
-            >
-              E
-            </div>
-            <div>
-              <div
-                style={{
-                  fontWeight: "var(--font-bold)",
-                  fontSize: "var(--text-lg)",
-                  lineHeight: 1.2,
-                }}
-              >
-                Efetiva Gestão
-              </div>
-              {activeOrganization && (
-                <div
-                  style={{
-                    fontSize: "var(--text-xs)",
-                    color: "var(--color-text-secondary)",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {activeOrganization.name}
-                </div>
-              )}
-            </div>
+      <aside className="eg-shell-drawer" aria-label="Barra lateral da aplicação">
+        <div className="eg-shell-brand">
+          <Link to="/" className="eg-shell-brand__link" aria-label="Efetiva Gestão, Dashboard">
+            <span className="eg-shell-brand__mark" aria-hidden="true">E</span>
+            <span className="eg-shell-brand__copy">
+              <strong>Efetiva Gestão</strong>
+              <small>Gestão empresarial</small>
+            </span>
           </Link>
-
-          {user && (
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-expanded={menuOpen}
-                aria-haspopup="true"
-                aria-label="Menu do usuário"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "var(--space-2)",
-                  padding: "var(--space-2) var(--space-3)",
-                  backgroundColor: "transparent",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "var(--radius-md)",
-                  cursor: "pointer",
-                  fontSize: "var(--text-sm)",
-                  color: "var(--color-text)",
-                }}
-              >
-                <div
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "var(--radius-full)",
-                    backgroundColor: "var(--color-primary-100)",
-                    color: "var(--color-primary)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: "var(--font-semibold)",
-                    fontSize: "var(--text-xs)",
-                  }}
-                  aria-hidden="true"
-                >
-                  {profile?.full_name?.charAt(0)?.toUpperCase() ?? user.email?.charAt(0)?.toUpperCase() ?? "?"}
-                </div>
-                <span style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {profile?.full_name ?? user.email}
-                </span>
-              </button>
-
-              {menuOpen && (
-                <>
-                  <div
-                    style={{ position: "fixed", inset: 0, zIndex: 10 }}
-                    onClick={() => setMenuOpen(false)}
-                    aria-hidden="true"
-                  />
-                  <nav
-                    role="menu"
-                    aria-label="Menu do usuário"
-                    style={{
-                      position: "absolute",
-                      right: 0,
-                      top: "100%",
-                      marginTop: "var(--space-2)",
-                      backgroundColor: "var(--color-surface)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "var(--radius-md)",
-                      boxShadow: "var(--shadow-lg)",
-                      minWidth: "200px",
-                      zIndex: 20,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {user.email && (
-                      <div
-                        style={{
-                          padding: "var(--space-3) var(--space-4)",
-                          borderBottom: "1px solid var(--color-border-light)",
-                          fontSize: "var(--text-xs)",
-                          color: "var(--color-text-secondary)",
-                        }}
-                      >
-                        {user.email}
-                      </div>
-                    )}
-                    <button
-                      onClick={handleSignOut}
-                      role="menuitem"
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        textAlign: "left",
-                        padding: "var(--space-3) var(--space-4)",
-                        backgroundColor: "transparent",
-                        border: "none",
-                        fontSize: "var(--text-sm)",
-                        color: "var(--color-error)",
-                        cursor: "pointer",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "var(--color-surface-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }}
-                    >
-                      Sair
-                    </button>
-                  </nav>
-                </>
-              )}
+          {activeOrganization ? (
+            <div className="eg-shell-organization">
+              <span>Organização ativa</span>
+              <strong title={activeOrganization.name}>{activeOrganization.name}</strong>
             </div>
-          )}
+          ) : null}
         </div>
-      </header>
+        <AppNavigation />
+      </aside>
 
-      <main
-        style={{
-          flex: 1,
-          maxWidth: "1400px",
-          width: "100%",
-          margin: "0 auto",
-          padding: "var(--space-6) var(--space-4)",
-        }}
+      <div className="eg-shell-main">
+        {!isOnline ? (
+          <Alert tone="warning" role="alert" className="eg-offline-banner eg-shell-offline">
+            Você está offline. Algumas funcionalidades podem estar indisponíveis.
+          </Alert>
+        ) : null}
+
+        <header className="eg-top-app-bar">
+          <IconButton
+            className="eg-top-app-bar__nav-control"
+            aria-label="Abrir navegação"
+            onClick={openMobileNavigation}
+          >
+            <AppIcon name="menu" />
+          </IconButton>
+          <div className="eg-top-app-bar__context" aria-live="polite">
+            <small>{routeContext.section}</small>
+            <strong>{routeContext.page}</strong>
+          </div>
+          {user ? (
+            <UserMenu
+              name={userName}
+              email={user.email}
+              organization={activeOrganization?.name}
+              onSignOut={handleSignOut}
+            />
+          ) : null}
+        </header>
+
+        <main className="eg-shell-content" id="main-content" tabIndex={-1}>
+          <Outlet />
+        </main>
+      </div>
+
+      <Drawer
+        open={mobileNavigationOpen}
+        onOpenChange={setMobileNavigationOpen}
+        title="Efetiva Gestão"
+        description={activeOrganization?.name}
+        restoreFocus={restoreMobileNavigationFocus.current}
       >
-        <Outlet />
-      </main>
+        <div className="eg-mobile-navigation">
+          <AppNavigation onNavigate={handleMobileNavigation} />
+        </div>
+      </Drawer>
     </div>
   );
 }

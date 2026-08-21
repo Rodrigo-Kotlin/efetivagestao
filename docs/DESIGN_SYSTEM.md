@@ -82,6 +82,8 @@ import { Alert, Button, Card, StatusChip, TextField } from "@/components/ui";
 | `EmptyState` | Empty result or first-use explanation and a next action |
 | `Alert` | Inline informational, success, warning, or error feedback |
 | `Dialog` | Focus-managed modal interaction with Escape and focus restoration |
+| `Drawer` | Focus-managed temporary side panel for mobile navigation or contextual tasks |
+| `DropdownMenu` / `MenuItem` | Keyboard-operable action menu with Escape and arrow-key navigation |
 | `Table` | Scroll-contained native table with a required caption |
 
 Use `statusTone()` when adapting backend status values. Unknown values intentionally return `neutral`; the visible backend value should still be rendered.
@@ -103,7 +105,23 @@ import { PageContainer, PageHeader, ResponsiveGrid, Section, Stack } from "@/com
 </PageContainer>
 ```
 
-`PageContainer` controls readable width and responsive gutters. `PageHeader` provides title hierarchy and an action region. `Section` groups related content. `Stack`, `Cluster`, and `ResponsiveGrid` cover vertical flow, wrapping inline flow, and responsive columns without one-off inline style objects.
+`PageContainer` controls readable width and responsive gutters through `standard`, `wide`, and `full` variants. Use `full` for dense ERP views that productively consume the available shell width. `PageHeader` provides breadcrumbs, title hierarchy, description, primary action, secondary actions, and overflow actions. `Section` groups related content. `Stack`, `Cluster`, and `ResponsiveGrid` cover vertical flow, wrapping inline flow, and responsive columns without one-off inline style objects.
+
+## Adaptive Application Shell
+
+The authenticated shell uses three navigation modes without changing the route tree:
+
+| Viewport | Navigation pattern |
+| --- | --- |
+| Below 768px | Sticky top app bar and modal navigation drawer |
+| 768px to 1199px | Persistent compact navigation rail |
+| 1200px and above | Persistent 272px navigation drawer |
+
+Navigation entries come from `src/layouts/app-shell/navigation.ts`. An entry is rendered only when it has a real route, is marked available, and the current user has at least one required permission. Do not render disabled placeholders for planned modules in the application shell.
+
+The top app bar derives contextual labels from the current path and exposes only implemented actions. The user menu preserves identity, organization, and sign-out; settings, notifications, and global search must not be added until corresponding functionality exists.
+
+Temporary navigation uses `Drawer`, including focus entry, Tab containment, Escape dismissal, body scroll lock, and focus restoration. Persistent navigation uses `NavLink`, preserving direct refresh, browser history, and `aria-current="page"` for nested routes.
 
 ## Density
 

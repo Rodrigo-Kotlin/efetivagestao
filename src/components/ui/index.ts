@@ -5,6 +5,8 @@ export * from "./Card";
 export * from "./Checkbox";
 export * from "./Dialog";
 export * from "./Divider";
+export * from "./Drawer";
+export * from "./DropdownMenu";
 export * from "./EmptyState";
 export * from "./IconButton";
 export * from "./Radio";

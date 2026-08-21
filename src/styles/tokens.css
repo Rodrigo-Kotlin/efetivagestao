@@ -129,7 +129,9 @@
   --md-sys-density-comfortable-row-height: 3.25rem;
   --md-sys-density-compact-row-height: 2.5rem;
   --md-sys-touch-target-min: 2.75rem;
-  --md-sys-layout-page-max-width: 90rem;
+  --md-sys-layout-page-standard-width: 76rem;
+  --md-sys-layout-page-wide-width: 96rem;
+  --md-sys-layout-page-max-width: var(--md-sys-layout-page-wide-width);
   --md-sys-layout-page-margin-mobile: 1rem;
   --md-sys-layout-page-margin-tablet: 1.5rem;
   --md-sys-layout-page-margin-desktop: 2rem;

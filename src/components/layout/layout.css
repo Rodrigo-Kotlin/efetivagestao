@@ -1,12 +1,16 @@
 .eg-page-container {
   width: 100%;
-  max-width: 76rem;
+  max-width: var(--md-sys-layout-page-standard-width);
   margin-inline: auto;
   padding-inline: var(--md-sys-layout-page-margin-mobile);
 }
 
 .eg-page-container[data-size="wide"] {
-  max-width: var(--md-sys-layout-page-max-width);
+  max-width: var(--md-sys-layout-page-wide-width);
+}
+
+.eg-page-container[data-size="full"] {
+  max-width: none;
 }
 
 .eg-page-header {
@@ -20,7 +24,9 @@
 
 .eg-page-header__copy {
   display: grid;
+  flex: 1 1 30rem;
   gap: var(--md-sys-spacing-2);
+  min-width: 0;
   max-width: 48rem;
 }
 
@@ -51,6 +57,52 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--md-sys-spacing-2);
+}
+
+.eg-page-header__actions,
+.eg-page-header__secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--md-sys-spacing-2);
+  align-items: center;
+}
+
+.eg-page-header__actions {
+  flex: 0 0 auto;
+}
+
+.eg-page-header__primary-action,
+.eg-page-header__overflow-actions {
+  display: inline-flex;
+}
+
+.eg-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--md-sys-spacing-1);
+  padding: 0;
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  list-style: none;
+}
+
+.eg-breadcrumbs li:not(:last-child)::after {
+  margin-inline-start: var(--md-sys-spacing-1);
+  color: var(--md-sys-color-outline);
+  content: "/";
+}
+
+.eg-breadcrumbs a {
+  color: var(--md-sys-color-primary);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2em;
+}
+
+.eg-breadcrumbs a:hover {
+  text-decoration-color: currentcolor;
 }
 
 .eg-section {
@@ -137,4 +189,21 @@
   .eg-page-container {
     padding-inline: var(--md-sys-layout-page-margin-desktop);
   }
+}
+
+@media (max-width: 37.5rem) {
+  .eg-page-header {
+    align-items: flex-start;
+    margin-bottom: var(--md-sys-spacing-6);
+  }
+
+  .eg-page-header__copy,
+  .eg-page-header__actions {
+    width: 100%;
+  }
+
+  .eg-page-header__actions {
+    align-items: stretch;
+  }
+
 }

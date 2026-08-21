@@ -2,7 +2,7 @@ import type { ComponentPropsWithRef } from "react";
 import { cx } from "@/components/ui/cx";
 
 export interface PageContainerProps extends ComponentPropsWithRef<"div"> {
-  size?: "standard" | "wide";
+  size?: "standard" | "wide" | "full";
 }
 
 export function PageContainer({ size = "standard", className, ...props }: PageContainerProps) {
