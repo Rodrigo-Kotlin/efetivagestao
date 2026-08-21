@@ -32,7 +32,7 @@
 | PRC-06E | Client Pricing End-to-End Hardening | **COMPLETED** |
 | PRC-07 | Motor de Resolução | **IN PROGRESS** |
 | PRC-07A | Final Price Resolution Model & Business Rules | **COMPLETED** |
-| PRC-07B | Final Price Resolver Backend & Security | NOT STARTED |
+| PRC-07B | Final Price Resolver Backend & Security | **COMPLETED** |
 | PRC-07C | Final Price Resolution UI | NOT STARTED |
 | PRC-07D | End-to-End Hardening & Final Verification | NOT STARTED |
 | PRC-08 | Importação | NOT STARTED |
@@ -85,6 +85,7 @@ Controla:
 | CLIENT_PRICING_UI_VERIFIED | PRC-06D | Atingido |
 | CLIENT_PRICING_VERIFIED | PRC-06E | Atingido |
 | FINAL_PRICE_RESOLUTION_MODEL_DEFINED | PRC-07A | Atingido |
+| FINAL_PRICE_RESOLVER_VERIFIED | PRC-07B | Atingido |
 
 ## Gate de Continuidade
 
@@ -96,5 +97,7 @@ Controla:
 | PRC-07 | IN PROGRESS |
 | PRC-07A | COMPLETED |
 | FINAL_PRICE_RESOLUTION_MODEL_DEFINED | ATINGIDO |
-| PRC-07B | NOT STARTED |
-| READY FOR PRC-07B | YES |
+| PRC-07B | COMPLETED — migration 041; 11/11 suítes remotas FULL PASS |
+| FINAL_PRICE_RESOLVER_VERIFIED | ATINGIDO |
+| PRC-07C | NOT STARTED |
+| READY FOR PRC-07C | YES |

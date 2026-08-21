@@ -463,6 +463,18 @@ RLS nas três tabelas: `view` para SELECT, `create` para INSERT e `edit` para UP
 
 Publicação e sync mantêm timelines `[valid_from, valid_to)` de atribuição e override; resolvers selecionam componentes `active|scheduled|superseded` por data sem compor preço final. A captura de proveniência resolve a atribuição e o item da tabela autoritativamente e congela o grupo `source_*` no draft.
 
+## Resolver Final (PRC-07B)
+
+PRC-07B não adiciona tabelas. A migration 041 cria somente a RPC read-only:
+
+```text
+fn_resolve_final_client_price(uuid, uuid, uuid, date DEFAULT current_date) → jsonb
+```
+
+A função compõe `fn_resolve_client_price_override`, `fn_resolve_client_table_assignment` e `fn_resolve_commercial_table_price` no mesmo snapshot, com precedência `CLIENT_OVERRIDE > ASSIGNED_COMMERCIAL_TABLE`. Não executa DML, sync, auditoria, cálculo financeiro nem SQL temporal direto.
+
+Segurança: `SECURITY DEFINER`, `STABLE`, `SET search_path = public`, EXECUTE revogado de PUBLIC/anon e concedido a authenticated. Antes de qualquer componente, exige `auth.uid()`, membership e a conjunção `pricing.client.view AND pricing.commercial.view`. Nenhuma permissão ou role mapping novo foi criado.
+
 ## Migrations
 
 | # | Arquivo | Descrição |
@@ -505,6 +517,7 @@ Publicação e sync mantêm timelines `[valid_from, valid_to)` de atribuição e
 | 038 | 038_client_pricing_security | Seis permissões `pricing.client.*`, mapeamentos 6/5/1/1, 12 policies RLS, policy restritiva de audit payload, audit triggers e hardening de privilégios |
 | 039 | 039_client_pricing_workflow | 14 RPCs autoritativas: status de perfil, workflows de atribuição/override, publicação temporal concorrente, sync idempotente e captura confiável de proveniência |
 | 040 | 040_client_pricing_resolvers | Resolvers isolados de atribuição de tabela e override por cliente+item, com resolução atual/futura/histórica, zero explícito, desempate determinístico e payload de proveniência |
+| 041 | 041_final_price_resolver | `fn_resolve_final_client_price` — composição final read-only e determinística; override antes de tabela atribuída, zero autoritativo, mapeamentos de ausência, validação defensiva dos componentes e segurança por conjunção das permissões de view existentes |
 
 ## Geração de Tipos TypeScript
 

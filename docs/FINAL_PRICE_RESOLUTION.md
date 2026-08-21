@@ -1,8 +1,8 @@
-# Final Price Resolution — PRC-07A
+# Final Price Resolution — PRC-07A/PRC-07B
 
-**Status:** modelo e regras de negócio definidos
-**Checkpoint:** `FINAL_PRICE_RESOLUTION_MODEL_DEFINED`
-**Fase:** PRC-07A — contrato apenas; sem SQL, RPC, UI ou migration
+**Status:** modelo definido e resolver backend verificado
+**Checkpoint:** `FINAL_PRICE_RESOLVER_VERIFIED`
+**Fase:** PRC-07B concluída — backend e segurança; sem UI
 
 ## 1. Propósito
 
@@ -163,7 +163,7 @@ Rótulos como `MANUAL`, `ENGINE` e `DEFAULT` não são fontes finais. Eles descr
 
 ## 11. Assinatura conceitual
 
-PRC-07B deverá implementar, sem fazê-lo nesta fase:
+A migration `041_final_price_resolver.sql` implementa:
 
 ```sql
 fn_resolve_final_client_price(
@@ -179,7 +179,7 @@ RETURNS jsonb
 
 Toda a composição deve ocorrer dentro de uma única invocação PostgreSQL e do mesmo snapshot transacional. Os três componentes não podem ser chamados pelo frontend em requests separados, pois uma publicação concorrente poderia misturar preço, trace e source refs de estados diferentes.
 
-PRC-07B deve declarar o resolver final read-only como `STABLE` e executar a composição em uma única statement, preservando o snapshot estabelecido no início da chamada. Nenhuma DML ou sync ocorre durante a resolução.
+O resolver final é read-only `STABLE` e executa a composição em uma única statement, preservando o snapshot estabelecido no início da chamada. Nenhuma DML ou sync ocorre durante a resolução.
 
 ## 12. Contrato JSON mínimo
 
@@ -380,7 +380,7 @@ AND pricing.commercial.view
 
 As duas permissões são cumulativas e verificadas na mesma organização. `pricing.calculate` não se aplica porque não há cálculo/simulação. Não criar nova permissão em PRC-07A.
 
-A RPC futura deve seguir o padrão existente: `SECURITY DEFINER`, `SET search_path = public`, `REVOKE EXECUTE FROM PUBLIC, anon` e `GRANT EXECUTE TO authenticated`. Esses grants permitem chamar a função, mas membership e as duas permissões continuam obrigatoriamente validadas dentro de cada chamada.
+A RPC implementada segue o padrão existente: `SECURITY DEFINER`, `SET search_path = public`, `REVOKE ALL FROM PUBLIC, anon, authenticated` e novo `GRANT EXECUTE TO authenticated`. Esses grants permitem chamar a função, mas membership e as duas permissões são obrigatoriamente validadas dentro de cada chamada.
 
 Consequências:
 
@@ -489,11 +489,66 @@ PRC-07 não cria tabelas transacionais. O módulo transacional futuro deverá re
 14. Não retorna PII desnecessária.
 15. Testes comprovam short-circuit, zero, erros, cross-tenant e todos os reason codes.
 
-## 24. Estado desta fase
+## 24. Implementação e verificação PRC-07B
 
-PRC-07A define somente modelo e contrato. Nesta fase:
+**Migration:** `041_final_price_resolver.sql` aplicada remotamente e imutável. LOCAL == REMOTE `41/41`.
 
-- migrations permanecem `001–040`;
-- `fn_resolve_final_client_price` ainda não existe;
-- não há API wrapper, UI, teste remoto novo ou permission row nova;
-- implementação começa somente em PRC-07B.
+**Função:** `fn_resolve_final_client_price(uuid, uuid, uuid, date)`.
+
+Propriedades verificadas:
+
+- composição exclusiva dos três resolvers canônicos, sem SQL temporal direto;
+- `CLIENT_OVERRIDE > ASSIGNED_COMMERCIAL_TABLE`, com short-circuit e zero autoritativo;
+- segurança antes de disclosure: autenticação, membership, `pricing.client.view` e `pricing.commercial.view`;
+- `SECURITY DEFINER`, `STABLE`, `search_path = public`, PUBLIC/anon sem EXECUTE e authenticated com EXECUTE;
+- nenhum permission code, role mapping, tabela, DML, sync, audit write ou fallback de motor novo;
+- payload canônico com todas as chaves, source refs mínimos, trace somente das etapas avaliadas, BRL e `numeric`;
+- current/future/historical, referência de data sem alteração e cliente inactive/blocked como contexto.
+
+### 24.1 Suite dedicada
+
+Suite: `tests/remote/final-price-resolution-test.mjs`.
+Setup owner-only: `client_pricing_test_setup.sql` + `final_price_resolution_test_setup.sql` pelo runner isolado.
+
+| Grupo | Casos | Assertions |
+|-------|-------|------------|
+| Segurança e conjunção de permissões | 10/10 | 31/31 |
+| Precedência de override e terminais | 7/7 | 43/43 |
+| Fallback e mapeamentos de ausência | 5/5 | 32/32 |
+| Contrato canônico e fronteiras estáticas | 5/5 | 29/29 |
+| Temporalidade e contexto do cliente | 8/8 | 40/40 |
+| Determinismo e integridade defensiva | 5/5 | 28/28 |
+| **Total** | **40/40** | **203/203** |
+
+A suite passou duas vezes com reset completo antes de cada execução. A definição implantada também foi inspecionada no catálogo PostgreSQL pelo setup owner-only; `TABLE_NOT_FOUND` foi comprovado por contrato estático porque FKs válidas impedem produzir naturalmente esse estado após uma atribuição resolvida.
+
+### 24.2 Regressões remotas
+
+| Suite | Resultado |
+|-------|-----------|
+| client-pricing-full-flow | 33/33 |
+| client-pricing-workflow | 68/68 casos; 202/202 assertions |
+| client-pricing-integrity | 60/60 casos; 139/139 assertions |
+| commercial-pricing-full-flow | 27/27 |
+| commercial-price-workflow | 85/85 |
+| commercial-price-integrity | 61/61 |
+| pricing-engine | 50/50 |
+| pricing-policy-integrity | 33/33 |
+| cost-integrity | 34/34 |
+| pricing-full-flow | 49/49 |
+
+Resultado remoto: **11/11 suites FULL PASS**, contando a nova suite PRC-07B e as dez regressões obrigatórias. Cada suite mutável usou seu reset owner-only tenant-scoped; contaminação de fixtures: nenhuma.
+
+### 24.3 Qualidade local
+
+| Check | Resultado |
+|-------|-----------|
+| lint | PASS, somente 5 warnings frontend preexistentes |
+| typecheck | PASS |
+| test:run | 300/300 PASS |
+| build | PASS |
+| PWA artifacts | VERIFIED |
+| secret literal audit | PASS |
+| migrations 001–040 | sem diff |
+
+PRC-07B não cria API wrapper nem UI. A próxima fase é PRC-07C.

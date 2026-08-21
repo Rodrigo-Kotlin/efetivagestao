@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 
 const setups = new Map([
+  ["final-price-resolution-test.mjs", ["client_pricing_test_setup.sql", "final_price_resolution_test_setup.sql"]],
   ["client-pricing-full-flow-test.mjs", "client_pricing_test_setup.sql"],
   ["client-pricing-workflow-test.mjs", "client_pricing_test_setup.sql"],
   ["client-pricing-integrity-test.mjs", "client_pricing_test_setup.sql"],
@@ -31,5 +32,7 @@ function run(args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-run(["scripts/run-sql.mjs", `tests/remote/sql/${setup}`]);
+for (const setupFile of Array.isArray(setup) ? setup : [setup]) {
+  run(["scripts/run-sql.mjs", `tests/remote/sql/${setupFile}`]);
+}
 run([`tests/remote/${suite}`]);
