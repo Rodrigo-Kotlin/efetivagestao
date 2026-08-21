@@ -55,8 +55,10 @@ const futureModules: FutureModule[] = [
   },
   {
     title: "Clientes",
-    description: "Preços específicos por cliente.",
-    status: "coming-soon",
+    description: "Clientes, tabelas atribuídas e preços específicos.",
+    status: "available",
+    path: "/pricing/clients",
+    permission: "pricing.client.view",
   },
   {
     title: "Importações",

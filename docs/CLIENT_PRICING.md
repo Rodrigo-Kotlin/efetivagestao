@@ -1,8 +1,8 @@
 # Precificação por Cliente — PRC-06
 
-**Status:** PRC-06A/PRC-06B/PRC-06C concluídas — modelo, fundação PostgreSQL, workflow e resolvers de componente verificados
+**Status:** PRC-06A/PRC-06B/PRC-06C/PRC-06D concluídas — modelo, fundação PostgreSQL, workflow, resolvers e UI de precificação por cliente verificados
 **Baseline PRC-06B:** `4bb3b217d80f0a18d84372b614da9cd89cc219ce` (`CLIENT_PRICING_SCHEMA_VERIFIED`)
-**Checkpoint:** `CLIENT_PRICING_CORE_VERIFIED`
+**Checkpoint:** `CLIENT_PRICING_UI_VERIFIED`
 **Implementação:** migrations 037–040 instaladas e imutáveis; LOCAL == REMOTE 40/40
 
 ## 1. Propósito
@@ -29,7 +29,7 @@ PRC-06 é dividido em:
 | PRC-06A | Modelo e regras de negócio | `CLIENT_PRICING_MODEL_DEFINED` |
 | PRC-06B | Banco, integridade, RLS e RBAC | `CLIENT_PRICING_SCHEMA_VERIFIED` |
 | PRC-06C | Workflow e resolvers de componentes | `CLIENT_PRICING_CORE_VERIFIED` |
-| PRC-06D | UI de precificação por cliente | a definir na fase |
+| PRC-06D | UI de precificação por cliente | `CLIENT_PRICING_UI_VERIFIED` |
 | PRC-06E | Hardening end-to-end | `CLIENT_PRICING_VERIFIED` |
 
 Entidades conceituais de v1:
@@ -822,7 +822,65 @@ A regressão PRC-06B permaneceu em 60/60 casos e 139/139 assertions. Também pas
 
 PRC-06C não criou frontend, fórmulas, dimensões de segmento/grupo/canal/default nem resolver final. Esses limites permanecem para PRC-06D/PRC-07.
 
-## 26. Decisões relacionadas
+## 26. Implementação PRC-06D
+
+**Checkpoint:** `CLIENT_PRICING_UI_VERIFIED`
+**Frontend:** React + TypeScript + Supabase client, 8 pages, 12 components, API layer, hooks, types, utils
+
+### 26.1 Arquitetura
+
+PRC-06D entrega a UI completa de precificação por cliente seguindo os padrões estabelecidos no módulo comercial:
+
+- **Tipos:** `src/features/pricing/clients/types/client.types.ts` — enums, DTOs, interfaces de row, composite shapes, permission sets
+- **Utils:** `src/features/pricing/clients/utils/format.ts` — formatadores pt-BR, parsers de moeda, helpers de data e status
+- **API:** `src/features/pricing/clients/api/clientPrices.ts` — 30+ funções, todas usando RPCs canônicas de PRC-06B/06C, sem UPDATE direto
+- **Hooks:** `src/features/pricing/clients/hooks/useClients.ts` — useState+useCallback+useEffect, sem Redux/Zustand/React Query
+- **Componentes:** 12 componentes presentacionais e de comportamento
+- **Páginas:** 8 páginas com RBAC integrado
+
+### 26.2 Rotas
+
+| Rota | Página |
+|------|--------|
+| `/pricing/clients` | Lista de clientes |
+| `/pricing/clients/new` | Novo perfil cliente |
+| `/pricing/clients/:id` | Detalhe do cliente |
+| `/pricing/clients/:id/assignments/new` | Nova atribuição |
+| `/pricing/clients/assignments/:id` | Detalhe da atribuição |
+| `/pricing/clients/:id/overrides/new` | Novo override |
+| `/pricing/clients/overrides/:id` | Detalhe do override |
+| `/pricing/clients/lookup` | Lookup de resolução |
+
+### 26.3 Conformidade
+
+- Nenhuma chamada a `fn_resolve_final_client_price` ou equivalente (PRC-07 boundary)
+- Zero explícito (`price_amount = 0`) exibido como `R$ 0,00`, nunca como "Sem preço"
+- `OVERRIDE_NOT_FOUND` exibe mensagem de ausência, nunca `R$ 0,00`
+- `ASSIGNMENT_NOT_FOUND` exibe "Nenhuma tabela atribuída"
+- Todos os workflow mutations refetch state canônico, sem optimistic updates
+- Tratamento de erro com mensagens pt-BR mapeadas por código de erro
+- RBAC: 6 permissões `pricing.client.*` verificadas em todas as páginas
+- Responsivo e acessível com status de loading/empty/error
+
+### 26.4 Verificação
+
+| Grupo | Casos | Assertions |
+|-------|-------|------------|
+| API contracts (CUI-CAPI) | 19 | 19 |
+| RBAC (CUI-CRBAC) | 10 | 10 |
+| Workflow (CUI-CWF) | 8 | 8 |
+| Resolver UI (CUI-CRES) | 11 | 11 |
+| Format utils (CUI-FMT) | 20 | 20 |
+| No PRC-07 regression | 4 | 4 |
+| Zero/missing semantics | 5 | 5 |
+| **Total PRC-06D** | **80/80** | **80/80** |
+| Regressão PRC-06C | 68/68 | 202/202 |
+| Regressão PRC-06B | 60/60 | 139/139 |
+| **Suite completa** | **300/300** | **300/300** |
+
+Typecheck: PASS. Lint: apenas warnings pre-existentes no módulo comercial. Build: PASS com PWA artifacts.
+
+## 27. Decisões relacionadas
 
 - DEC-008 — intervalos `[valid_from, valid_to)`;
 - DEC-022 — identidade de ator derivada no servidor;

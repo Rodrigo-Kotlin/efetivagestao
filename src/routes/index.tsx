@@ -30,6 +30,14 @@ import { CommercialPriceTableDetailPage } from "@/features/pricing/commercial/pa
 import { CommercialPriceVersionNewPage } from "@/features/pricing/commercial/pages/CommercialPriceVersionNewPage";
 import { CommercialPriceVersionDetailPage } from "@/features/pricing/commercial/pages/CommercialPriceVersionDetailPage";
 import { CommercialPriceLookupPage } from "@/features/pricing/commercial/pages/CommercialPriceLookupPage";
+import { ClientPricingListPage } from "@/features/pricing/clients/pages/ClientPricingListPage";
+import { ClientPricingNewPage } from "@/features/pricing/clients/pages/ClientPricingNewPage";
+import { ClientPricingDetailPage } from "@/features/pricing/clients/pages/ClientPricingDetailPage";
+import { ClientAssignmentNewPage } from "@/features/pricing/clients/pages/ClientAssignmentNewPage";
+import { ClientAssignmentDetailPage } from "@/features/pricing/clients/pages/ClientAssignmentDetailPage";
+import { ClientOverrideNewPage } from "@/features/pricing/clients/pages/ClientOverrideNewPage";
+import { ClientOverrideDetailPage } from "@/features/pricing/clients/pages/ClientOverrideDetailPage";
+import { ClientLookupPage } from "@/features/pricing/clients/pages/ClientLookupPage";
 
 export const router = createBrowserRouter([
   {
@@ -153,6 +161,38 @@ export const router = createBrowserRouter([
           {
             path: "/pricing/commercial/lookup",
             element: <CommercialPriceLookupPage />,
+          },
+          {
+            path: "/pricing/clients",
+            element: <ClientPricingListPage />,
+          },
+          {
+            path: "/pricing/clients/new",
+            element: <ClientPricingNewPage />,
+          },
+          {
+            path: "/pricing/clients/lookup",
+            element: <ClientLookupPage />,
+          },
+          {
+            path: "/pricing/clients/:id",
+            element: <ClientPricingDetailPage />,
+          },
+          {
+            path: "/pricing/clients/:id/assignments/new",
+            element: <ClientAssignmentNewPage />,
+          },
+          {
+            path: "/pricing/clients/assignments/:id",
+            element: <ClientAssignmentDetailPage />,
+          },
+          {
+            path: "/pricing/clients/:id/overrides/new",
+            element: <ClientOverrideNewPage />,
+          },
+          {
+            path: "/pricing/clients/overrides/:id",
+            element: <ClientOverrideDetailPage />,
           },
         ],
       },
