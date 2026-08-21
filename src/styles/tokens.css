@@ -199,4 +199,8 @@
   --z-toast: 300;
   --transition-fast: var(--md-sys-motion-duration-fast) var(--md-sys-motion-easing-standard);
   --transition-base: var(--md-sys-motion-duration-standard) var(--md-sys-motion-easing-standard);
+
+  /* UIX-02: DataTable / Kanban column density. */
+  --md-sys-density-data-table-header-height: 2.75rem;
+  --md-sys-density-kanban-column-min: 18rem;
 }

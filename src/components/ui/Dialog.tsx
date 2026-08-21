@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Button } from "./Button";
+import { cx } from "./cx";
 
 const FOCUSABLE = [
   "button:not([disabled])",
@@ -19,6 +20,16 @@ export interface DialogProps {
   footer?: ReactNode;
   closeLabel?: string;
   dismissible?: boolean;
+  /** When true, renders a destructive confirmation dialog with error-toned header. */
+  destructive?: boolean;
+  /** Label for the primary destructive action (e.g., "Excluir"). */
+  confirmLabel?: string;
+  /** Called when the destructive confirm button is clicked. Only used when `destructive` is true. */
+  onConfirm?: () => void;
+  /** Whether the confirm action is in a loading state. */
+  confirmLoading?: boolean;
+  /** Label for the destructive confirmation cancel button. */
+  cancelLabel?: string;
 }
 
 export function Dialog({
@@ -30,6 +41,11 @@ export function Dialog({
   footer,
   closeLabel = "Fechar",
   dismissible = true,
+  destructive = false,
+  confirmLabel = "Confirmar",
+  onConfirm,
+  confirmLoading = false,
+  cancelLabel = "Cancelar",
 }: DialogProps) {
   const titleId = useId();
   const descriptionId = useId();
@@ -100,7 +116,7 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
       >
-        <header className="eg-dialog__header">
+        <header className={cx("eg-dialog__header", destructive && "eg-dialog__destructive-header")}>
           <div>
             <h2 className="eg-dialog__title" id={titleId}>{title}</h2>
             {description ? <p className="eg-dialog__description" id={descriptionId}>{description}</p> : null}
@@ -108,7 +124,18 @@ export function Dialog({
           {dismissible ? <Button variant="text" size="compact" onClick={() => onOpenChange(false)}>{closeLabel}</Button> : null}
         </header>
         <div className="eg-dialog__content">{children}</div>
-        {footer ? <footer className="eg-dialog__footer">{footer}</footer> : null}
+        {(destructive && onConfirm) || footer ? (
+          <footer className="eg-dialog__footer">
+            {destructive && onConfirm ? (
+              <>
+                <Button variant="text" onClick={() => onOpenChange(false)}>{cancelLabel}</Button>
+                <Button variant="destructive" loading={confirmLoading} onClick={onConfirm}>{confirmLabel}</Button>
+              </>
+            ) : (
+              <>{footer}</>
+            )}
+          </footer>
+        ) : null}
       </div>
     </div>
   );

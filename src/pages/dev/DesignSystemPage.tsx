@@ -40,6 +40,7 @@ const colorRoles = [
 
 export function DesignSystemPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   return (
     <PageContainer size="wide" className="eg-design-system">
@@ -99,7 +100,7 @@ export function DesignSystemPage() {
           <Card>
             <Stack gap="4">
               <TextField label="Nome da tabela" placeholder="Ex.: Empresarial Sul" required supportingText="Nome visível para a equipe comercial." />
-              <SearchField label="Buscar item" placeholder="Código ou descrição" density="compact" />
+              <SearchField label="Buscar item" placeholder="Código ou descrição" value={searchValue} onChange={setSearchValue} />
               <Select label="Situação inicial" defaultValue="active">
                 <option value="active">Ativa</option>
                 <option value="inactive">Inativa</option>
