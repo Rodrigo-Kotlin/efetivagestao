@@ -1,6 +1,12 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/features/core/useAuth";
 import { useCatalogStats } from "../catalog/hooks/useCatalog";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { KPI } from "@/components/ui/KPI";
 
 interface FutureModule {
   title: string;
@@ -82,82 +88,42 @@ export function PricingDashboard() {
   const { stats, loading } = useCatalogStats();
 
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-8)" }}>
-        <h1 style={{ fontSize: "var(--text-3xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)", marginBottom: "var(--space-2)" }}>
-          Preços & Exames
-        </h1>
-        <p style={{ fontSize: "var(--text-lg)", color: "var(--color-text-secondary)" }}>
-          Catálogo, custos, margens e tabelas comerciais.
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Preços & Exames"
+        description="Catálogo, custos, margens e tabelas comerciais."
+      />
 
-      {/* Stats Cards */}
       {can("pricing.catalog.view") && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "var(--space-4)", marginBottom: "var(--space-8)" }}>
-          <Link
-            to="/pricing/catalog"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-lg)",
-              padding: "var(--space-5)",
-              textDecoration: "none",
-              color: "inherit",
-              transition: "box-shadow var(--transition-fast), border-color var(--transition-fast)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-md)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "var(--color-border)"; }}
-          >
-            <h3 style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-2)" }}>Itens Ativos</h3>
-            <p style={{ fontSize: "var(--text-3xl)", fontWeight: "var(--font-bold)", color: "var(--color-primary)" }}>
-              {loading ? "—" : stats.total_active}
-            </p>
+          <Link to="/pricing/catalog" style={{ textDecoration: "none", color: "inherit" }}>
+            <Card interactive padding="comfortable">
+              <KPI label="Itens Ativos" value={loading ? "—" : stats.total_active} />
+            </Card>
           </Link>
 
-          <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-5)" }}>
-            <h3 style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-2)" }}>Rascunhos</h3>
-            <p style={{ fontSize: "var(--text-3xl)", fontWeight: "var(--font-bold)", color: "#F59E0B" }}>
-              {loading ? "—" : stats.total_draft}
-            </p>
-          </div>
+          <Card padding="comfortable">
+            <KPI label="Rascunhos" value={loading ? "—" : stats.total_draft} />
+          </Card>
 
-          <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-5)" }}>
-            <h3 style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-2)" }}>Inativos</h3>
-            <p style={{ fontSize: "var(--text-3xl)", fontWeight: "var(--font-bold)", color: "#6B7280" }}>
-              {loading ? "—" : stats.total_inactive}
-            </p>
-          </div>
+          <Card padding="comfortable">
+            <KPI label="Inativos" value={loading ? "—" : stats.total_inactive} />
+          </Card>
 
-          <Link
-            to="/pricing/categories"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-lg)",
-              padding: "var(--space-5)",
-              textDecoration: "none",
-              color: "inherit",
-              transition: "box-shadow var(--transition-fast), border-color var(--transition-fast)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-md)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "var(--color-border)"; }}
-          >
-            <h3 style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-2)" }}>Categorias</h3>
-            <p style={{ fontSize: "var(--text-3xl)", fontWeight: "var(--font-bold)", color: "var(--color-primary)" }}>
-              {loading ? "—" : stats.total_categories}
-            </p>
+          <Link to="/pricing/categories" style={{ textDecoration: "none", color: "inherit" }}>
+            <Card interactive padding="comfortable">
+              <KPI label="Categorias" value={loading ? "—" : stats.total_categories} />
+            </Card>
           </Link>
         </div>
       )}
 
-      {/* Future modules */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
+      <ResponsiveGrid minItemWidth="medium" gap="4">
         {futureModules.map((mod) => {
           const hasPermission = !mod.permission || can(mod.permission);
           const isAvailable = mod.status === "available" && mod.path && hasPermission;
 
-          const cardContent = (
+          const content = (
             <>
               <h3 style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-semibold)", color: "var(--color-text)", marginBottom: "var(--space-2)" }}>
                 {mod.title}
@@ -165,52 +131,35 @@ export function PricingDashboard() {
               <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.5, marginBottom: "var(--space-3)" }}>
                 {mod.description}
               </p>
-              <span style={{
-                display: "inline-block",
-                padding: "var(--space-1) var(--space-3)",
-                borderRadius: "var(--radius-full)",
-                fontSize: "var(--text-xs)",
-                fontWeight: "var(--font-medium)",
-                backgroundColor: isAvailable ? "#DCFCE7" : "#F1F5F9",
-                color: isAvailable ? "#166534" : "#64748B",
-              }}>
+              <Badge tone={isAvailable ? "positive" : "neutral"}>
                 {isAvailable ? "Disponível" : "Em breve"}
-              </span>
+              </Badge>
             </>
           );
-
-          const cardStyle: React.CSSProperties = {
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-lg)",
-            padding: "var(--space-5)",
-            transition: "box-shadow var(--transition-fast), border-color var(--transition-fast)",
-            minHeight: "140px",
-            display: "flex",
-            flexDirection: "column",
-          };
 
           if (isAvailable) {
             return (
               <Link
                 key={mod.title}
                 to={mod.path!}
-                style={{ ...cardStyle, textDecoration: "none", color: "inherit" }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-md)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "var(--color-border)"; }}
+                style={{ textDecoration: "none", color: "inherit" }}
               >
-                {cardContent}
+                <Card interactive padding="comfortable" style={{ minHeight: "140px" }}>
+                  {content}
+                </Card>
               </Link>
             );
           }
 
           return (
-            <div key={mod.title} style={{ ...cardStyle, opacity: 0.75, cursor: "default" }}>
-              {cardContent}
+            <div key={mod.title} style={{ opacity: 0.75, cursor: "default" }}>
+              <Card padding="comfortable" style={{ minHeight: "140px" }}>
+                {content}
+              </Card>
             </div>
           );
         })}
-      </div>
-    </div>
+      </ResponsiveGrid>
+    </PageContainer>
   );
 }
