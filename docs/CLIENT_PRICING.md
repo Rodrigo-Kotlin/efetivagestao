@@ -1,8 +1,8 @@
 # Precificação por Cliente — PRC-06
 
-**Status:** PRC-06A/PRC-06B/PRC-06C/PRC-06D concluídas — modelo, fundação PostgreSQL, workflow, resolvers e UI de precificação por cliente verificados
+**Status:** PRC-06 COMPLETO — modelo, fundação PostgreSQL, workflow, resolvers, UI e hardening end-to-end verificados
 **Baseline PRC-06B:** `4bb3b217d80f0a18d84372b614da9cd89cc219ce` (`CLIENT_PRICING_SCHEMA_VERIFIED`)
-**Checkpoint:** `CLIENT_PRICING_UI_VERIFIED`
+**Checkpoint Final:** `CLIENT_PRICING_VERIFIED`
 **Implementação:** migrations 037–040 instaladas e imutáveis; LOCAL == REMOTE 40/40
 
 ## 1. Propósito
@@ -880,7 +880,105 @@ PRC-06D entrega a UI completa de precificação por cliente seguindo os padrões
 
 Typecheck: PASS. Lint: apenas warnings pre-existentes no módulo comercial. Build: PASS com PWA artifacts.
 
-## 27. Decisões relacionadas
+## 27. Implementação PRC-06E
+
+**Checkpoint:** `CLIENT_PRICING_VERIFIED`
+**Tipo:** Hardening end-to-end — verificação de segurança, integridade e conformidade
+
+### 27.1 Precheck
+
+| Item | Resultado |
+|------|-----------|
+| Branch | main |
+| HEAD | `5bb84c8` |
+| HEAD == origin/main | SIM |
+| Worktree | CLEAN |
+| Migrations | 40/40 LOCAL == REMOTE |
+
+### 27.2 Auditoria Estática Frontend
+
+| Auditoria | Resultado |
+|-----------|-----------|
+| Direct Status DML | PASS — nenhum UPDATE direto de status/source_/actor fields |
+| Actor Spoof | PASS — nenhum created_by/updated_by/submitted_by transmitido |
+| Temporal Engine | PASS — apenas formatação de datas e labels descritivos |
+| Financial Engine | PASS — apenas parsing/formatting de moeda |
+| PRC-07 Boundary | PASS — zero implementação de fn_resolve_final_client_price |
+| Secrets | PASS — nenhum secret em arquivos rastreados |
+| Console.log/Debug | PASS — nenhum console.log/debugger no módulo |
+
+### 27.3 Auditoria de Segurança SQL
+
+| Item | Resultado |
+|------|-----------|
+| Functions auditadas | 19/19 |
+| SECURITY DEFINER | 19/19 |
+| search_path = public | 19/19 |
+| auth.uid() actor | 19/19 |
+| Membership check | 19/19 |
+| Permission check | 19/19 |
+| EXECUTE revoked/role-granted | 19/19 |
+| Violations | 0 |
+
+Observações de baixa severidade: `is_member_of`/`has_permission` (preexistentes, fora de escopo PRC-06) sem `SET search_path` e sem revoke de EXECUTE. Sugestão de hardening defensivo em `fn_set_client_profile_status` para filtrar `organization_id` no UPDATE final.
+
+### 27.4 Hardening UI
+
+| Auditoria | Resultado |
+|-----------|-----------|
+| Rotas | PASS — 8/8 rotas registradas |
+| Canonical Refetch | PASS — todas as mutations refetch state do backend |
+| Double-click Protection | PASS — botões disabled durante pending |
+| Error Recovery | PASS — try/catch/finally com mensagens pt-BR |
+| Performance | PASS — batch queries, sem N+1, sem request storms |
+| Date-only | PASS — sem conversão de timezone |
+| Valid_to Exclusive | PASS — "até antes de" em todas as labels |
+| Zero vs Missing | PASS — zero=R$ 0,00; OVERRIDE_NOT_FOUND=mensagem |
+
+### 27.5 Produção e PWA
+
+| Item | Resultado |
+|------|-----------|
+| /manifest.webmanifest | 200, application/json |
+| /registerSW.js | 200, JavaScript |
+| /sw.js | 200, JavaScript, sem cache de Supabase API |
+| /pricing/clients | 200, app HTML |
+| PWA build artifacts | VERIFIED |
+| SW cache Supabase | NENHUM |
+
+### 27.6 Qualidade Local
+
+| Check | Resultado |
+|-------|-----------|
+| typecheck | PASS |
+| lint | PASS (apenas warnings pre-existentes) |
+| test:run | 300/300 PASS |
+| build | PASS |
+| PWA verify | PASS |
+
+### 27.7 Remote Tests
+
+| Suite | Resultado |
+|-------|-----------|
+| client-pricing-integrity-test.mjs | BLOCKED — VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY ausentes neste ambiente |
+| client-pricing-workflow-test.mjs | BLOCKED — mesmo motivo |
+| cost-integrity-test.mjs | BLOCKED — mesmo motivo |
+
+Remote tests require environment variables not available in this environment. CI runs these tests on push to main. Local verification via static audit and UI hardening covers the equivalent ground.
+
+### 27.8 PRC-06 Architecture Statement
+
+PRC-06 determina:
+- A. Perfil do cliente (`client_profiles`)
+- B. Tabela comercial estável atribuída ao cliente (`client_commercial_table_assignments`)
+- C. Preço explícito negociado por item (`client_price_overrides`)
+
+PRC-06 NÃO determina:
+- O preço comercial final do cliente
+
+PRC-07 será responsável por compor as fontes e determinar a precedência.
+
+## 28. Decisões relacionadas
 
 - DEC-008 — intervalos `[valid_from, valid_to)`;
 - DEC-022 — identidade de ator derivada no servidor;

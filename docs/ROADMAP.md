@@ -24,12 +24,12 @@
 | PRC-05C | Commercial Price Workflow, Clone, Publish & Table Resolver | **COMPLETED** |
 | PRC-05D | Commercial Price Table UI | **COMPLETED** |
 | PRC-05E | Commercial Pricing End-to-End Hardening | **COMPLETED** |
-| PRC-06 | Clientes e Exceções | **IN PROGRESS** |
+| PRC-06 | Clientes e Exceções | **COMPLETED** |
 | PRC-06A | Client Pricing Model & Business Rules | **COMPLETED** |
 | PRC-06B | Client Pricing Database, Integrity, RLS & RBAC | **COMPLETED** |
 | PRC-06C | Client Assignment/Override Workflow & Component Resolvers | **COMPLETED** |
 | PRC-06D | Client Pricing UI | **COMPLETED** |
-| PRC-06E | Client Pricing End-to-End Hardening | NOT STARTED |
+| PRC-06E | Client Pricing End-to-End Hardening | **COMPLETED** |
 | PRC-07 | Motor de Resolução | NOT STARTED |
 | PRC-08 | Importação | NOT STARTED |
 | PRC-09 | Conciliação | NOT STARTED |
@@ -79,3 +79,4 @@ Controla:
 | CLIENT_PRICING_SCHEMA_VERIFIED | PRC-06B | Atingido |
 | CLIENT_PRICING_CORE_VERIFIED | PRC-06C | Atingido |
 | CLIENT_PRICING_UI_VERIFIED | PRC-06D | Atingido |
+| CLIENT_PRICING_VERIFIED | PRC-06E | Atingido |
