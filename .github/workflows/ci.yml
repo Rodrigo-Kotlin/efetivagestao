@@ -50,10 +50,10 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
-        continue-on-error: true
 
       - name: List migrations
-        run: supabase migration list
+        run: >-
+          supabase migration list
+          --db-url postgresql://postgres.scyxgyewdokmsuehgwql@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        continue-on-error: true
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
