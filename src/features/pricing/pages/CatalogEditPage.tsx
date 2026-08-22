@@ -21,6 +21,7 @@ export function CatalogEditPage() {
     return (
       <PageContainer>
         <PageHeader
+          variant="compact"
           title="Editar Item"
           breadcrumbs={[
             { label: "Preços & Exames", to: "/pricing" },
@@ -37,6 +38,7 @@ export function CatalogEditPage() {
     return (
       <PageContainer>
         <PageHeader
+          variant="compact"
           title="Editar Item"
           breadcrumbs={[
             { label: "Preços & Exames", to: "/pricing" },
@@ -56,6 +58,7 @@ export function CatalogEditPage() {
   return (
     <PageContainer>
       <PageHeader
+        variant="compact"
         title="Editar Item"
         breadcrumbs={[
           { label: "Preços & Exames", to: "/pricing" },

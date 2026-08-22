@@ -6,6 +6,7 @@ export function CatalogNewPage() {
   return (
     <PageContainer>
       <PageHeader
+        variant="compact"
         title="Novo Item"
         breadcrumbs={[
           { label: "Preços & Exames", to: "/pricing" },

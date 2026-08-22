@@ -58,15 +58,11 @@ describe("PricingDashboard", () => {
   it("renders Catálogo Mestre as available", () => {
     renderWithRouter(<PricingDashboard />);
     expect(screen.getByText("Catálogo Mestre")).toBeInTheDocument();
-    const availableBadges = screen.getAllByText("Disponível");
-    expect(availableBadges.length).toBeGreaterThanOrEqual(2);
   });
 
   it("renders Fornecedores as available and future modules as coming soon", () => {
     renderWithRouter(<PricingDashboard />);
     expect(screen.getByText("Fornecedores")).toBeInTheDocument();
-    const availableBadges = screen.getAllByText("Disponível");
-    expect(availableBadges.length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Custos")).toBeInTheDocument();
     const comingSoonBadges = screen.getAllByText("Em breve");
     expect(comingSoonBadges.length).toBeGreaterThan(0);

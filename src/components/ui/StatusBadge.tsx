@@ -1,20 +1,22 @@
 import type { ComponentPropsWithRef } from "react";
 import { cx } from "./cx";
-import { statusTone } from "./statusTone";
+import { statusLabel, statusTone } from "./statusTone";
 
-export interface StatusBadgeProps extends ComponentPropsWithRef<"span"> {
+export interface StatusBadgeProps extends Omit<ComponentPropsWithRef<"span">, "children"> {
   status: string;
+  label?: string;
 }
 
-export function StatusBadge({ status, className, ...props }: StatusBadgeProps) {
+export function StatusBadge({ status, label, className, ...props }: StatusBadgeProps) {
   const tone = statusTone(status);
+  const text = label ?? statusLabel(status);
   return (
     <span
       {...props}
       className={cx("eg-badge", className)}
       data-tone={tone}
     >
-      {status}
+      {text}
     </span>
   );
 }

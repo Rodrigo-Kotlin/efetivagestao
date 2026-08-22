@@ -12,13 +12,9 @@ export function CatalogPage() {
       <PageHeader
         title="Catálogo Mestre"
         description="Exames, serviços e itens padronizados utilizados em custos, precificação e tabelas comerciais."
-        breadcrumbs={[
-          { label: "Preços & Exames", to: "/pricing" },
-          { label: "Catálogo Mestre" },
-        ]}
         actions={
           <Button variant="filled" onClick={() => navigate("/pricing/catalog/new")}>
-            + Novo Item
+            Novo Item
           </Button>
         }
       />

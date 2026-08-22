@@ -158,6 +158,7 @@ function Inner() {
   return (
     <PageContainer size="wide">
       <PageHeader
+        variant="entity"
         title={supplier.company?.legal_name ?? "Fornecedor"}
         breadcrumbs={[
           { label: "Preços & Exames", to: "/pricing" },
@@ -165,7 +166,7 @@ function Inner() {
           { label: supplier.company?.legal_name ?? "Detalhe" },
         ]}
       />
-      {error && <Alert tone="negative">{error}</Alert>}
+      {error ? <Alert tone="negative">{error}</Alert> : null}
       <SupplierDetail
         supplier={supplier}
         mappings={mappings}

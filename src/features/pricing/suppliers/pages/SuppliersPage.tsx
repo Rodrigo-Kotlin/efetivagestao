@@ -33,13 +33,9 @@ function Inner() {
       <PageHeader
         title="Fornecedores"
         description="Empresas fornecedoras e seus vínculos com o Catálogo Mestre."
-        breadcrumbs={[
-          { label: "Preços & Exames", to: "/pricing" },
-          { label: "Fornecedores" },
-        ]}
         actions={
           <Button variant="filled" onClick={() => navigate("/pricing/suppliers/new")}>
-            + Novo Fornecedor
+            Novo Fornecedor
           </Button>
         }
       />

@@ -172,3 +172,166 @@ git diff --check
 ```
 
 Add interaction tests when a primitive changes keyboard, focus, labeling, loading, or dismissal behavior.
+
+## UIX-02R1 — Visual Refinement & Composition Patterns
+
+These patterns fix inconsistencies exposed during the first production-screen migrations.
+
+### PageHeader variants
+
+`PageHeader` exposes three intentional density variants:
+
+| Variant | Title size | Use case |
+| --- | --- | --- |
+| `standard` (default) | Headline-large (2rem) | Dashboards and module landing pages |
+| `compact` | Headline-small (1.5rem) | List subpages and forms |
+| `entity` | Headline-small (1.5rem) with `max-width: 48ch` and `text-wrap: balance` | Detail pages with potentially long legal names |
+
+```tsx
+<PageHeader variant="standard" title="Preços & Exames" />
+<PageHeader variant="compact" title="Novo Item" breadcrumbs={...} />
+<PageHeader variant="entity" title={supplier.legal_name} breadcrumbs={...} />
+```
+
+**Do** use the variant API. **Do not** hardcode font sizes in feature pages.
+
+### Action hierarchy
+
+Use the action slots intentionally:
+
+| Slot | Purpose |
+| --- | --- |
+| `primaryAction` | Single most important next step |
+| `secondaryActions` | Frequent contextual action (one only) |
+| `overflowActions` | Low-frequency or destructive actions behind `DropdownMenu` |
+| `actions` | Legacy general slot when slot-based design is not needed |
+
+```tsx
+<PageHeader
+  title="Fornecedor"
+  primaryAction={<Button>Editar</Button>}
+  overflowActions={
+    <DropdownMenu label="Mais ações" trigger="Mais">
+      <MenuItem onClick={onBlock}>Bloquear</MenuItem>
+      <MenuItem onClick={onInactivate}>Inativar</MenuItem>
+    </DropdownMenu>
+  }
+/>
+```
+
+**Do not** render three to five equally weighted buttons next to a title.
+
+### KPI / MetricCard
+
+`KPI` is a content-only metric primitive. **Do not** place it inside a card.
+
+```tsx
+// ✅ Preferred — MetricCard owns the surface
+<MetricCard surface="tonal" label="Itens Ativos" value={123} />
+
+// ❌ Nested surface — do not do this
+<Card>
+  <KPI label="Itens Ativos" value={123} />
+</Card>
+```
+
+`surface` accepts `flat`, `tonal`, or `outlined`. Use `interactive` when the entire card is a link target.
+
+### DetailGrid / DetailField
+
+Render entity metadata without a card per field:
+
+```tsx
+<section className="eg-section">
+  <h3 className="eg-section__title">Dados da empresa</h3>
+  <DetailGrid columns={2}>
+    <DetailField label="Razão Social" value={company.legal_name} />
+    <DetailField label="CNPJ" value={company.tax_id} mono />
+    <DetailField label="Observações" value={company.notes} span={2} />
+  </DetailGrid>
+</section>
+```
+
+`columns` adapts: 2–4 on desktop, 2 on tablet, 1 on mobile. `span` overrides column placement for long values.
+
+### Tabs
+
+Use `SimpleTabs` for declarative tab sets or `Tabs` + `TabList` + `Tab` + `TabPanel` for compound usage:
+
+```tsx
+<SimpleTabs
+  items={[
+    { key: "geral", label: "Geral", panel: <GeralSection /> },
+    { key: "map", label: "Mapeamentos", panel: <MappingsSection /> },
+  ]}
+  defaultActiveKey="geral"
+  ariaLabel="Seções do fornecedor"
+/>
+```
+
+Tabs include keyboard navigation (`ArrowLeft`, `ArrowRight`, `Home`, `End`), proper `role="tablist"`, `aria-selected`, and `aria-controls`. **Do not** build ad hoc tab buttons.
+
+### FilterBar / Toolbar
+
+`FilterBar` (chip-based) and `Toolbar` (toolbar with sections and dividers) are available. For list pages with search + filters, compose them inside the `eg-toolbar` CSS class:
+
+```tsx
+<div className="eg-toolbar">
+  <div className="eg-toolbar__search">
+    <SearchField label="Buscar" />
+  </div>
+  <div className="eg-toolbar__filters">
+    <Select label="Categoria" density="compact" />
+    <Select label="Status" density="compact" />
+  </div>
+</div>
+```
+
+Mobile: the toolbar stacks vertically at the 48rem breakpoint.
+
+### StatusBadge labels
+
+`StatusBadge` now maps backend status values to human-readable Portuguese labels via `statusLabel()`:
+
+```tsx
+<StatusBadge status="active" />   // renders "Ativo" with positive tone
+<StatusBadge status="blocked" />  // renders "Bloqueado" with negative tone
+<StatusBadge status="draft" />    // renders "Rascunho" with warning tone
+```
+
+Status values supported: `active`, `inactive`, `blocked`, `draft`, `published`, `approved`, `paid`, `scheduled`, `cancelled`, `archived`, `pending`, `expired`, `revoked`, `rejected`, `review`, `superseded`, `partial`, `suspended` (both English and Portuguese variants). Unknown values render the original string with neutral tone. Tone is secondary — the text is the primary signal.
+
+### Iconography
+
+Module and action icons are monochrome SVG (`AppIcon`), 20–24px, using semantic color tokens. **Do not** use emoji as permanent production icons.
+
+### Card nesting
+
+Cards represent independent objects or grouped surfaces. **Do not** nest `<Card>` components or wrap every section in a card. Use `eg-section` + section title + subtle divider for flat hierarchical structure.
+
+### Surface reduction
+
+Build hierarchy with typography, spacing, and tonal surfaces before reaching for borders or additional cards. Reserve cards for genuine grouped surfaces.
+
+### Module card hierarchy
+
+On dashboards, distinguish available modules (clickable, prominent) from future modules (quieter, non-interactive):
+
+```tsx
+<Link className="eg-module-card" data-state="available">...</Link>
+<div className="eg-module-card" data-state="future">...</div>
+```
+
+Do not render a "Disponível" badge on clearly active clickable cards — the interactive visual state conveys availability. Reserve status chips for "Em breve" and "Em desenvolvimento".
+
+### Breadcrumb rules
+
+| Route | Breadcrumb |
+| --- | --- |
+| `/pricing` | None required (top app bar shows context) |
+| `/pricing/catalog` | None required |
+| `/pricing/suppliers` | None required |
+| `/pricing/suppliers/:id` | Useful (entity detail) |
+| `/pricing/catalog/new` | Useful (form subpage) |
+
+Do not automatically add breadcrumbs to every first-level page.

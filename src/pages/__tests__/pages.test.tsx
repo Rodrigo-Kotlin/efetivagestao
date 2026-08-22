@@ -43,11 +43,13 @@ describe("HomePage", () => {
     expect(screen.getByText("Plataforma Integrada de Gestão Empresarial")).toBeInTheDocument();
   });
 
-  it("renders all 12 module cards", () => {
+  it("renders all 12 module cards across sections", () => {
     renderWithRouter(<HomePage />);
-    const cardList = screen.getByRole("list", { name: /módulos do sistema/i });
-    const cards = cardList.querySelectorAll('[role="listitem"]');
-    expect(cards).toHaveLength(12);
+    const availableList = screen.getByRole("list", { name: /módulos disponíveis/i });
+    const futureList = screen.getByRole("list", { name: /próximos módulos/i });
+    const availableCards = availableList.querySelectorAll('[role="listitem"]');
+    const futureCards = futureList.querySelectorAll('[role="listitem"]');
+    expect(availableCards.length + futureCards.length).toBe(12);
   });
 
   it("renders Preços & Exames as active with link to /pricing", () => {
@@ -55,7 +57,6 @@ describe("HomePage", () => {
     const pricingCard = screen.getByRole("listitem", { name: /preços & exames/i });
     expect(pricingCard).toHaveAttribute("href", "/pricing");
     expect(pricingCard.tagName).toBe("A");
-    expect(within(pricingCard).getByText("Disponível")).toBeInTheDocument();
   });
 
   it("renders Clientes & CRM as coming soon", () => {

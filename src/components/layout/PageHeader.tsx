@@ -7,6 +7,8 @@ export interface BreadcrumbItem {
   to?: string;
 }
 
+export type PageHeaderVariant = "standard" | "compact" | "entity";
+
 export interface PageHeaderProps extends Omit<ComponentPropsWithRef<"header">, "title"> {
   title: ReactNode;
   eyebrow?: ReactNode;
@@ -16,6 +18,8 @@ export interface PageHeaderProps extends Omit<ComponentPropsWithRef<"header">, "
   secondaryActions?: ReactNode;
   overflowActions?: ReactNode;
   actions?: ReactNode;
+  variant?: PageHeaderVariant;
+  meta?: ReactNode;
 }
 
 export function PageHeader({
@@ -27,12 +31,14 @@ export function PageHeader({
   secondaryActions,
   overflowActions,
   actions,
+  variant = "standard",
+  meta,
   className,
   ...props
 }: PageHeaderProps) {
   const hasActions = primaryAction || secondaryActions || overflowActions || actions;
   return (
-    <header {...props} className={cx("eg-page-header", className)}>
+    <header {...props} className={cx("eg-page-header", className)} data-variant={variant}>
       <div className="eg-page-header__copy">
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <nav className="eg-breadcrumbs" aria-label="Breadcrumb">
@@ -51,6 +57,7 @@ export function PageHeader({
         {eyebrow ? <p className="eg-page-header__eyebrow">{eyebrow}</p> : null}
         <h1 className="eg-page-header__title">{title}</h1>
         {description ? <p className="eg-page-header__description">{description}</p> : null}
+        {meta ? <div className="eg-page-header__meta">{meta}</div> : null}
       </div>
       {hasActions ? (
         <div className="eg-page-header__actions">

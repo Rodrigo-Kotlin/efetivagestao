@@ -1,30 +1,106 @@
 import type { SemanticTone } from "./Badge";
 
-const POSITIVE = new Set([
-  "active", "approved", "resolved", "paid", "published", "confirmed",
-  "ativo", "aprovado", "pago", "publicado", "confirmado",
-]);
-const WARNING = new Set([
-  "draft", "requested", "pending", "below_minimum_margin",
-  "rascunho", "solicitado", "pendente",
-]);
-const NEGATIVE = new Set([
-  "blocked", "cancelled", "denied", "client_not_found",
-  "item_not_found", "below_cost", "inactive", "substituted",
-  "bloqueado", "cancelado", "inativo", "substituido",
-]);
-const INFO = new Set([
-  "under_review", "scheduled", "pricing_engine", "commercial_deviation",
-  "em_revisao", "agendado",
-]);
+export type { SemanticTone };
 
-export function statusTone(value: string): SemanticTone {
-  const normalized = value.toLowerCase().trim()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "_");
-  if (POSITIVE.has(normalized)) return "positive";
-  if (WARNING.has(normalized)) return "warning";
-  if (NEGATIVE.has(normalized)) return "negative";
-  if (INFO.has(normalized)) return "info";
-  return "neutral";
+const STATUS_LABELS: Record<string, string> = {
+  active: "Ativo",
+  ativo: "Ativo",
+  inactive: "Inativo",
+  inativo: "Inativo",
+  blocked: "Bloqueado",
+  bloqueado: "Bloqueado",
+  draft: "Rascunho",
+  rascunho: "Rascunho",
+  published: "Publicado",
+  publicado: "Publicado",
+  approved: "Aprovado",
+  aprovado: "Aprovado",
+  paid: "Pago",
+  pago: "Pago",
+  scheduled: "Agendado",
+  agendado: "Agendado",
+  cancelled: "Cancelado",
+  cancelado: "Cancelado",
+  archived: "Arquivado",
+  arquivado: "Arquivado",
+  pending: "Pendente",
+  pendente: "Pendente",
+  expired: "Expirado",
+  expirado: "Expirado",
+  revoked: "Revogado",
+  revogado: "Revogado",
+  rejected: "Rejeitado",
+  rejeitado: "Rejeitado",
+  review: "Em revisão",
+  "em revisão": "Em revisão",
+  "em revisao": "Em revisão",
+  superseded: "Substituído",
+  substituído: "Substituído",
+  substituido: "Substituído",
+  partial: "Parcial",
+  parcial: "Parcial",
+  suspended: "Suspenso",
+  suspenso: "Suspenso",
+};
+
+export function statusLabel(status: string): string {
+  if (!status) return "—";
+  const normalized = status.toLowerCase().trim();
+  return STATUS_LABELS[normalized] ?? capitalize(normalized);
+}
+
+export function statusTone(status: string): SemanticTone {
+  const normalized = status.toLowerCase().trim();
+  switch (normalized) {
+    case "active":
+    case "ativo":
+    case "approved":
+    case "aprovado":
+    case "paid":
+    case "pago":
+    case "published":
+    case "publicado":
+      return "positive";
+    case "inactive":
+    case "inativo":
+    case "cancelled":
+    case "cancelado":
+    case "superseded":
+    case "substituído":
+    case "substituido":
+    case "archived":
+    case "arquivado":
+    case "expired":
+    case "expirado":
+    case "revoked":
+    case "revogado":
+    case "rejected":
+    case "rejeitado":
+      return "negative";
+    case "blocked":
+    case "bloqueado":
+    case "suspended":
+    case "suspenso":
+      return "negative";
+    case "draft":
+    case "rascunho":
+    case "pending":
+    case "pendente":
+    case "partial":
+    case "parcial":
+      return "warning";
+    case "review":
+    case "em revisão":
+    case "em revisao":
+    case "scheduled":
+    case "agendado":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+function capitalize(value: string): string {
+  if (value.length === 0) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
