@@ -72,7 +72,6 @@ export function SupplierList() {
         <EmptyState
           title={hasFilters ? "Nenhum fornecedor encontrado para os filtros aplicados." : "Nenhum fornecedor cadastrado."}
           description="Cadastre fornecedores para vincular itens do catálogo."
-          actions={!hasFilters ? <Button variant="filled" onClick={() => navigate("/pricing/suppliers/new")}>Novo fornecedor</Button> : undefined}
         />
       )}
 
