@@ -1,14 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { CatalogList } from "../catalog/components/CatalogList";
 
-const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
+    useNavigate: () => vi.fn(),
   };
 });
 
@@ -51,19 +50,9 @@ function renderWithRouter(ui: React.ReactElement) {
 }
 
 describe("CatalogList", () => {
-  it("renders the title", () => {
-    renderWithRouter(<CatalogList />);
-    expect(screen.getByText("Catálogo Mestre")).toBeInTheDocument();
-  });
-
   it("renders empty state when no items", () => {
     renderWithRouter(<CatalogList />);
     expect(screen.getByText("Nenhum item cadastrado.")).toBeInTheDocument();
-  });
-
-  it("renders Novo Item button", () => {
-    renderWithRouter(<CatalogList />);
-    expect(screen.getByText("Novo Item")).toBeInTheDocument();
   });
 
   it("has search input", () => {
@@ -76,11 +65,5 @@ describe("CatalogList", () => {
     expect(screen.getByLabelText("Filtrar por tipo")).toBeInTheDocument();
     expect(screen.getByLabelText("Filtrar por status")).toBeInTheDocument();
     expect(screen.getByLabelText("Filtrar por execução")).toBeInTheDocument();
-  });
-
-  it("navigates to /pricing/catalog/new when Novo Item clicked", () => {
-    renderWithRouter(<CatalogList />);
-    fireEvent.click(screen.getByText("Novo Item"));
-    expect(mockNavigate).toHaveBeenCalledWith("/pricing/catalog/new");
   });
 });

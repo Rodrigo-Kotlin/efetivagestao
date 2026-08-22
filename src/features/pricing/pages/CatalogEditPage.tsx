@@ -1,6 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogItem } from "../catalog/hooks/useCatalog";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { CatalogForm } from "../catalog/components/CatalogForm";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 
 export function CatalogEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,39 +18,53 @@ export function CatalogEditPage() {
   }
 
   if (loading) {
-    return <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>Carregando item...</div>;
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Editar Item"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Catálogo Mestre", to: "/pricing/catalog" },
+            { label: "Editar" },
+          ]}
+        />
+        <Spinner label="Carregando item..." />
+      </PageContainer>
+    );
   }
 
   if (error || !item) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B" }}>{error ?? "Item não encontrado."}</p>
-        <button onClick={() => navigate("/pricing/catalog")} style={{ marginTop: "var(--space-2)", padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}>
-          Voltar ao catálogo
-        </button>
-      </div>
+      <PageContainer>
+        <PageHeader
+          title="Editar Item"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Catálogo Mestre", to: "/pricing/catalog" },
+            { label: "Editar" },
+          ]}
+        />
+        <Alert tone="negative" title={error ?? "Item não encontrado."}>
+          <Button variant="outlined" onClick={() => navigate("/pricing/catalog")}>
+            Voltar ao catálogo
+          </Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
-        <button
-          onClick={() => navigate(`/pricing/catalog/${id}`)}
-          style={{
-            padding: "var(--space-1) var(--space-3)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-            marginBottom: "var(--space-2)",
-          }}
-        >
-          ← Voltar ao item
-        </button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Editar Item"
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Catálogo Mestre", to: "/pricing/catalog" },
+          { label: item.name, to: `/pricing/catalog/${id}` },
+          { label: "Editar" },
+        ]}
+      />
       <CatalogForm mode="edit" initialData={item} />
-    </div>
+    </PageContainer>
   );
 }

@@ -4,6 +4,11 @@ import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { fetchSupplier, updateSupplier } from "../api/suppliers";
 import { SupplierForm } from "../components/SupplierForm";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 import type { SupplierWithCompany } from "@/types";
 import type { CompanyFormData, SupplierProfileFormData } from "../schemas/validation";
 
@@ -81,51 +86,69 @@ function Inner() {
 
   if (loading) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Carregando fornecedor...
-      </div>
+      <PageContainer>
+        <PageHeader
+          title="Editar Fornecedor"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Fornecedores", to: "/pricing/suppliers" },
+            { label: "Editar" },
+          ]}
+        />
+        <Spinner label="Carregando fornecedor..." />
+      </PageContainer>
     );
   }
 
   if (error && !supplier) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>{error}</p>
-        <button
-          onClick={() => navigate("/pricing/suppliers")}
-          style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-        >
-          Voltar
-        </button>
-      </div>
+      <PageContainer>
+        <PageHeader
+          title="Editar Fornecedor"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Fornecedores", to: "/pricing/suppliers" },
+            { label: "Erro" },
+          ]}
+        />
+        <Alert tone="negative" title={error}>
+          <Button variant="outlined" onClick={() => navigate("/pricing/suppliers")}>
+            Voltar
+          </Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (!supplier) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Fornecedor não encontrado.
-      </div>
+      <PageContainer>
+        <PageHeader
+          title="Editar Fornecedor"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Fornecedores", to: "/pricing/suppliers" },
+            { label: "Não encontrado" },
+          ]}
+        />
+        <p style={{ color: "var(--color-text-secondary)" }}>Fornecedor não encontrado.</p>
+      </PageContainer>
     );
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)" }}>
-          Editar Fornecedor
-        </h1>
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginTop: "var(--space-1)" }}>
-          {supplier.company?.legal_name}
-        </p>
-      </div>
-
-      {error && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-6)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)" }}>{error}</p>
-        </div>
-      )}
-
+    <PageContainer>
+      <PageHeader
+        title="Editar Fornecedor"
+        description={supplier.company?.legal_name}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Fornecedores", to: "/pricing/suppliers" },
+          { label: supplier.company?.legal_name ?? "Detalhe", to: `/pricing/suppliers/${id}` },
+          { label: "Editar" },
+        ]}
+      />
+      {error && <Alert tone="negative">{error}</Alert>}
       <SupplierForm
         initialCompany={{
           legal_name: supplier.company?.legal_name ?? "",
@@ -142,7 +165,7 @@ function Inner() {
         onCancel={() => navigate(`/pricing/suppliers/${id}`)}
         loading={submitting}
       />
-    </div>
+    </PageContainer>
   );
 }
 

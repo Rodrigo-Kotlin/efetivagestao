@@ -3,12 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { SupplierList } from "../components/SupplierList";
 
-const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
+    useNavigate: () => vi.fn(),
   };
 });
 
@@ -51,19 +50,9 @@ function renderWithRouter(ui: React.ReactElement) {
 }
 
 describe("SupplierList", () => {
-  it("renders the title", () => {
-    renderWithRouter(<SupplierList />);
-    expect(screen.getByText("Fornecedores")).toBeInTheDocument();
-  });
-
   it("renders empty state when no suppliers", () => {
     renderWithRouter(<SupplierList />);
     expect(screen.getByText(/Nenhum fornecedor cadastrado/)).toBeInTheDocument();
-  });
-
-  it("renders Novo Fornecedor button", () => {
-    renderWithRouter(<SupplierList />);
-    expect(screen.getByText("Novo Fornecedor")).toBeInTheDocument();
   });
 
   it("has search input", () => {

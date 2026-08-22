@@ -1,313 +1,199 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/features/core/useAuth";
 import { useCatalogItems } from "../hooks/useCatalog";
-import { ITEM_TYPES, EXECUTION_TYPES, ITEM_STATUSES } from "@/types";
+import { ITEM_TYPES, EXECUTION_TYPES } from "@/types";
+import { Button } from "@/components/ui/Button";
+import { SearchField } from "@/components/ui/SearchField";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { Table } from "@/components/ui/Table";
 
 const PAGE_SIZE = 25;
 
-export function CatalogList() {
-  const navigate = useNavigate();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [itemType, setItemType] = useState("");
-  const [status, setStatus] = useState("");
-  const [executionType, setExecutionType] = useState("");
-  const [categoryId] = useState("");
+const typeLabels: Record<string, string> = Object.fromEntries(
+  ITEM_TYPES.map((t) => [t.value, t.label])
+);
 
-  const { data, total, totalPages, loading, error, refetch } = useCatalogItems({
+export function CatalogList() {
+  const { can } = useAuth();
+  const navigate = useNavigate();
+
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [executionFilter, setExecutionFilter] = useState("all");
+  const [categoryFilter] = useState("all");
+
+  const { data: items, total, totalPages, loading, error } = useCatalogItems({
+    search: search || undefined,
+    itemType: typeFilter === "all" ? undefined : typeFilter,
+    status: statusFilter === "all" ? undefined : statusFilter,
+    executionType: executionFilter === "all" ? undefined : executionFilter,
+    categoryId: categoryFilter === "all" ? undefined : categoryFilter,
     page,
     pageSize: PAGE_SIZE,
-    search,
-    itemType: itemType || undefined,
-    status: status || undefined,
-    executionType: executionType || undefined,
-    categoryId: categoryId || undefined,
   });
 
-  const handleSearch = () => {
-    setPage(1);
-    setSearch(searchInput);
-  };
-
-  const handleClearFilters = () => {
-    setSearchInput("");
+  const clearFilters = () => {
     setSearch("");
-    setItemType("");
-    setStatus("");
-    setExecutionType("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setExecutionFilter("all");
     setPage(1);
   };
 
-  const hasFilters = search || itemType || status || executionType;
+  const hasActiveFilters =
+    search !== "" ||
+    typeFilter !== "all" ||
+    statusFilter !== "all" ||
+    executionFilter !== "all";
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-6)", flexWrap: "wrap", gap: "var(--space-4)" }}>
-        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)" }}>
-          Catálogo Mestre
-        </h1>
-        <button
-          onClick={() => navigate("/pricing/catalog/new")}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "var(--color-primary)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "var(--radius-md)",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-          }}
-        >
-          Novo Item
-        </button>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-4)" }}>
+      <SearchField
+        label="Buscar catálogo"
+        placeholder="Ex.: hemograma, gasometria..."
+        value={search}
+        onChange={(value) => { setSearch(value); setPage(1); }}
+        debounceMs={300}
+      />
 
-      {/* Search and Filters */}
-      <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-6)" }}>
-        <div style={{ display: "flex", gap: "var(--space-3)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Buscar por código, nome ou alias..."
-            style={{
-              flex: 1,
-              minWidth: "200px",
-              padding: "var(--space-2) var(--space-3)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              fontSize: "var(--text-sm)",
-              outline: "none",
-            }}
-            aria-label="Buscar catálogo"
-          />
-          <button
-            onClick={handleSearch}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "var(--color-primary)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-            }}
-          >
-            Buscar
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: "var(--spacing-3)", flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div>
+          <label className="sr-only" htmlFor="filter-type">Filtrar por tipo</label>
           <select
-            value={itemType}
-            onChange={(e) => { setItemType(e.target.value); setPage(1); }}
-            style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", fontSize: "var(--text-sm)" }}
+            id="filter-type"
             aria-label="Filtrar por tipo"
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+            style={{ padding: "var(--spacing-2) var(--spacing-3)", border: "1px solid var(--color-border-default)", borderRadius: "var(--radius-md)", fontSize: "var(--font-size-sm)" }}
           >
-            <option value="">Todos os tipos</option>
-            {ITEM_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
+            <option value="all">Todos</option>
+            {ITEM_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-
-          <select
-            value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", fontSize: "var(--text-sm)" }}
-            aria-label="Filtrar por status"
-          >
-            <option value="">Todos os status</option>
-            {ITEM_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-
-          <select
-            value={executionType}
-            onChange={(e) => { setExecutionType(e.target.value); setPage(1); }}
-            style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", fontSize: "var(--text-sm)" }}
-            aria-label="Filtrar por execução"
-          >
-            <option value="">Todas as execuções</option>
-            {EXECUTION_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-
-          {hasFilters && (
-            <button
-              onClick={handleClearFilters}
-              style={{
-                padding: "var(--space-2) var(--space-3)",
-                backgroundColor: "transparent",
-                color: "var(--color-text-secondary)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Limpar filtros
-            </button>
-          )}
         </div>
+        <div>
+          <label className="sr-only" htmlFor="filter-status">Filtrar por status</label>
+          <select
+            id="filter-status"
+            aria-label="Filtrar por status"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            style={{ padding: "var(--spacing-2) var(--spacing-3)", border: "1px solid var(--color-border-default)", borderRadius: "var(--radius-md)", fontSize: "var(--font-size-sm)" }}
+          >
+            <option value="all">Todos</option>
+            <option value="active">Ativo</option>
+            <option value="inactive">Inativo</option>
+            <option value="archived">Arquivado</option>
+          </select>
+        </div>
+        <div>
+          <label className="sr-only" htmlFor="filter-execution">Filtrar por execução</label>
+          <select
+            id="filter-execution"
+            aria-label="Filtrar por execução"
+            value={executionFilter}
+            onChange={(e) => { setExecutionFilter(e.target.value); setPage(1); }}
+            style={{ padding: "var(--spacing-2) var(--spacing-3)", border: "1px solid var(--color-border-default)", borderRadius: "var(--radius-md)", fontSize: "var(--font-size-sm)" }}
+          >
+            <option value="all">Todos</option>
+            {EXECUTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+        {hasActiveFilters && (
+          <Button variant="outlined" size="compact" onClick={clearFilters}>Limpar filtros</Button>
+        )}
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-          Carregando catálogo...
-        </div>
+      {loading && <Spinner label="Carregando itens..." />}
+
+      {error && (
+        <Alert tone="negative" title="Erro ao carregar itens">
+          {error}
+        </Alert>
       )}
 
-      {/* Error */}
-      {error && !loading && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>Erro ao carregar catálogo</p>
-          <button
-            onClick={() => void refetch()}
-            style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-          >
-            Tentar novamente
-          </button>
-        </div>
+      {!loading && !error && items.length === 0 && (
+        <EmptyState
+          title="Nenhum item cadastrado."
+          description="Cadastre o primeiro item no catálogo para iniciar a precificação."
+          actions={
+            can("pricing.catalog.create") ? (
+              <Button variant="filled" onClick={() => navigate("/pricing/catalog/new")}>
+                Cadastrar primeiro item
+              </Button>
+            ) : undefined
+          }
+        />
       )}
 
-      {/* Empty state */}
-      {!loading && !error && data.length === 0 && (
-        <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-8)", textAlign: "center" }}>
-          <p style={{ color: "var(--color-text-secondary)", marginBottom: hasFilters ? "var(--space-2)" : 0 }}>
-            {hasFilters ? "Nenhum item encontrado para os filtros aplicados." : "Nenhum item cadastrado."}
-          </p>
-          {!hasFilters && (
-            <button
-              onClick={() => navigate("/pricing/catalog/new")}
-              style={{
-                marginTop: "var(--space-4)",
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "var(--color-primary)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-                fontWeight: "var(--font-medium)",
-              }}
-            >
-              Novo item
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Desktop Table */}
-      {!loading && !error && data.length > 0 && (
+      {!loading && !error && items.length > 0 && (
         <>
-          <div style={{ display: "block", overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Código</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Nome</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Tipo</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Categoria</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Execução</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Status</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Atualizado</th>
-                  <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((item) => {
-                  const typeLabel = ITEM_TYPES.find((t) => t.value === item.item_type)?.label ?? item.item_type;
-                  const execLabel = EXECUTION_TYPES.find((t) => t.value === item.execution_type)?.label ?? item.execution_type;
-                  const statusInfo = ITEM_STATUSES.find((s) => s.value === item.status);
-
-                  return (
-                    <tr
-                      key={item.id}
-                      style={{ borderBottom: "1px solid var(--color-border)", cursor: "pointer" }}
-                      onClick={() => navigate(`/pricing/catalog/${item.id}`)}
+          <Table caption="Lista de itens do catálogo" captionHidden>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Código</th>
+                <th style={{ textAlign: "left" }}>Nome</th>
+                <th style={{ textAlign: "left" }}>Tipo</th>
+                <th style={{ textAlign: "left" }}>Categoria</th>
+                <th style={{ textAlign: "left" }}>Status</th>
+                <th style={{ textAlign: "right" }}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr
+                  key={item.id}
+                  onClick={() => navigate(`/pricing/catalog/${item.id}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td style={{ fontFamily: "var(--font-family-mono)", fontSize: "var(--font-size-sm)" }}>
+                    {item.legacy_code ?? "—"}
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 500 }}>{item.name}</div>
+                    {item.short_name && (
+                      <div style={{ color: "var(--color-text-secondary)", fontSize: "var(--font-size-sm)" }}>
+                        {item.short_name}
+                      </div>
+                    )}
+                  </td>
+                  <td><Badge>{typeLabels[item.item_type] ?? item.item_type}</Badge></td>
+                  <td style={{ color: "var(--color-text-secondary)" }}>
+                    {item.category?.name ?? "Sem categoria"}
+                  </td>
+                  <td><StatusBadge status={item.status} /></td>
+                  <td style={{ textAlign: "right" }}>
+                    <Button
+                      variant="text"
+                      size="compact"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/pricing/catalog/${item.id}`); }}
                     >
-                      <td style={{ padding: "var(--space-3)", fontWeight: "var(--font-medium)", fontFamily: "monospace" }}>{item.code}</td>
-                      <td style={{ padding: "var(--space-3)" }}>
-                        <div>{item.name}</div>
-                        {item.short_name && <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>{item.short_name}</div>}
-                      </td>
-                      <td style={{ padding: "var(--space-3)" }}>{typeLabel}</td>
-                      <td style={{ padding: "var(--space-3)" }}>{item.category?.name ?? "—"}</td>
-                      <td style={{ padding: "var(--space-3)" }}>{execLabel}</td>
-                      <td style={{ padding: "var(--space-3)" }}>
-                        <span style={{
-                          display: "inline-block",
-                          padding: "2px 8px",
-                          borderRadius: "var(--radius-full)",
-                          fontSize: "var(--text-xs)",
-                          fontWeight: "var(--font-medium)",
-                          backgroundColor: statusInfo?.color ? `${statusInfo.color}20` : "#E5E7EB",
-                          color: statusInfo?.color ?? "#6B7280",
-                        }}>
-                          {statusInfo?.label ?? item.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: "var(--space-3)", color: "var(--color-text-secondary)" }}>
-                        {new Date(item.updated_at).toLocaleDateString("pt-BR")}
-                      </td>
-                      <td style={{ padding: "var(--space-3)", textAlign: "right" }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/pricing/catalog/${item.id}`); }}
-                          style={{ padding: "4px 8px", backgroundColor: "transparent", color: "var(--color-primary)", border: "1px solid var(--color-primary)", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-xs)" }}
-                        >
-                          Ver
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      Ver detalhes
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "var(--space-4)", padding: "var(--space-3) 0" }}>
-              <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-                {total} {total === 1 ? "item" : "itens"} — Página {page} de {totalPages}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "var(--color-text-secondary)", fontSize: "var(--font-size-sm)" }}>
+                Página {page} de {totalPages} ({total} itens)
               </span>
-              <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  style={{
-                    padding: "var(--space-2) var(--space-3)",
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-md)",
-                    cursor: page === 1 ? "default" : "pointer",
-                    opacity: page === 1 ? 0.5 : 1,
-                    fontSize: "var(--text-sm)",
-                  }}
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  style={{
-                    padding: "var(--space-2) var(--space-3)",
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-md)",
-                    cursor: page === totalPages ? "default" : "pointer",
-                    opacity: page === totalPages ? 0.5 : 1,
-                    fontSize: "var(--text-sm)",
-                  }}
-                >
-                  Próxima
-                </button>
+              <div style={{ display: "flex", gap: "var(--spacing-2)" }}>
+                <Button variant="outlined" size="compact" disabled={page === 1} onClick={() => setPage(page - 1)}>
+                  ← Anterior
+                </Button>
+                <Button variant="outlined" size="compact" disabled={page === totalPages} onClick={() => setPage(page + 1)}>
+                  Próxima →
+                </Button>
               </div>
             </div>
           )}

@@ -4,6 +4,9 @@ import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { createSupplier } from "../api/suppliers";
 import { SupplierForm } from "../components/SupplierForm";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Alert } from "@/components/ui/Alert";
 import type { CompanyFormData, SupplierProfileFormData } from "../schemas/validation";
 
 function Inner() {
@@ -54,28 +57,23 @@ function Inner() {
   };
 
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)" }}>
-          Novo Fornecedor
-        </h1>
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginTop: "var(--space-1)" }}>
-          Preencha os dados da empresa e do perfil de fornecedor.
-        </p>
-      </div>
-
-      {globalError && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-6)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)" }}>{globalError}</p>
-        </div>
-      )}
-
+    <PageContainer>
+      <PageHeader
+        title="Novo Fornecedor"
+        description="Preencha os dados da empresa e do perfil de fornecedor."
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Fornecedores", to: "/pricing/suppliers" },
+          { label: "Novo fornecedor" },
+        ]}
+      />
+      {globalError && <Alert tone="negative">{globalError}</Alert>}
       <SupplierForm
         onSubmit={handleSubmit}
         onCancel={() => navigate("/pricing/suppliers")}
         loading={loading}
       />
-    </div>
+    </PageContainer>
   );
 }
 

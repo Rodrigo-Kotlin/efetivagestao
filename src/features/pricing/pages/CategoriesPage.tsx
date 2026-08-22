@@ -1,27 +1,19 @@
-import { useNavigate } from "react-router-dom";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { CategoryManager } from "../catalog/components/CategoryManager";
 
 export function CategoriesPage() {
-  const navigate = useNavigate();
-
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <button
-          onClick={() => navigate("/pricing")}
-          style={{
-            padding: "var(--space-1) var(--space-3)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          ← Voltar a Preços & Exames
-        </button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Categorias"
+        description="Organize os itens do catálogo em categorias."
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Categorias" },
+        ]}
+      />
       <CategoryManager />
-    </div>
+    </PageContainer>
   );
 }

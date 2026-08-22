@@ -4,6 +4,11 @@ import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { fetchSupplier, fetchSupplierMappings, updateSupplierStatus, setPreferredMapping, deactivateSupplierMapping } from "../api/suppliers";
 import { SupplierDetail } from "../components/SupplierDetail";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 import type { SupplierWithCompany, SupplierMappingWithCatalogItem } from "@/types";
 
 function Inner() {
@@ -100,40 +105,73 @@ function Inner() {
 
   if (loading) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Carregando fornecedor...
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          title="Fornecedor"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Fornecedores", to: "/pricing/suppliers" },
+            { label: "Carregando..." },
+          ]}
+        />
+        <Spinner label="Carregando fornecedor..." />
+      </PageContainer>
     );
   }
 
-  if (error) {
+  if (error && !supplier) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>{error}</p>
-        <button
-          onClick={() => navigate("/pricing/suppliers")}
-          style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-        >
-          Voltar
-        </button>
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          title="Fornecedor"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Fornecedores", to: "/pricing/suppliers" },
+            { label: "Erro" },
+          ]}
+        />
+        <Alert tone="negative" title={error}>
+          <Button variant="outlined" onClick={() => navigate("/pricing/suppliers")}>
+            Voltar
+          </Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (!supplier) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Fornecedor não encontrado.
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          title="Fornecedor"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Fornecedores", to: "/pricing/suppliers" },
+            { label: "Não encontrado" },
+          ]}
+        />
+        <p style={{ color: "var(--color-text-secondary)" }}>Fornecedor não encontrado.</p>
+      </PageContainer>
     );
   }
 
   return (
-    <SupplierDetail
-      supplier={supplier}
-      mappings={mappings}
-      onAction={handleAction}
-    />
+    <PageContainer size="wide">
+      <PageHeader
+        title={supplier.company?.legal_name ?? "Fornecedor"}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Fornecedores", to: "/pricing/suppliers" },
+          { label: supplier.company?.legal_name ?? "Detalhe" },
+        ]}
+      />
+      {error && <Alert tone="negative">{error}</Alert>}
+      <SupplierDetail
+        supplier={supplier}
+        mappings={mappings}
+        onAction={handleAction}
+      />
+    </PageContainer>
   );
 }
 
