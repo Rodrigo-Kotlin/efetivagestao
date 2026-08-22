@@ -119,7 +119,7 @@ export function CategoryManager() {
       {!loading && !error && tree.length === 0 && (
         <EmptyState
           title="Nenhuma categoria cadastrada."
-          description="Crie a primeira categoria para organizar os itens do catálogo."
+          description="Crie a primeira categoria para organizar os exames e serviços."
           actions={<Button variant="filled" onClick={() => { resetForm(); setShowForm(true); }}>Criar primeira categoria</Button>}
         />
       )}

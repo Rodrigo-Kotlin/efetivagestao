@@ -7,7 +7,7 @@ export function CategoriesPage() {
     <PageContainer>
       <PageHeader
         title="Categorias"
-        description="Organize os itens do catálogo em categorias."
+        description="Organize os exames e serviços em categorias."
         breadcrumbs={[
           { label: "Preços & Exames", to: "/pricing" },
           { label: "Categorias" },

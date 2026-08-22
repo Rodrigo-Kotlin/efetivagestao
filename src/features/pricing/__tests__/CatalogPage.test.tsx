@@ -58,17 +58,17 @@ describe("CatalogPage", () => {
 
   it("renders the page heading", () => {
     renderWithRouter(<CatalogPage />);
-    expect(screen.getByRole("heading", { name: "Catálogo Mestre" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Exames" })).toBeInTheDocument();
   });
 
-  it("renders the primary action Novo Item", () => {
+  it("renders the primary action Novo exame", () => {
     renderWithRouter(<CatalogPage />);
-    expect(screen.getByRole("button", { name: /Novo Item/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Novo exame/i })).toBeInTheDocument();
   });
 
-  it("navigates to /pricing/catalog/new when Novo Item clicked", () => {
+  it("navigates to /pricing/catalog/new when Novo exame clicked", () => {
     renderWithRouter(<CatalogPage />);
-    fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Novo exame/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/pricing/catalog/new");
   });
 });

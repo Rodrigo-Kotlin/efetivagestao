@@ -27,14 +27,14 @@ export function CatalogDetail({ itemId }: CatalogDetailProps) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   if (loading) {
-    return <Spinner label="Carregando item..." />;
+    return <Spinner label="Carregando exame..." />;
   }
 
   if (error) {
     return (
       <Alert tone="negative" title={error}>
         <Button variant="outlined" size="compact" onClick={() => navigate("/pricing/catalog")}>
-          Voltar ao catálogo
+          Voltar aos exames
         </Button>
       </Alert>
     );
@@ -43,11 +43,11 @@ export function CatalogDetail({ itemId }: CatalogDetailProps) {
   if (!item) {
     return (
       <EmptyState
-        title="Item não encontrado"
-        description="O item solicitado não foi encontrado no catálogo."
+        title="Exame não encontrado"
+        description="O exame solicitado não foi encontrado."
         actions={
           <Button variant="filled" onClick={() => navigate("/pricing/catalog")}>
-            Voltar ao catálogo
+            Voltar aos exames
           </Button>
         }
       />
@@ -58,7 +58,7 @@ export function CatalogDetail({ itemId }: CatalogDetailProps) {
   const execLabel = EXECUTION_TYPES.find((t) => t.value === item.execution_type)?.label ?? item.execution_type;
 
   const handleAction = async (action: "activate" | "deactivate" | "archive") => {
-    if (!confirm(action === "activate" ? "Ativar este item?" : action === "deactivate" ? "Inativar este item?" : "Arquivar este item?")) return;
+    if (!confirm(action === "activate" ? "Ativar este exame?" : action === "deactivate" ? "Inativar este exame?" : "Arquivar este exame?")) return;
     setActionLoading(true);
     setActionError(null);
     try {

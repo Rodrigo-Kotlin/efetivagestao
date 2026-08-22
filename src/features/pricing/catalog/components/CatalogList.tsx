@@ -56,7 +56,7 @@ export function CatalogList() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-4)" }}>
       <SearchField
-        label="Buscar catálogo"
+        label="Buscar exames"
         placeholder="Ex.: hemograma, gasometria..."
         value={search}
         onChange={(value) => { setSearch(value); setPage(1); }}
@@ -110,22 +110,22 @@ export function CatalogList() {
         )}
       </div>
 
-      {loading && <Spinner label="Carregando itens..." />}
+      {loading && <Spinner label="Carregando exames..." />}
 
       {error && (
-        <Alert tone="negative" title="Erro ao carregar itens">
+        <Alert tone="negative" title="Erro ao carregar exames">
           {error}
         </Alert>
       )}
 
       {!loading && !error && items.length === 0 && (
         <EmptyState
-          title="Nenhum item cadastrado."
-          description="Cadastre o primeiro item no catálogo para iniciar a precificação."
+          title="Nenhum exame cadastrado."
+          description="Cadastre o primeiro exame para iniciar a precificação."
           actions={
             can("pricing.catalog.create") ? (
               <Button variant="filled" onClick={() => navigate("/pricing/catalog/new")}>
-                Cadastrar primeiro item
+                Cadastrar primeiro exame
               </Button>
             ) : undefined
           }
@@ -134,7 +134,7 @@ export function CatalogList() {
 
       {!loading && !error && items.length > 0 && (
         <>
-          <Table caption="Lista de itens do catálogo" captionHidden>
+          <Table caption="Lista de exames" captionHidden>
             <thead>
               <tr>
                 <th style={{ textAlign: "left" }}>Código</th>
@@ -185,7 +185,7 @@ export function CatalogList() {
           {totalPages > 1 && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ color: "var(--color-text-secondary)", fontSize: "var(--font-size-sm)" }}>
-                Página {page} de {totalPages} ({total} itens)
+                Página {page} de {totalPages} ({total} exames)
               </span>
               <div style={{ display: "flex", gap: "var(--spacing-2)" }}>
                 <Button variant="outlined" size="compact" disabled={page === 1} onClick={() => setPage(page - 1)}>

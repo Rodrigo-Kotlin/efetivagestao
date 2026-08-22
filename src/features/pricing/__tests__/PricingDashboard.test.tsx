@@ -11,20 +11,12 @@ vi.mock("@/features/core/useAuth", () => ({
     profile: { full_name: "Test User" },
     memberships: [],
     activeOrganization: { id: "org-1", name: "Test Org" },
-    userRoles: { roles: [], permissions: ["pricing.catalog.view", "pricing.supplier.view", "pricing.cost.view"] },
+    userRoles: { roles: [], permissions: ["pricing.catalog.view", "pricing.supplier.view"] },
     loading: false,
     signIn: vi.fn(),
     signOut: vi.fn(),
-    can: (perm: string) => ["pricing.catalog.view", "pricing.supplier.view", "pricing.cost.view"].includes(perm),
+    can: (perm: string) => ["pricing.catalog.view", "pricing.supplier.view"].includes(perm),
     hasRole: () => false,
-  }),
-}));
-
-vi.mock("@/features/pricing/catalog/hooks/useCatalog", () => ({
-  useCatalogStats: () => ({
-    stats: { total_active: 10, total_draft: 3, total_inactive: 2, total_categories: 5 },
-    loading: false,
-    error: null,
   }),
 }));
 
@@ -39,32 +31,65 @@ function renderWithRouter(ui: React.ReactElement, route = "/") {
 describe("PricingDashboard", () => {
   it("renders the page title", () => {
     renderWithRouter(<PricingDashboard />);
-    expect(screen.getByText("Preços & Exames")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Preços & Exames" })).toBeInTheDocument();
   });
 
-  it("renders the description", () => {
+  it("renders the MVP description", () => {
     renderWithRouter(<PricingDashboard />);
-    expect(screen.getByText(/Catálogo, custos, margens/)).toBeInTheDocument();
+    expect(screen.getByText(/Cadastre fornecedores e exames/)).toBeInTheDocument();
   });
 
-  it("shows catalog stats", () => {
-    renderWithRouter(<PricingDashboard />);
-    expect(screen.getByText("Itens Ativos")).toBeInTheDocument();
-    expect(screen.getByText("10")).toBeInTheDocument();
-    expect(screen.getByText("Rascunhos")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-  });
-
-  it("renders Catálogo Mestre as available", () => {
-    renderWithRouter(<PricingDashboard />);
-    expect(screen.getByText("Catálogo Mestre")).toBeInTheDocument();
-  });
-
-  it("renders Fornecedores as available and future modules as coming soon", () => {
+  it("renders exactly four MVP cards", () => {
     renderWithRouter(<PricingDashboard />);
     expect(screen.getByText("Fornecedores")).toBeInTheDocument();
-    expect(screen.getByText("Custos")).toBeInTheDocument();
-    const comingSoonBadges = screen.getAllByText("Em breve");
-    expect(comingSoonBadges.length).toBeGreaterThan(0);
+    expect(screen.getByText("Exames")).toBeInTheDocument();
+    expect(screen.getByText("Custos & Comparativo")).toBeInTheDocument();
+    expect(screen.getByText("Tabela de Preços")).toBeInTheDocument();
+  });
+
+  it("Fornecedores card navigates to /pricing/suppliers", () => {
+    renderWithRouter(<PricingDashboard />);
+    const card = screen.getByRole("link", { name: "Fornecedores" });
+    expect(card).toHaveAttribute("href", "/pricing/suppliers");
+  });
+
+  it("Exames card navigates to /pricing/catalog", () => {
+    renderWithRouter(<PricingDashboard />);
+    const card = screen.getByRole("link", { name: "Exames" });
+    expect(card).toHaveAttribute("href", "/pricing/catalog");
+  });
+
+  it("Custos & Comparativo is not navigational and shows Em implantação", () => {
+    renderWithRouter(<PricingDashboard />);
+    const card = screen.getByLabelText("Custos & Comparativo — Em implantação");
+    expect(card.tagName).not.toBe("A");
+    expect(screen.getAllByText("Em implantação").length).toBe(2);
+  });
+
+  it("Tabela de Preços is not navigational and shows Em implantação", () => {
+    renderWithRouter(<PricingDashboard />);
+    const card = screen.getByLabelText("Tabela de Preços — Em implantação");
+    expect(card.tagName).not.toBe("A");
+  });
+
+  it("does not render advanced pricing modules", () => {
+    renderWithRouter(<PricingDashboard />);
+    expect(screen.queryByText("Políticas de Preço")).not.toBeInTheDocument();
+    expect(screen.queryByText("Simulador de Preço")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tabelas Comerciais")).not.toBeInTheDocument();
+    expect(screen.queryByText("Clientes")).not.toBeInTheDocument();
+    expect(screen.queryByText("Importações")).not.toBeInTheDocument();
+    expect(screen.queryByText("Conciliação")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mercado")).not.toBeInTheDocument();
+  });
+
+  it("does not render old KPI summary", () => {
+    renderWithRouter(<PricingDashboard />);
+    expect(screen.queryByText("Itens Ativos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rascunhos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Inativos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Categorias")).not.toBeInTheDocument();
+    expect(screen.queryByText("Resumo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Próximos recursos")).not.toBeInTheDocument();
   });
 });

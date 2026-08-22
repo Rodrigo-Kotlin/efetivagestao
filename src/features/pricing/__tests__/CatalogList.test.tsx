@@ -52,12 +52,12 @@ function renderWithRouter(ui: React.ReactElement) {
 describe("CatalogList", () => {
   it("renders empty state when no items", () => {
     renderWithRouter(<CatalogList />);
-    expect(screen.getByText("Nenhum item cadastrado.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum exame cadastrado.")).toBeInTheDocument();
   });
 
   it("has search input", () => {
     renderWithRouter(<CatalogList />);
-    expect(screen.getByLabelText("Buscar catálogo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Buscar exames")).toBeInTheDocument();
   });
 
   it("has filter selects", () => {

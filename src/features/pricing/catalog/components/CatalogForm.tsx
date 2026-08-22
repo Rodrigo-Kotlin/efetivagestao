@@ -57,9 +57,9 @@ export function CatalogForm({ initialData, mode }: CatalogFormProps) {
     try {
       const result = await checkDuplicate({ name: form.name, excludeId: initialData?.id });
       if (result.name_match) {
-        setDuplicateWarning("Já existe um item com nome semelhante neste catálogo.");
+        setDuplicateWarning("Já existe um exame com nome semelhante.");
       } else if (result.similar_items.length > 0) {
-        setDuplicateWarning(`Existem itens com nomes similares: ${result.similar_items.map((i) => i.code).join(", ")}`);
+        setDuplicateWarning(`Existem exames com nomes similares: ${result.similar_items.map((i) => i.code).join(", ")}`);
       } else {
         setDuplicateWarning(null);
       }
@@ -93,7 +93,7 @@ export function CatalogForm({ initialData, mode }: CatalogFormProps) {
         navigate(`/pricing/catalog/${initialData.id}`);
       }
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erro ao salvar item");
+      setSubmitError(err instanceof Error ? err.message : "Erro ao salvar exame");
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +185,7 @@ export function CatalogForm({ initialData, mode }: CatalogFormProps) {
           Cancelar
         </Button>
         <Button type="submit" variant="filled" disabled={submitting}>
-          {submitting ? "Salvando..." : mode === "create" ? "Criar Item" : "Salvar Alterações"}
+          {submitting ? "Salvando..." : mode === "create" ? "Criar exame" : "Salvar Alterações"}
         </Button>
       </FormActions>
     </form>

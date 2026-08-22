@@ -7,11 +7,11 @@ export function CatalogNewPage() {
     <PageContainer>
       <PageHeader
         variant="compact"
-        title="Novo Item"
+        title="Novo exame"
         breadcrumbs={[
           { label: "Preços & Exames", to: "/pricing" },
-          { label: "Catálogo Mestre", to: "/pricing/catalog" },
-          { label: "Novo item" },
+          { label: "Exames", to: "/pricing/catalog" },
+          { label: "Novo exame" },
         ]}
       />
       <CatalogForm mode="create" />

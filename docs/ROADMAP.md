@@ -42,7 +42,7 @@
 | PRC-12 | Hardening | NOT STARTED |
 | PRC-13 | Homologação | NOT STARTED |
 | **MVP-PRICING-00** | **Arquitetura e Simplificação de Produto** | **COMPLETED** |
-| **MVP-PRICING-01** | **Navegação Simplificada e UX de Preços** | **DEFINED** |
+| **MVP-PRICING-01** | **Navegação Simplificada e UX de Preços** | **COMPLETED** |
 | **MVP-PRICING-02** | **Entrada de Preço Fornecedor e Comparação de Custos** | **DEFINED** |
 | **MVP-PRICING-03** | **Margem Padrão e Tabela de Preços Pesquisável** | **DEFINED** |
 | **MVP-PRICING-04** | **Hardening / E2E / QA Responsivo** | **DEFINED** |
@@ -72,7 +72,7 @@ MVP Phases:
 | Fase | Escopo | Status |
 |------|--------|--------|
 | MVP-PRICING-00 | Arquitetura e Simplificação de Produto | **COMPLETED** |
-| MVP-PRICING-01 | Navegação Simplificada e UX de Preços | DEFINIDO (futuro) |
+| MVP-PRICING-01 | Navegação Simplificada e UX de Preços | **COMPLETED** |
 | MVP-PRICING-02 | Entrada de Preço Fornecedor e Comparação de Custos | DEFINIDO (futuro) |
 | MVP-PRICING-03 | Margem Padrão e Tabela de Preços Pesquisável | DEFINIDO (futuro) |
 | MVP-PRICING-04 | Hardening / E2E / QA Responsivo | DEFINIDO (futuro) |
@@ -125,6 +125,7 @@ Controla:
 | FINAL_PRICE_RESOLVER_VERIFIED | PRC-07B | Atingido |
 | UIX-03D1_VERIFIED | UIX-03D1 | Atingido |
 | MVP_ARCHITECTURE_DEFINED | MVP-PRICING-00 | Atingido |
+| MVP_NAVIGATION_SIMPLIFIED | MVP-PRICING-01 | Atingido |
 
 ## Gate de Continuidade
 
@@ -143,3 +144,4 @@ Controla:
 | UIX-03D2 | PAUSED — SUPERSEDED BY MVP PIVOT |
 | MVP-PRICING-00 | COMPLETED — Architecture only |
 | READY FOR MVP-PRICING-01 | YES |
+| READY FOR MVP-PRICING-02 | YES |

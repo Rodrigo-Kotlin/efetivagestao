@@ -22,14 +22,14 @@ export function CatalogEditPage() {
       <PageContainer>
         <PageHeader
           variant="compact"
-          title="Editar Item"
+          title="Editar exame"
           breadcrumbs={[
             { label: "Preços & Exames", to: "/pricing" },
-            { label: "Catálogo Mestre", to: "/pricing/catalog" },
+            { label: "Exames", to: "/pricing/catalog" },
             { label: "Editar" },
           ]}
         />
-        <Spinner label="Carregando item..." />
+        <Spinner label="Carregando exame..." />
       </PageContainer>
     );
   }
@@ -39,16 +39,16 @@ export function CatalogEditPage() {
       <PageContainer>
         <PageHeader
           variant="compact"
-          title="Editar Item"
+          title="Editar exame"
           breadcrumbs={[
             { label: "Preços & Exames", to: "/pricing" },
-            { label: "Catálogo Mestre", to: "/pricing/catalog" },
+            { label: "Exames", to: "/pricing/catalog" },
             { label: "Editar" },
           ]}
         />
-        <Alert tone="negative" title={error ?? "Item não encontrado."}>
+        <Alert tone="negative" title={error ?? "Exame não encontrado."}>
           <Button variant="outlined" onClick={() => navigate("/pricing/catalog")}>
-            Voltar ao catálogo
+            Voltar aos exames
           </Button>
         </Alert>
       </PageContainer>
@@ -59,10 +59,10 @@ export function CatalogEditPage() {
     <PageContainer>
       <PageHeader
         variant="compact"
-        title="Editar Item"
+        title="Editar exame"
         breadcrumbs={[
           { label: "Preços & Exames", to: "/pricing" },
-          { label: "Catálogo Mestre", to: "/pricing/catalog" },
+          { label: "Exames", to: "/pricing/catalog" },
           { label: item.name, to: `/pricing/catalog/${id}` },
           { label: "Editar" },
         ]}

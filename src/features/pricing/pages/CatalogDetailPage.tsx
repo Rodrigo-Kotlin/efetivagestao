@@ -15,10 +15,10 @@ export function CatalogDetailPage() {
   return (
     <PageContainer size="wide">
       <PageHeader
-        title="Detalhe do Item"
+        title="Detalhe do exame"
         breadcrumbs={[
           { label: "Preços & Exames", to: "/pricing" },
-          { label: "Catálogo Mestre", to: "/pricing/catalog" },
+          { label: "Exames", to: "/pricing/catalog" },
           { label: "Detalhe" },
         ]}
       />

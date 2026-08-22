@@ -10,11 +10,11 @@ export function CatalogPage() {
   return (
     <PageContainer size="wide">
       <PageHeader
-        title="Catálogo Mestre"
-        description="Exames, serviços e itens padronizados utilizados em custos, precificação e tabelas comerciais."
+        title="Exames"
+        description="Cadastre e gerencie exames e serviços."
         actions={
           <Button variant="filled" onClick={() => navigate("/pricing/catalog/new")}>
-            Novo Item
+            Novo exame
           </Button>
         }
       />
