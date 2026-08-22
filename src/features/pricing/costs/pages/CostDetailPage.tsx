@@ -5,10 +5,16 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { fetchCostTable, updateCostTableStatus } from "../api/costs";
 import { CostTableDetail } from "../components/CostTableDetail";
 import type { CostTableWithSupplier } from "@/types";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { DropdownMenu, MenuItem } from "@/components/ui/DropdownMenu";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
 
 function Inner() {
   const { id } = useParams<{ id: string }>();
-  const { activeOrganization, user } = useAuth();
+  const { activeOrganization, user, can } = useAuth();
   const navigate = useNavigate();
 
   const [costTable, setCostTable] = useState<CostTableWithSupplier | null>(null);
@@ -85,39 +91,101 @@ function Inner() {
 
   if (loading) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Carregando tabela de custo...
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Tabela de custo"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Carregando..." },
+          ]}
+        />
+        <Spinner label="Carregando tabela de custo..." />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>{error}</p>
-        <button
-          onClick={() => navigate("/pricing/costs")}
-          style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-        >
-          Voltar
-        </button>
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Tabela de custo"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Erro" },
+          ]}
+        />
+        <Alert tone="negative" title={error}>
+          <Button variant="outlined" onClick={() => navigate("/pricing/costs")}>Voltar</Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (!costTable) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Tabela de custo não encontrada.
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Tabela de custo"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Não encontrada" },
+          ]}
+        />
+        <p style={{ color: "var(--md-sys-color-on-surface-variant)" }}>Tabela de custo não encontrada.</p>
+      </PageContainer>
     );
   }
 
+  const isActive = costTable.status === "active";
+  const isArchived = costTable.status === "archived";
+  const canEdit = can("pricing.cost.edit");
+
   return (
-    <CostTableDetail
-      costTable={costTable}
-      onAction={handleAction}
-    />
+    <PageContainer size="wide">
+      <PageHeader
+        variant="entity"
+        title={costTable.name}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Custos", to: "/pricing/costs" },
+          { label: costTable.name },
+        ]}
+        meta={<span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--md-sys-typescale-body-medium-size)", color: "var(--md-sys-color-on-surface-variant)" }}>{costTable.code}</span>}
+        primaryAction={
+          canEdit ? (
+            <Button variant="filled" onClick={() => handleAction("new_version")}>
+              Nova versão
+            </Button>
+          ) : undefined
+        }
+        overflowActions={
+          canEdit ? (
+            <DropdownMenu
+              label="Mais ações"
+              trigger="Mais"
+              align="end"
+            >
+              {isActive ? (
+                <MenuItem onClick={() => handleAction("inactivate")}>Inativar</MenuItem>
+              ) : null}
+              {!isActive && !isArchived ? (
+                <MenuItem onClick={() => handleAction("activate")}>Ativar</MenuItem>
+              ) : null}
+              {!isArchived ? (
+                <MenuItem onClick={() => handleAction("archive")}>Arquivar</MenuItem>
+              ) : null}
+            </DropdownMenu>
+          ) : undefined
+        }
+      />
+      <CostTableDetail costTable={costTable} onAction={handleAction} />
+    </PageContainer>
   );
 }
 

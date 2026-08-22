@@ -119,7 +119,7 @@ describe("VersionDetailPage workflow (UI-WF01..06)", () => {
     h.setVersionRow(makeVersion("draft"));
     await loadPage();
 
-    fireEvent.click(screen.getByText("Enviar para Revisão"));
+    fireEvent.click(screen.getByText("Enviar para revisão"));
 
     await waitFor(() => {
       expect(h.rpc).toHaveBeenCalledWith("fn_submit_cost_version", { p_version_id: "version-1" });
@@ -164,7 +164,7 @@ describe("VersionDetailPage workflow (UI-WF01..06)", () => {
     h.setVersionRow(makeVersion("draft"));
     await loadPage();
 
-    fireEvent.click(screen.getByText("Enviar para Revisão"));
+    fireEvent.click(screen.getByText("Enviar para revisão"));
 
     expect(await screen.findByText("Adicione ao menos um item de custo antes de enviar para revisão.")).toBeInTheDocument();
   });
@@ -176,12 +176,12 @@ describe("VersionDetailPage workflow (UI-WF01..06)", () => {
     const singleCallsBefore = (h.chain.single as ReturnType<typeof vi.fn>).mock.calls.length;
 
     h.setVersionRow(makeVersion("under_review"));
-    fireEvent.click(screen.getByText("Enviar para Revisão"));
+    fireEvent.click(screen.getByText("Enviar para revisão"));
 
     await waitFor(() => {
       const singleCallsAfter = (h.chain.single as ReturnType<typeof vi.fn>).mock.calls.length;
       expect(singleCallsAfter).toBeGreaterThan(singleCallsBefore);
     });
-    expect(await screen.findByText("Em Revisão")).toBeInTheDocument();
+    expect(await screen.findByText("Em revisão")).toBeInTheDocument();
   });
 });

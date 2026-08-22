@@ -1,4 +1,8 @@
 import type { CostItem } from "@/types";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Table } from "@/components/ui/Table";
+import { formatCurrency, formatSignedDiff } from "../utils/format";
 
 interface VersionDiffProps {
   oldItems: CostItem[];
@@ -17,22 +21,6 @@ interface DiffRow {
   absoluteDiff: number | null;
   percentageDiff: number | null;
 }
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: "var(--color-surface)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-lg)",
-  padding: "var(--space-6)",
-  marginBottom: "var(--space-6)",
-};
-
-const formatCurrency = (amount: number | null, currency: string = "BRL") => {
-  if (amount === null || amount === undefined) return "—";
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency,
-  }).format(amount);
-};
 
 function computeDiff(oldItems: CostItem[], newItems: CostItem[]): DiffRow[] {
   const oldMap = new Map<string, CostItem>();
@@ -121,110 +109,85 @@ function computeDiff(oldItems: CostItem[], newItems: CostItem[]): DiffRow[] {
 export function VersionDiff({ oldItems, newItems }: VersionDiffProps) {
   const rows = computeDiff(oldItems, newItems);
 
-  const getRowColor = (row: DiffRow): string | undefined => {
-    if (row.changeType === "new") return "#F0FDF4";
-    if (row.changeType === "removed") return "#FEF2F2";
-    if (row.changeType === "unchanged") return undefined;
-    if (row.absoluteDiff === null) return undefined;
-    if (row.absoluteDiff < 0) return "#F0FDF4";
-    if (row.absoluteDiff > 0) return "#FEF2F2";
-    return undefined;
-  };
-
-  const getDiffColor = (row: DiffRow): string => {
-    if (row.absoluteDiff === null) return "#6B7280";
-    if (row.absoluteDiff < 0) return "#10B981";
-    if (row.absoluteDiff > 0) return "#EF4444";
-    return "#6B7280";
-  };
-
   return (
-    <div style={cardStyle}>
-      <h3 style={{ fontSize: "var(--text-md)", fontWeight: "var(--font-semibold)", color: "var(--color-text)", marginBottom: "var(--space-4)" }}>
-        Comparação de Versões
-      </h3>
-
+    <section className="eg-section" aria-labelledby="version-diff">
+      <h3 id="version-diff" className="eg-section__title">Comparação de versões</h3>
       {rows.length === 0 ? (
-        <p style={{ color: "var(--color-text-secondary)", textAlign: "center", padding: "var(--space-8) 0" }}>
-          Nenhuma diferença encontrada.
-        </p>
+        <EmptyState
+          title="Nenhuma diferença encontrada"
+          description="As duas versões possuem o mesmo conteúdo."
+        />
       ) : (
-        <div style={{ display: "block", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-                <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Item</th>
-                <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Custo Anterior</th>
-                <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Custo Atual</th>
-                <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Diferença</th>
-                <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>%</th>
-                <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Status</th>
+        <Table caption="Comparação de itens entre versões" captionHidden>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left" }}>Item</th>
+              <th style={{ textAlign: "right" }}>Custo Anterior</th>
+              <th style={{ textAlign: "right" }}>Custo Atual</th>
+              <th style={{ textAlign: "right" }}>Diferença</th>
+              <th style={{ textAlign: "right" }}>%</th>
+              <th style={{ textAlign: "left" }}>Alteração</th>
+              <th style={{ textAlign: "left" }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.catalogItemId}>
+                <td>
+                  <div style={{ fontWeight: 500 }}>{row.catalogItemName}</div>
+                  <div style={{ fontSize: "var(--md-sys-typescale-body-medium-size)", color: "var(--md-sys-color-on-surface-variant)", fontFamily: "var(--font-mono)" }}>
+                    {row.catalogItemCode}
+                  </div>
+                </td>
+                <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                  {formatCurrency(row.oldAmount)}
+                </td>
+                <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                  {formatCurrency(row.newAmount)}
+                </td>
+                <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                  {formatSignedDiff(row.absoluteDiff)}
+                </td>
+                <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: "var(--md-sys-typescale-body-medium-size)" }}>
+                  {row.percentageDiff !== null
+                    ? `${row.percentageDiff >= 0 ? "+" : ""}${row.percentageDiff.toFixed(1)}%`
+                    : "—"}
+                </td>
+                <td>
+                  <Badge tone={diffTone(row)}>
+                    {diffLabel(row)}
+                  </Badge>
+                </td>
+                <td style={{ fontSize: "var(--md-sys-typescale-body-medium-size)", color: "var(--md-sys-color-on-surface-variant)" }}>
+                  {row.changeType === "changed" && row.oldStatus !== row.newStatus
+                    ? `${row.oldStatus} → ${row.newStatus}`
+                    : row.newStatus || row.oldStatus || "—"}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const rowColor = getRowColor(row);
-                const diffColor = getDiffColor(row);
-
-                return (
-                  <tr
-                    key={row.catalogItemId}
-                    style={{
-                      borderBottom: "1px solid var(--color-border)",
-                      backgroundColor: rowColor,
-                    }}
-                  >
-                    <td style={{ padding: "var(--space-3)" }}>
-                      <div style={{ fontWeight: "var(--font-medium)" }}>{row.catalogItemName}</div>
-                      <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", fontFamily: "monospace" }}>
-                        {row.catalogItemCode}
-                      </div>
-                    </td>
-                    <td style={{ padding: "var(--space-3)", textAlign: "right", fontFamily: "monospace" }}>
-                      {formatCurrency(row.oldAmount)}
-                    </td>
-                    <td style={{ padding: "var(--space-3)", textAlign: "right", fontFamily: "monospace" }}>
-                      {formatCurrency(row.newAmount)}
-                    </td>
-                    <td style={{ padding: "var(--space-3)", textAlign: "right", fontFamily: "monospace", color: diffColor, fontWeight: "var(--font-medium)" }}>
-                      {row.absoluteDiff !== null
-                        ? `${row.absoluteDiff >= 0 ? "+" : ""}${formatCurrency(row.absoluteDiff)}`
-                        : "—"}
-                    </td>
-                    <td style={{ padding: "var(--space-3)", textAlign: "right", fontFamily: "monospace", color: diffColor, fontSize: "var(--text-xs)" }}>
-                      {row.percentageDiff !== null
-                        ? `${row.percentageDiff >= 0 ? "+" : ""}${row.percentageDiff.toFixed(1)}%`
-                        : "—"}
-                    </td>
-                    <td style={{ padding: "var(--space-3)" }}>
-                      {row.changeType === "new" && (
-                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "var(--radius-full)", fontSize: "var(--text-xs)", fontWeight: "var(--font-medium)", backgroundColor: "#DCFCE7", color: "#166534" }}>
-                          Novo
-                        </span>
-                      )}
-                      {row.changeType === "removed" && (
-                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "var(--radius-full)", fontSize: "var(--text-xs)", fontWeight: "var(--font-medium)", backgroundColor: "#FEE2E2", color: "#991B1B" }}>
-                          Removido
-                        </span>
-                      )}
-                      {row.changeType === "changed" && row.oldStatus !== row.newStatus && (
-                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "var(--radius-full)", fontSize: "var(--text-xs)", fontWeight: "var(--font-medium)", backgroundColor: "#FEF3C7", color: "#92400E" }}>
-                          {row.oldStatus} → {row.newStatus}
-                        </span>
-                      )}
-                      {row.changeType === "unchanged" && (
-                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "var(--radius-full)", fontSize: "var(--text-xs)", fontWeight: "var(--font-medium)", backgroundColor: "#E5E7EB", color: "#6B7280" }}>
-                          Sem alteração
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
-    </div>
+    </section>
   );
+}
+
+function diffLabel(row: DiffRow): string {
+  switch (row.changeType) {
+    case "new": return "Novo";
+    case "removed": return "Removido";
+    case "unchanged": return "Sem alteração";
+    case "changed":
+      return row.absoluteDiff === null ? "Alterado" : row.absoluteDiff < 0 ? "Reduzido" : row.absoluteDiff > 0 ? "Aumentado" : "Alterado";
+  }
+}
+
+function diffTone(row: DiffRow): "positive" | "negative" | "warning" | "neutral" | "info" {
+  switch (row.changeType) {
+    case "new": return "info";
+    case "removed": return "negative";
+    case "unchanged": return "neutral";
+    case "changed":
+      return row.absoluteDiff === null ? "warning" : row.absoluteDiff < 0 ? "positive" : row.absoluteDiff > 0 ? "warning" : "neutral";
+  }
 }

@@ -3,11 +3,13 @@ import { cx } from "./cx";
 import { FieldFrame } from "./FieldFrame";
 import { fieldDescriptionId } from "./fieldDescription";
 
-export interface TextFieldProps extends ComponentPropsWithRef<"input"> {
+export interface TextFieldProps extends Omit<ComponentPropsWithRef<"input">, "multiline"> {
   label: ReactNode;
   supportingText?: ReactNode;
   error?: ReactNode;
   density?: "comfortable" | "compact";
+  multiline?: boolean;
+  rows?: number;
 }
 
 export function TextField({
@@ -16,10 +18,12 @@ export function TextField({
   supportingText,
   error,
   density = "comfortable",
-    required,
-    className,
-    "aria-invalid": ariaInvalid,
-    "aria-describedby": providedDescription,
+  multiline = false,
+  rows = 3,
+  required,
+  className,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": providedDescription,
   ...props
 }: TextFieldProps) {
   const generatedId = useId();
@@ -32,15 +36,28 @@ export function TextField({
       supportingText={supportingText}
       error={error}
     >
-      <input
-        {...props}
-        id={id}
-        required={required}
-        className={cx("eg-input", className)}
-        data-density={density}
-        aria-invalid={error ? true : ariaInvalid}
-        aria-describedby={fieldDescriptionId(id, error, supportingText, providedDescription)}
-      />
+      {multiline ? (
+        <textarea
+          {...(props as ComponentPropsWithRef<"textarea">)}
+          id={id}
+          required={required}
+          rows={rows}
+          className={cx("eg-input", className)}
+          data-density={density}
+          aria-invalid={error ? true : ariaInvalid}
+          aria-describedby={fieldDescriptionId(id, error, supportingText, providedDescription)}
+        />
+      ) : (
+        <input
+          {...props}
+          id={id}
+          required={required}
+          className={cx("eg-input", className)}
+          data-density={density}
+          aria-invalid={error ? true : ariaInvalid}
+          aria-describedby={fieldDescriptionId(id, error, supportingText, providedDescription)}
+        />
+      )}
     </FieldFrame>
   );
 }

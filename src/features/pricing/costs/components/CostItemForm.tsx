@@ -3,6 +3,14 @@ import { COST_ITEM_STATUSES } from "@/types";
 import type { CatalogItem, CostItemInsert } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/features/core/useAuth";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { TextField } from "@/components/ui/TextField";
+import { Select } from "@/components/ui/Select";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { Button } from "@/components/ui/Button";
+import { InlineError } from "@/components/ui/InlineError";
 
 interface Props {
   supplierCompanyId: string;
@@ -10,22 +18,6 @@ interface Props {
   onSave: (data: CostItemInsert) => void;
   onCancel: () => void;
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "var(--space-2) var(--space-3)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  fontSize: "var(--text-sm)",
-  outline: "none",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "var(--text-xs)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "4px",
-};
 
 export function CostItemForm({ supplierCompanyId: _supplierCompanyId, initialData, onSave, onCancel }: Props) {
   const { activeOrganization } = useAuth();
@@ -35,7 +27,7 @@ export function CostItemForm({ supplierCompanyId: _supplierCompanyId, initialDat
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState(initialData?.catalog_item_id ?? "");
-  const [supplierCatalogItemId, _setSupplierCatalogItemId] = useState(initialData?.supplier_catalog_item_id ?? "");
+  const [_supplierCatalogItemId, _setSupplierCatalogItemId] = useState(initialData?.supplier_catalog_item_id ?? "");
   const [costStatus, setCostStatus] = useState(initialData?.cost_status ?? "provided");
   const [amount, setAmount] = useState(initialData?.amount?.toString() ?? "");
   const [currencyCode, setCurrencyCode] = useState(initialData?.currency_code ?? "BRL");
@@ -95,7 +87,7 @@ export function CostItemForm({ supplierCompanyId: _supplierCompanyId, initialDat
 
     onSave({
       catalog_item_id: selectedCatalogItemId,
-      supplier_catalog_item_id: supplierCatalogItemId,
+      supplier_catalog_item_id: _supplierCatalogItemId,
       cost_status: costStatus,
       amount: amountValue,
       currency_code: currencyCode,
@@ -104,131 +96,86 @@ export function CostItemForm({ supplierCompanyId: _supplierCompanyId, initialDat
   };
 
   return (
-    <div style={{
-      backgroundColor: "var(--color-surface)",
-      border: "1px solid var(--color-border)",
-      borderRadius: "var(--radius-lg)",
-      padding: "var(--space-6)",
-      marginBottom: "var(--space-4)",
-    }}>
-      <h4 style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-semibold)", color: "var(--color-text)", marginBottom: "var(--space-4)" }}>
-        {initialData ? "Editar Item de Custo" : "Adicionar Item de Custo"}
-      </h4>
+    <FormSection
+      title={initialData ? "Editar item de custo" : "Adicionar item de custo"}
+    >
+      <TextField
+        label="Buscar item do catálogo"
+        supportingText="Filtre por código ou nome."
+        placeholder="Buscar código ou nome..."
+        value={catalogSearch}
+        onChange={(e) => setCatalogSearch(e.target.value)}
+      />
+      <Select
+        label="Item do catálogo"
+        required
+        value={selectedCatalogItemId}
+        onChange={(e) => setSelectedCatalogItemId(e.target.value)}
+      >
+        <option value="">{catalogLoading ? "Carregando..." : "Selecione..."}</option>
+        {catalogItems.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.code} — {item.name}
+          </option>
+        ))}
+      </Select>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div>
-          <label style={labelStyle}>Item do Catálogo *</label>
-          <input
-            type="text"
-            value={catalogSearch}
-            onChange={(e) => setCatalogSearch(e.target.value)}
-            placeholder="Buscar código ou nome..."
-            style={{ ...inputStyle, marginBottom: "4px" }}
+      <FieldGroup columns={2}>
+        <Select
+          label="Status do custo"
+          required
+          value={costStatus}
+          onChange={(e) => setCostStatus(e.target.value)}
+        >
+          {COST_ITEM_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </Select>
+
+        {showAmount ? (
+          <TextField
+            label="Valor (Custo)"
+            type="number"
+            required
+            placeholder="0.00"
+            step="0.01"
+            min="0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
           />
-          <select
-            value={selectedCatalogItemId}
-            onChange={(e) => setSelectedCatalogItemId(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="">{catalogLoading ? "Carregando..." : "Selecione..."}</option>
-            {catalogItems.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.code} — {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        ) : null}
 
-        <div>
-          <label style={labelStyle}>Status do Custo *</label>
-          <select
-            value={costStatus}
-            onChange={(e) => setCostStatus(e.target.value)}
-            style={inputStyle}
-          >
-            {COST_ITEM_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {showAmount && (
-          <div>
-            <label style={labelStyle}>Valor (Custo) *</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              step="0.01"
-              min="0"
-              style={inputStyle}
-            />
-          </div>
-        )}
-
-        <div>
-          <label style={labelStyle}>Moeda</label>
-          <select
-            value={currencyCode}
-            onChange={(e) => setCurrencyCode(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="BRL">BRL — Real</option>
-            <option value="USD">USD — Dólar</option>
-            <option value="EUR">EUR — Euro</option>
-          </select>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <label style={labelStyle}>Observação</label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          placeholder="Observações sobre este item..."
-          style={{ ...inputStyle, resize: "vertical" }}
-        />
-      </div>
-
-      {error && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)" }}>{error}</p>
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: "var(--space-2)" }}>
-        <button
-          onClick={handleSubmit}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "var(--color-primary)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "var(--radius-md)",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-          }}
+        <Select
+          label="Moeda"
+          value={currencyCode}
+          onChange={(e) => setCurrencyCode(e.target.value)}
         >
+          <option value="BRL">BRL — Real</option>
+          <option value="USD">USD — Dólar</option>
+          <option value="EUR">EUR — Euro</option>
+        </Select>
+      </FieldGroup>
+
+      <TextField
+        label="Observação"
+        placeholder="Observações sobre este item..."
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        multiline
+        rows={2}
+      />
+
+      {error ? (
+        <FormAlert tone="error">{error}</FormAlert>
+      ) : null}
+      {error ? <InlineError>{error}</InlineError> : null}
+
+      <FormActions>
+        <Button variant="text" onClick={onCancel}>Cancelar</Button>
+        <Button variant="filled" onClick={handleSubmit}>
           {initialData ? "Atualizar" : "Adicionar"}
-        </button>
-        <button
-          onClick={onCancel}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-md)",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          Cancelar
-        </button>
-      </div>
-    </div>
+        </Button>
+      </FormActions>
+    </FormSection>
   );
 }

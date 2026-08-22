@@ -34,6 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
   review: "Em revisão",
   "em revisão": "Em revisão",
   "em revisao": "Em revisão",
+  under_review: "Em revisão",
   superseded: "Substituído",
   substituído: "Substituído",
   substituido: "Substituído",
@@ -41,6 +42,21 @@ const STATUS_LABELS: Record<string, string> = {
   parcial: "Parcial",
   suspended: "Suspenso",
   suspenso: "Suspenso",
+  provided: "Fornecido",
+  fornecido: "Fornecido",
+  not_provided: "Não fornecido",
+  "não fornecido": "Não fornecido",
+  "nao fornecido": "Não fornecido",
+  not_applicable: "Não aplicável",
+  "não aplicável": "Não aplicável",
+  "nao aplicavel": "Não aplicável",
+  awaiting_quote: "Aguardando cotação",
+  "aguardando cotação": "Aguardando cotação",
+  "aguardando cotacao": "Aguardando cotação",
+  confirmed_zero: "Confirmado zero",
+  "confirmado zero": "Confirmado zero",
+  discontinued: "Descontinuado",
+  descontinuado: "Descontinuado",
 };
 
 export function statusLabel(status: string): string {
@@ -88,10 +104,14 @@ export function statusTone(status: string): SemanticTone {
     case "pendente":
     case "partial":
     case "parcial":
+    case "awaiting_quote":
+    case "aguardando cotação":
+    case "aguardando cotacao":
       return "warning";
     case "review":
     case "em revisão":
     case "em revisao":
+    case "under_review":
     case "scheduled":
     case "agendado":
       return "info";

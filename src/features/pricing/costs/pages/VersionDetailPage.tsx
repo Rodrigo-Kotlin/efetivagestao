@@ -10,6 +10,11 @@ import {
 } from "../hooks/useCosts";
 import { VersionDetail } from "../components/VersionDetail";
 import type { CostTableVersionWithItems } from "@/types";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 
 function Inner() {
   const { id } = useParams<{ id: string }>();
@@ -85,47 +90,78 @@ function Inner() {
 
   if (loading) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Carregando versão...
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Carregando..." },
+          ]}
+        />
+        <Spinner label="Carregando versão..." />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>{error}</p>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-        >
-          Voltar
-        </button>
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Erro" },
+          ]}
+        />
+        <Alert tone="negative" title={error}>
+          <Button variant="outlined" onClick={() => navigate(-1)}>Voltar</Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (!version) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Versão não encontrada.
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Não encontrada" },
+          ]}
+        />
+        <p style={{ color: "var(--md-sys-color-on-surface-variant)" }}>Versão não encontrada.</p>
+      </PageContainer>
     );
   }
 
+  const tableId = version.cost_table_id;
+
   return (
-    <div>
-      {workflowError && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)" }}>{workflowError}</p>
-        </div>
-      )}
+    <PageContainer size="wide">
+      <PageHeader
+        variant="entity"
+        title={`Versão ${version.version_number}${version.version_label ? ` — ${version.version_label}` : ""}`}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Custos", to: "/pricing/costs" },
+          { label: version.cost_table?.name ?? "Tabela", to: tableId ? `/pricing/costs/${tableId}` : undefined },
+          { label: `v${version.version_number}` },
+        ]}
+      />
+      {workflowError ? <Alert tone="negative" title={workflowError} /> : null}
       <VersionDetail
         version={version}
         onAction={(action) => void handleAction(action)}
         permissions={{ canSubmit, canApprove, canPublish }}
       />
-    </div>
+    </PageContainer>
   );
 }
 

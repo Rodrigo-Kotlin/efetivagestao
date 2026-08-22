@@ -5,6 +5,19 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { createCostTableVersion, createCostItems, fetchCostTable } from "../api/costs";
 import { CostItemForm } from "../components/CostItemForm";
 import type { CostTableWithSupplier, CostItemInsert } from "@/types";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { TextField } from "@/components/ui/TextField";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { Table } from "@/components/ui/Table";
+import { Button } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { formatCurrency } from "../utils/format";
 
 function Inner() {
   const { id } = useParams<{ id: string }>();
@@ -115,41 +128,39 @@ function Inner() {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "var(--space-2) var(--space-3)",
-    border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    fontSize: "var(--text-sm)",
-    outline: "none",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: "var(--text-xs)",
-    color: "var(--color-text-secondary)",
-    marginBottom: "4px",
-  };
-
   if (loading) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Carregando tabela de custo...
-      </div>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Carregando..." },
+          ]}
+        />
+        <Spinner label="Carregando tabela de custo..." />
+      </PageContainer>
     );
   }
 
   if (error && !costTable) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>{error}</p>
-        <button
-          onClick={() => navigate("/pricing/costs")}
-          style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-        >
-          Voltar
-        </button>
-      </div>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Custos", to: "/pricing/costs" },
+            { label: "Erro" },
+          ]}
+        />
+        <Alert tone="negative" title={error}>
+          <Button variant="outlined" onClick={() => navigate("/pricing/costs")}>Voltar</Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
@@ -158,190 +169,131 @@ function Inner() {
     : 1;
 
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)", marginBottom: "var(--space-2)" }}>
-          Nova Versão — {costTable?.name ?? ""}
-        </h1>
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-          Versão {nextVersion} — {costTable?.code}
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        variant="compact"
+        title={`Nova versão — ${costTable?.name ?? ""}`}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Custos", to: "/pricing/costs" },
+          { label: costTable?.name ?? "Tabela", to: costTable ? `/pricing/costs/${id}` : undefined },
+          { label: `Versão ${nextVersion}` },
+        ]}
+      />
 
-      <form onSubmit={(e) => void handleSubmit(e)}>
-        <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", marginBottom: "var(--space-6)" }}>
-          <h3 style={{ fontSize: "var(--text-md)", fontWeight: "var(--font-semibold)", color: "var(--color-text)", marginBottom: "var(--space-4)" }}>
-            Dados da Versão
-          </h3>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-            <div>
-              <label style={labelStyle}>Vigência Início *</label>
-              <input
-                type="date"
-                value={validFrom}
-                onChange={(e) => setValidFrom(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Vigência Fim *</label>
-              <input
-                type="date"
-                value={validTo}
-                onChange={(e) => setValidTo(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Rótulo da Versão</label>
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Ex: Reajuste Jan/2026"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Data de Origem</label>
-              <input
-                type="date"
-                value={sourceDate}
-                onChange={(e) => setSourceDate(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "var(--space-4)" }}>
-            <label style={labelStyle}>Observações</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Observações sobre esta versão..."
-              style={{ ...inputStyle, resize: "vertical" }}
+      <form onSubmit={(e) => void handleSubmit(e)} noValidate>
+        <FormSection title="Dados da versão" description={`Versão ${nextVersion} — ${costTable?.code ?? ""}`}>
+          <FieldGroup columns={2}>
+            <TextField
+              label="Vigência início"
+              type="date"
+              required
+              value={validFrom}
+              onChange={(e) => setValidFrom(e.target.value)}
             />
-          </div>
-        </div>
+            <TextField
+              label="Vigência fim"
+              type="date"
+              required
+              value={validTo}
+              onChange={(e) => setValidTo(e.target.value)}
+            />
+            <TextField
+              label="Rótulo da versão"
+              placeholder="Ex: Reajuste Jan/2026"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+            <TextField
+              label="Data de origem"
+              type="date"
+              value={sourceDate}
+              onChange={(e) => setSourceDate(e.target.value)}
+              supportingText="Data do documento ou planilha de origem."
+            />
+          </FieldGroup>
+          <TextField
+            label="Observações"
+            placeholder="Observações sobre esta versão..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            multiline
+            rows={3}
+          />
+        </FormSection>
 
-        <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", marginBottom: "var(--space-6)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)" }}>
-            <h3 style={{ fontSize: "var(--text-md)", fontWeight: "var(--font-semibold)", color: "var(--color-text)" }}>
-              Itens ({items.length})
-            </h3>
-            <button
-              type="button"
-              onClick={() => setShowItemForm(true)}
-              style={{
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "var(--color-primary)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Adicionar Item
-            </button>
-          </div>
-
-          {showItemForm && costTable?.supplier_company_id && (
+        <FormSection
+          title={`Itens (${items.length})`}
+          description="Adicione itens do catálogo com seus respectivos custos."
+          actions={
+            !showItemForm ? (
+              <Button variant="filled" size="compact" onClick={() => setShowItemForm(true)}>
+                Adicionar item
+              </Button>
+            ) : undefined
+          }
+        >
+          {showItemForm && costTable?.supplier_company_id ? (
             <CostItemForm
               supplierCompanyId={costTable.supplier_company_id}
               onSave={handleAddItem}
               onCancel={() => setShowItemForm(false)}
             />
-          )}
+          ) : null}
 
           {items.length > 0 ? (
-            <div style={{ display: "block", overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-                    <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Item Catálogo</th>
-                    <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Status</th>
-                    <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Custo</th>
-                    <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Moeda</th>
-                    <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Ações</th>
+            <Table caption="Itens adicionados" captionHidden>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left" }}>Item Catálogo</th>
+                  <th style={{ textAlign: "left" }}>Status</th>
+                  <th style={{ textAlign: "right" }}>Custo</th>
+                  <th style={{ textAlign: "left" }}>Moeda</th>
+                  <th style={{ textAlign: "right" }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, index) => (
+                  <tr key={index}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontSize: "var(--md-sys-typescale-body-medium-size)" }}>
+                      {item.catalog_item_id.slice(0, 8)}
+                    </td>
+                    <td>{item.cost_status}</td>
+                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                      {item.amount !== null && item.amount !== undefined ? formatCurrency(item.amount, item.currency_code) : "—"}
+                    </td>
+                    <td style={{ fontFamily: "var(--font-mono)" }}>{item.currency_code}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <Button variant="text" size="compact" onClick={() => handleRemoveItem(index)}>
+                        Remover
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, index) => (
-                    <tr key={index} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                      <td style={{ padding: "var(--space-3)", fontFamily: "monospace" }}>
-                        {item.catalog_item_id.slice(0, 8)}
-                      </td>
-                      <td style={{ padding: "var(--space-3)" }}>{item.cost_status}</td>
-                      <td style={{ padding: "var(--space-3)", textAlign: "right", fontFamily: "monospace" }}>
-                        {item.amount != null ? `R$ ${Number(item.amount).toFixed(2)}` : "—"}
-                      </td>
-                      <td style={{ padding: "var(--space-3)", fontFamily: "monospace" }}>{item.currency_code}</td>
-                      <td style={{ padding: "var(--space-3)", textAlign: "right" }}>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          style={{ padding: "4px 8px", backgroundColor: "transparent", color: "#EF4444", border: "1px solid #EF4444", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-xs)" }}
-                        >
-                          Remover
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </Table>
           ) : (
-            <p style={{ color: "var(--color-text-secondary)", textAlign: "center", padding: "var(--space-8) 0" }}>
-              Nenhum item adicionado. Clique em "Adicionar Item" para começar.
-            </p>
+            !showItemForm ? (
+              <EmptyState
+                title="Nenhum item adicionado"
+                description='Clique em "Adicionar item" para começar.'
+              />
+            ) : null
           )}
-        </div>
+        </FormSection>
 
-        {error && (
-          <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-            <p style={{ color: "#991B1B", fontSize: "var(--text-sm)" }}>{error}</p>
-          </div>
-        )}
+        {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-        <div style={{ display: "flex", gap: "var(--space-2)" }}>
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "var(--color-primary)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              cursor: saving ? "default" : "pointer",
-              opacity: saving ? 0.7 : 1,
-              fontSize: "var(--text-sm)",
-              fontWeight: "var(--font-medium)",
-            }}
-          >
-            {saving ? "Salvando..." : "Criar Versão"}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(`/pricing/costs/${id}`)}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "transparent",
-              color: "var(--color-text-secondary)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-            }}
-          >
+        <FormActions>
+          <Button variant="text" onClick={() => navigate(`/pricing/costs/${id}`)} disabled={saving}>
             Cancelar
-          </button>
-        </div>
+          </Button>
+          <Button type="submit" variant="filled" disabled={saving} loading={saving}>
+            {saving ? "Salvando..." : "Criar versão"}
+          </Button>
+        </FormActions>
       </form>
-    </div>
+    </PageContainer>
   );
 }
 

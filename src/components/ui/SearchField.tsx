@@ -1,4 +1,4 @@
-import { useCallback, useId, useRef, type ReactNode } from "react";
+import { useCallback, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "./cx";
 import { Spinner } from "./Spinner";
 
@@ -6,6 +6,7 @@ export interface SearchFieldProps {
   label?: ReactNode;
   value: string;
   onChange: (value: string) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   loading?: boolean;
   debounceMs?: number;
@@ -17,6 +18,7 @@ export function SearchField({
   label = "Buscar",
   value,
   onChange,
+  onKeyDown,
   placeholder = "Buscar…",
   loading = false,
   debounceMs,
@@ -59,6 +61,7 @@ export function SearchField({
         className="eg-input"
         value={value}
         onChange={handleChange}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={ariaLabel ?? String(label)}
         aria-busy={loading || undefined}

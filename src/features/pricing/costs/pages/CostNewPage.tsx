@@ -5,6 +5,15 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { createCostTable } from "../api/costs";
 import { supabase } from "@/lib/supabase";
 import type { SupplierWithCompany } from "@/types";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { TextField } from "@/components/ui/TextField";
+import { Select } from "@/components/ui/Select";
+import { InlineError } from "@/components/ui/InlineError";
+import { Button } from "@/components/ui/Button";
 
 function Inner() {
   const navigate = useNavigate();
@@ -21,6 +30,7 @@ function Inner() {
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const loadSuppliers = useCallback(async () => {
     if (!orgId) return;
@@ -58,19 +68,12 @@ function Inner() {
     if (!orgId || !userId) return;
 
     setError(null);
-
-    if (!selectedSupplierId) {
-      setError("Selecione um fornecedor");
-      return;
-    }
-    if (!code.trim()) {
-      setError("Informe o código da tabela");
-      return;
-    }
-    if (!name.trim()) {
-      setError("Informe o nome da tabela");
-      return;
-    }
+    const errs: Record<string, string> = {};
+    if (!selectedSupplierId) errs.supplier = "Selecione um fornecedor";
+    if (!code.trim()) errs.code = "Informe o código da tabela";
+    if (!name.trim()) errs.name = "Informe o nome da tabela";
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     setSaving(true);
     try {
@@ -92,131 +95,82 @@ function Inner() {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "var(--space-2) var(--space-3)",
-    border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    fontSize: "var(--text-sm)",
-    outline: "none",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: "var(--text-xs)",
-    color: "var(--color-text-secondary)",
-    marginBottom: "4px",
-  };
-
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)" }}>
-          Nova Tabela de Custo
-        </h1>
-      </div>
+    <PageContainer>
+      <PageHeader
+        variant="compact"
+        title="Nova Tabela de Custo"
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Custos", to: "/pricing/costs" },
+          { label: "Nova tabela" },
+        ]}
+      />
+      <form onSubmit={(e) => void handleSubmit(e)} noValidate>
+        <FormSection title="Dados da tabela">
+          <Select
+            label="Buscar fornecedor"
+            supportingText="Filtre pelo nome ou razão social."
+            value={supplierSearch}
+            onChange={(e) => setSupplierSearch(e.target.value)}
+          >
+            <option value="">Digite para buscar...</option>
+          </Select>
+          <Select
+            label="Fornecedor"
+            required
+            error={fieldErrors.supplier}
+            value={selectedSupplierId}
+            onChange={(e) => setSelectedSupplierId(e.target.value)}
+          >
+            <option value="">{suppliersLoading ? "Carregando..." : "Selecione o fornecedor..."}</option>
+            {suppliers.map((s) => (
+              <option key={s.company_id} value={s.company_id}>
+                {s.company?.legal_name ?? s.company?.trade_name ?? "—"}
+              </option>
+            ))}
+          </Select>
+          <TextField
+            label="Código"
+            required
+            placeholder="Ex: TAB-LAB-001"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            error={fieldErrors.code}
+          />
+          <TextField
+            label="Nome"
+            required
+            placeholder="Ex: Tabela Laboratório 2026"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            error={fieldErrors.name}
+          />
+          <TextField
+            label="Descrição"
+            placeholder="Descrição opcional da tabela de custo..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            multiline
+            rows={3}
+          />
+        </FormSection>
 
-      <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", maxWidth: "640px" }}>
-        <form onSubmit={(e) => void handleSubmit(e)}>
-          <div style={{ marginBottom: "var(--space-4)" }}>
-            <label style={labelStyle}>Fornecedor *</label>
-            <input
-              type="text"
-              value={supplierSearch}
-              onChange={(e) => setSupplierSearch(e.target.value)}
-              placeholder="Buscar fornecedor..."
-              style={{ ...inputStyle, marginBottom: "4px" }}
-            />
-            <select
-              value={selectedSupplierId}
-              onChange={(e) => setSelectedSupplierId(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">{suppliersLoading ? "Carregando..." : "Selecione o fornecedor..."}</option>
-              {suppliers.map((s) => (
-                <option key={s.company_id} value={s.company_id}>
-                  {s.company?.legal_name ?? s.company?.trade_name ?? "—"}
-                </option>
-              ))}
-            </select>
-          </div>
+        {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-          <div style={{ marginBottom: "var(--space-4)" }}>
-            <label style={labelStyle}>Código *</label>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="Ex: TAB-LAB-001"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={{ marginBottom: "var(--space-4)" }}>
-            <label style={labelStyle}>Nome *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Tabela Laboratório 2026"
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={{ marginBottom: "var(--space-4)" }}>
-            <label style={labelStyle}>Descrição</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Descrição opcional da tabela de custo..."
-              style={{ ...inputStyle, resize: "vertical" }}
-            />
-          </div>
-
-          {error && (
-            <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-              <p style={{ color: "#991B1B", fontSize: "var(--text-sm)" }}>{error}</p>
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "var(--color-primary)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                cursor: saving ? "default" : "pointer",
-                opacity: saving ? 0.7 : 1,
-                fontSize: "var(--text-sm)",
-                fontWeight: "var(--font-medium)",
-              }}
-            >
-              {saving ? "Salvando..." : "Criar Tabela"}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/pricing/costs")}
-              style={{
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "transparent",
-                color: "var(--color-text-secondary)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <FormActions>
+          <Button variant="text" onClick={() => navigate("/pricing/costs")} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button type="submit" variant="filled" disabled={saving} loading={saving}>
+            {saving ? "Salvando..." : "Criar Tabela"}
+          </Button>
+        </FormActions>
+        {Object.keys(fieldErrors).length > 0 ? (
+          <InlineError>Verifique os campos obrigatórios acima.</InlineError>
+        ) : null}
+      </form>
+    </PageContainer>
   );
 }
 
