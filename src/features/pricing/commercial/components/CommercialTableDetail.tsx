@@ -1,10 +1,5 @@
-// ============================================================
-// CommercialTableDetail — view + edit a single stable table.
-// Shows all versions (current/scheduled/draft/historical).
-// ============================================================
-
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   CommercialCodeBadge,
   CommercialTableStatusBadge,
@@ -16,6 +11,16 @@ import type {
   CommercialTableStatus,
 } from "../types/commercial.types";
 import { formatDate } from "../utils/format";
+import { Button } from "@/components/ui/Button";
+import { DropdownMenu, MenuItem } from "@/components/ui/DropdownMenu";
+import { Badge } from "@/components/ui/Badge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Alert } from "@/components/ui/Alert";
+import { DetailGrid, DetailField } from "@/components/ui/DetailGrid";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { TextField } from "@/components/ui/TextField";
+import { FormAlert } from "@/components/ui/FormAlert";
 
 interface Props {
   table: CommercialPriceTableWithCounts;
@@ -26,34 +31,6 @@ interface Props {
   onChangeStatus: (status: CommercialTableStatus) => Promise<void>;
 }
 
-const cardStyle: React.CSSProperties = {
-  backgroundColor: "var(--color-surface)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-lg)",
-  padding: "var(--space-6)",
-  marginBottom: "var(--space-4)",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: "var(--text-xs)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "2px",
-};
-
-const valueStyle: React.CSSProperties = {
-  fontSize: "var(--text-sm)",
-  color: "var(--color-text)",
-  fontWeight: "var(--font-medium)",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "var(--space-2) var(--space-3)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  fontSize: "var(--text-sm)",
-};
-
 export function CommercialTableDetail({
   table,
   versions,
@@ -62,7 +39,6 @@ export function CommercialTableDetail({
   onSaveDetails,
   onChangeStatus,
 }: Props) {
-  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(table.name);
   const [description, setDescription] = useState(table.description ?? "");
@@ -106,281 +82,132 @@ export function CommercialTableDetail({
   const scheduled = table.scheduled_version;
   const draftVersions = versions.filter((v) => v.status === "draft");
   const historicalVersions = versions.filter(
-    (v) => v.status === "superseded" || v.status === "cancelled" || v.status === "active" || v.status === "scheduled" || v.status === "approved"
+    (v) => v.status === "superseded" || v.status === "cancelled" || v.status === "active" || v.status === "scheduled" || v.status === "approved",
   );
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: "var(--space-6)",
-          gap: "var(--space-4)",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <button
-            type="button"
-            onClick={() => navigate("/pricing/commercial")}
-            style={{
-              fontSize: "var(--text-xs)",
-              color: "var(--color-primary)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-              marginBottom: "var(--space-2)",
-            }}
-          >
-            ← Voltar para tabelas
-          </button>
-          <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)" }}>
-              {table.name}
-            </h1>
-            <CommercialCodeBadge code={table.code} />
-            <CommercialTableStatusBadge status={table.status} />
-          </div>
-        </div>
-
-        {canEdit && !editing && (
-          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              style={{
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "transparent",
-                color: "var(--color-primary)",
-                border: "1px solid var(--color-primary)",
-                borderRadius: "var(--radius-md)",
-                fontSize: "var(--text-sm)",
-                cursor: "pointer",
-              }}
-            >
-              Editar dados
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                handleStatusChange(table.status === "active" ? "inactive" : "active")
-              }
-              disabled={statusConfirm !== null}
-              style={{
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "transparent",
-                color:
-                  table.status === "active"
-                    ? "var(--color-text-secondary)"
-                    : "var(--color-primary)",
-                border: `1px solid ${
-                  table.status === "active"
-                    ? "var(--color-border)"
-                    : "var(--color-primary)"
-                }`,
-                borderRadius: "var(--radius-md)",
-                fontSize: "var(--text-sm)",
-                cursor: statusConfirm ? "default" : "pointer",
-                opacity: statusConfirm ? 0.5 : 1,
-              }}
-            >
-              {table.status === "active" ? "Inativar tabela" : "Reativar tabela"}
-            </button>
-          </div>
-        )}
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--md-sys-spacing-5)" }}>
+      <div className="eg-entity-chips">
+        <CommercialCodeBadge code={table.code} />
+        <CommercialTableStatusBadge status={table.status} />
       </div>
 
-      {error && (
-        <div
-          role="alert"
-          style={{
-            backgroundColor: "#FEF2F2",
-            border: "1px solid #FECACA",
-            borderRadius: "var(--radius-lg)",
-            padding: "var(--space-3)",
-            marginBottom: "var(--space-4)",
-          }}
-        >
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{error}</p>
+      {canEdit && !editing ? (
+        <div style={{ display: "flex", gap: "var(--md-sys-spacing-2)", flexWrap: "wrap" }}>
+          <Button variant="outlined" onClick={() => setEditing(true)}>Editar dados</Button>
+          <Button
+            variant="outlined"
+            onClick={() => handleStatusChange(table.status === "active" ? "inactive" : "active")}
+            disabled={statusConfirm !== null}
+          >
+            {table.status === "active" ? "Inativar tabela" : "Reativar tabela"}
+          </Button>
         </div>
-      )}
+      ) : null}
 
-      {editing ? (
-        <div style={cardStyle}>
-          <div style={{ display: "grid", gap: "var(--space-3)" }}>
-            <div>
-              <label htmlFor="ctd-name" style={{ ...labelStyle, fontWeight: "var(--font-medium)" }}>
-                Nome
-              </label>
-              <input
-                id="ctd-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label htmlFor="ctd-description" style={{ ...labelStyle, fontWeight: "var(--font-medium)" }}>
-                Descrição
-              </label>
-              <textarea
-                id="ctd-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
-            </div>
-            <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>
-              O código da tabela não pode ser editado após a primeira versão.
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={saving}
-              style={{
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "var(--color-primary)",
-                color: "var(--color-text-inverse)",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                fontSize: "var(--text-sm)",
-                cursor: saving ? "default" : "pointer",
-                opacity: saving ? 0.6 : 1,
-              }}
-            >
+      {error ? <Alert tone="negative" title={error} /> : null}
+
+      {editing && canEdit ? (
+        <FormSection title="Editar dados da tabela" description="O código não pode ser editado após a primeira versão.">
+          <TextField label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+          <TextField
+            label="Descrição"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            multiline
+            rows={3}
+          />
+          {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+          <FormActions>
+            <Button variant="text" type="button" onClick={() => setEditing(false)} disabled={saving}>Cancelar</Button>
+            <Button variant="filled" type="button" onClick={() => void handleSave()} disabled={saving} loading={saving}>
               {saving ? "Salvando..." : "Salvar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              disabled={saving}
-              style={{
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "transparent",
-                color: "var(--color-text-secondary)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                fontSize: "var(--text-sm)",
-                cursor: saving ? "default" : "pointer",
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
+            </Button>
+          </FormActions>
+        </FormSection>
       ) : (
-        <div style={cardStyle}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "var(--space-4)" }}>
-            <div>
-              <p style={labelStyle}>Código</p>
-              <p style={valueStyle}>{table.code}</p>
-            </div>
-            <div>
-              <p style={labelStyle}>Descrição</p>
-              <p style={valueStyle}>{table.description ?? "—"}</p>
-            </div>
-            <div>
-              <p style={labelStyle}>Versões</p>
-              <p style={valueStyle}>{versions.length}</p>
-            </div>
-          </div>
-        </div>
+        <section className="eg-section" aria-labelledby="table-info">
+          <h3 id="table-info" className="eg-section__title">Informações</h3>
+          <DetailGrid columns={3}>
+            <DetailField label="Código" value={table.code} mono />
+            <DetailField label="Descrição" value={table.description} />
+            <DetailField label="Versões" value={versions.length} />
+          </DetailGrid>
+        </section>
       )}
 
-      <Section
-        title="Versão atual"
-        empty="Nenhuma versão ativa publicada."
-        renderItem={(v) => (
+      <section className="eg-section" aria-labelledby="current-version">
+        <h3 id="current-version" className="eg-section__title">Versão atual</h3>
+        {current ? (
           <VersionRow
-            key={v.id}
-            version={v}
-            label={current === v ? "Atual" : undefined}
+            version={current}
+            label="Atual"
             showClone={canCreate}
           />
+        ) : (
+          <p style={{ margin: 0, color: "var(--md-sys-color-on-surface-variant)" }}>
+            Nenhuma versão ativa publicada.
+          </p>
         )}
-        items={current ? [current] : []}
-      />
+      </section>
 
-      <Section
-        title="Versões agendadas"
-        empty="Nenhuma versão agendada."
-        renderItem={(v) => (
-          <VersionRow key={v.id} version={v} showClone={canCreate} />
+      <section className="eg-section" aria-labelledby="scheduled-version">
+        <h3 id="scheduled-version" className="eg-section__title">Próxima vigência</h3>
+        {scheduled ? (
+          scheduled.id !== current?.id ? (
+            <VersionRow version={scheduled} showClone={canCreate} />
+          ) : (
+            <p style={{ margin: 0, color: "var(--md-sys-color-on-surface-variant)" }}>
+              Sem versão agendada distinta da atual.
+            </p>
+          )
+        ) : (
+          <p style={{ margin: 0, color: "var(--md-sys-color-on-surface-variant)" }}>
+            Nenhuma versão agendada.
+          </p>
         )}
-        items={scheduled ? [scheduled] : []}
-      />
+      </section>
 
-      <Section
-        title="Rascunhos"
-        empty="Nenhum rascunho."
-        renderItem={(v) => (
-          <VersionRow key={v.id} version={v} showClone={canCreate} />
+      <section className="eg-section" aria-labelledby="draft-versions">
+        <h3 id="draft-versions" className="eg-section__title">Rascunhos</h3>
+        {draftVersions.length === 0 ? (
+          <p style={{ margin: 0, color: "var(--md-sys-color-on-surface-variant)" }}>Nenhum rascunho.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--md-sys-spacing-2)" }}>
+            {draftVersions.map((v) => (
+              <VersionRow key={v.id} version={v} showClone={canCreate} />
+            ))}
+          </div>
         )}
-        items={draftVersions}
-      />
+      </section>
 
-      <Section
-        title="Histórico"
-        empty="Sem versões históricas."
-        renderItem={(v) => (
-          <VersionRow key={v.id} version={v} showClone={canCreate} />
-        )}
-        items={historicalVersions.filter(
-          (v) =>
-            v.id !== current?.id &&
-            v.id !== scheduled?.id &&
-            v.status !== "draft"
-        )}
-      />
+      <section className="eg-section" aria-labelledby="historical-versions">
+        <h3 id="historical-versions" className="eg-section__title">Histórico</h3>
+        {(() => {
+          const historical = historicalVersions.filter(
+            (v) => v.id !== current?.id && v.id !== scheduled?.id && v.status !== "draft",
+          );
+          if (historical.length === 0) {
+            return <p style={{ margin: 0, color: "var(--md-sys-color-on-surface-variant)" }}>Sem versões históricas.</p>;
+          }
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--md-sys-spacing-2)" }}>
+              {historical.map((v) => (
+                <VersionRow key={v.id} version={v} showClone={canCreate} />
+              ))}
+            </div>
+          );
+        })()}
+      </section>
 
-      <Link
-        to={`/pricing/commercial/lookup?tableId=${table.id}`}
-        style={{
-          display: "inline-block",
-          padding: "var(--space-2) var(--space-4)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "var(--radius-md)",
-          color: "var(--color-primary)",
-          fontSize: "var(--text-sm)",
-          textDecoration: "none",
-          fontWeight: "var(--font-medium)",
-        }}
-      >
-        Consultar preço desta tabela
-      </Link>
-    </div>
-  );
-}
-
-function Section<T extends { id: string }>({
-  title,
-  items,
-  renderItem,
-  empty,
-}: {
-  title: string;
-  items: T[];
-  renderItem: (item: T) => React.ReactNode;
-  empty: string;
-}) {
-  return (
-    <div style={cardStyle}>
-      <h3 style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-semibold)", marginBottom: "var(--space-3)" }}>
-        {title}
-      </h3>
-      {items.length === 0 ? (
-        <p style={{ color: "var(--color-text-secondary)", fontSize: "var(--text-sm)" }}>{empty}</p>
-      ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "var(--space-2)" }}>
-          {items.map(renderItem)}
-        </ul>
-      )}
+      <div>
+        <Link
+          to={`/pricing/commercial/lookup?tableId=${table.id}`}
+          style={{ color: "var(--md-sys-color-primary)", fontWeight: 500 }}
+        >
+          Consultar preço desta tabela
+        </Link>
+      </div>
     </div>
   );
 }
@@ -395,65 +222,49 @@ function VersionRow({
   showClone: boolean;
 }) {
   return (
-    <li
+    <div
       style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "var(--space-3)",
-        border: "1px solid var(--color-border-light, #F1F5F9)",
-        borderRadius: "var(--radius-md)",
+        padding: "var(--md-sys-spacing-3)",
+        border: "1px solid var(--md-sys-color-outline-variant)",
+        borderRadius: "var(--md-sys-shape-corner-interactive)",
         flexWrap: "wrap",
-        gap: "var(--space-2)",
+        gap: "var(--md-sys-spacing-2)",
       }}
     >
-      <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "var(--md-sys-spacing-2)", alignItems: "center", flexWrap: "wrap" }}>
         <Link
           to={`/pricing/commercial/versions/${version.id}`}
-          style={{
-            color: "var(--color-primary)",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-            textDecoration: "none",
-          }}
+          style={{ color: "var(--md-sys-color-primary)", fontWeight: 500, textDecoration: "none" }}
         >
-          v{version.version_number} {version.version_label ? `· ${version.version_label}` : ""}
+          v{version.version_number}{version.version_label ? ` · ${version.version_label}` : ""}
         </Link>
         <CommercialVersionStatusBadge status={version.status} />
-        {label && (
-          <span
-            style={{
-              fontSize: "var(--text-xs)",
-              padding: "2px 6px",
-              backgroundColor: "var(--color-primary-50, #F0FDF4)",
-              color: "var(--color-primary)",
-              borderRadius: "var(--radius-full)",
-            }}
-          >
-            {label}
-          </span>
-        )}
-        <span style={{ color: "var(--color-text-secondary)", fontSize: "var(--text-xs)" }}>
+        {label ? (
+          <Badge tone="info">{label}</Badge>
+        ) : null}
+        <span style={{ color: "var(--md-sys-color-on-surface-variant)", fontSize: "var(--md-sys-typescale-body-medium-size)" }}>
           Vigência: {formatDate(version.valid_from)} — {formatDate(version.valid_to)}
         </span>
       </div>
-      <div style={{ display: "flex", gap: "var(--space-2)" }}>
-        {showClone && (
-          <Link
-            to={`/pricing/commercial/${version.commercial_price_table_id}/versions/new?cloneFrom=${version.id}`}
-            style={{
-              fontSize: "var(--text-xs)",
-              color: "var(--color-text-secondary)",
-              textDecoration: "underline",
-            }}
-          >
-            Clonar
-          </Link>
-        )}
-      </div>
-    </li>
+      {showClone ? (
+        <Link
+          to={`/pricing/commercial/${version.commercial_price_table_id}/versions/new?cloneFrom=${version.id}`}
+          style={{ color: "var(--md-sys-color-on-surface-variant)", fontSize: "var(--md-sys-typescale-body-medium-size)", textDecoration: "underline" }}
+        >
+          Clonar
+        </Link>
+      ) : null}
+    </div>
   );
 }
+
+// Silence unused warning when DropdownMenu is not directly referenced
+void DropdownMenu;
+void MenuItem;
+void StatusBadge;
 
 export function describeCommercialTableStatus(
   status: CommercialTableStatus

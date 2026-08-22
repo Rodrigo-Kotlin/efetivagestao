@@ -1,10 +1,11 @@
-// ============================================================
-// CommercialVersionForm — create a new draft version.
-// Supports two modes: empty + clone-from-source (when provided).
-// ============================================================
-
 import { useState } from "react";
-import { COMMERCIAL_PERMISSIONS } from "../types/commercial.types";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { TextField } from "@/components/ui/TextField";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { Radio } from "@/components/ui/Radio";
+import { Button } from "@/components/ui/Button";
 
 interface Props {
   defaultValidFrom: string;
@@ -26,22 +27,6 @@ interface Props {
   sourceVersionId?: string;
   cancelLabel?: string;
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "var(--space-2) var(--space-3)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  fontSize: "var(--text-sm)",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "var(--text-sm)",
-  fontWeight: "var(--font-medium)",
-  color: "var(--color-text)",
-  marginBottom: "var(--space-1)",
-};
 
 export function CommercialVersionForm({
   defaultValidFrom,
@@ -95,182 +80,80 @@ export function CommercialVersionForm({
   };
 
   return (
-    <form
-      onSubmit={(e) => void handleSubmit(e)}
-      style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-        borderRadius: "var(--radius-lg)",
-        padding: "var(--space-6)",
-      }}
-    >
-      <h2 style={{ fontSize: "var(--text-xl)", fontWeight: "var(--font-semibold)", marginBottom: "var(--space-4)" }}>
-        Nova versão
-      </h2>
-
-      {sourceVersionId && (
-        <fieldset
-          style={{
-            border: "1px solid var(--color-border-light, #F1F5F9)",
-            borderRadius: "var(--radius-md)",
-            padding: "var(--space-3)",
-            marginBottom: "var(--space-4)",
-          }}
+    <form onSubmit={(e) => void handleSubmit(e)} noValidate>
+      {sourceVersionId ? (
+        <FormSection
+          title="Modo de criação"
+          description="Preços e snapshots do catálogo são copiados. A linhagem é preservada. Exceções aprovadas ou negadas não são copiadas."
         >
-          <legend style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-medium)" }}>
-            Modo de criação
-          </legend>
-          <label style={{ display: "block", marginBottom: "var(--space-2)", fontSize: "var(--text-sm)" }}>
-            <input
-              type="radio"
-              name="cvm-mode"
-              checked={mode === "empty"}
-              onChange={() => setMode("empty")}
-              style={{ marginRight: "var(--space-2)" }}
-            />
-            Criar versão vazia
-          </label>
-          <label style={{ display: "block", fontSize: "var(--text-sm)" }}>
-            <input
-              type="radio"
-              name="cvm-mode"
-              checked={mode === "clone"}
-              onChange={() => setMode("clone")}
-              style={{ marginRight: "var(--space-2)" }}
-            />
-            Clonar versão existente
-            {sourceVersionLabel && (
-              <span style={{ color: "var(--color-text-secondary)" }}> · {sourceVersionLabel}</span>
-            )}
-          </label>
-          <p
-            style={{
-              marginTop: "var(--space-2)",
-              fontSize: "var(--text-xs)",
-              color: "var(--color-text-secondary)",
-            }}
-          >
-            Preços e snapshots do catálogo são copiados. A linhagem é preservada. Exceções
-            aprovadas ou negadas <strong>não</strong> são copiadas.
-          </p>
-        </fieldset>
-      )}
+          <Radio
+            name="cvm-mode"
+            label="Criar versão vazia"
+            checked={mode === "empty"}
+            onChange={() => setMode("empty")}
+          />
+          <Radio
+            name="cvm-mode"
+            label={`Clonar versão existente${sourceVersionLabel ? ` · ${sourceVersionLabel}` : ""}`}
+            checked={mode === "clone"}
+            onChange={() => setMode("clone")}
+          />
+        </FormSection>
+      ) : null}
 
-      {error && (
-        <div
-          role="alert"
-          style={{
-            backgroundColor: "#FEF2F2",
-            border: "1px solid #FECACA",
-            borderRadius: "var(--radius-md)",
-            padding: "var(--space-3)",
-            marginBottom: "var(--space-4)",
-          }}
-        >
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{error}</p>
-        </div>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "var(--space-3)" }}>
-        <div>
-          <label htmlFor="cvm-valid-from" style={labelStyle}>
-            Vigência inicial
-          </label>
-          <input
-            id="cvm-valid-from"
+      <FormSection title="Vigência" description="Define o período de validade desta versão.">
+        <FieldGroup columns={2}>
+          <TextField
+            label="Vigência inicial"
             type="date"
+            required
             value={validFrom}
             onChange={(e) => setValidFrom(e.target.value)}
-            style={inputStyle}
-            required
           />
-        </div>
-        <div>
-          <label htmlFor="cvm-valid-to" style={labelStyle}>
-            Vigência final
-          </label>
-          <input
-            id="cvm-valid-to"
+          <TextField
+            label="Vigência final"
             type="date"
             value={validTo}
             onChange={(e) => setValidTo(e.target.value)}
-            style={inputStyle}
             placeholder="Em aberto"
+            supportingText="Pode ficar em aberto para versões sem data final."
           />
-        </div>
-        <div>
-          <label htmlFor="cvm-label" style={labelStyle}>
-            Rótulo da versão
-          </label>
-          <input
-            id="cvm-label"
-            value={versionLabel}
-            onChange={(e) => setVersionLabel(e.target.value)}
-            placeholder="Opcional"
-            style={inputStyle}
-          />
-        </div>
-      </div>
+        </FieldGroup>
+        <TextField
+          label="Rótulo da versão"
+          placeholder="Opcional"
+          value={versionLabel}
+          onChange={(e) => setVersionLabel(e.target.value)}
+        />
+      </FormSection>
 
-      <div style={{ marginTop: "var(--space-3)" }}>
-        <label htmlFor="cvm-notes" style={labelStyle}>
-          Observações
-        </label>
-        <textarea
-          id="cvm-notes"
+      <FormSection title="Observações">
+        <TextField
+          label="Observações"
+          placeholder="Opcional"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          multiline
           rows={3}
-          style={{ ...inputStyle, resize: "vertical" }}
-          placeholder="Opcional"
         />
-      </div>
+      </FormSection>
 
-      <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "var(--color-primary)",
-            color: "var(--color-text-inverse)",
-            border: "none",
-            borderRadius: "var(--radius-md)",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-            cursor: submitting ? "default" : "pointer",
-            opacity: submitting ? 0.6 : 1,
-          }}
-        >
+      {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+
+      <FormActions>
+        <Button variant="filled" type="submit" disabled={submitting} loading={submitting}>
           {submitting
             ? "Criando..."
             : mode === "clone"
               ? "Clonar versão"
               : "Criar versão vazia"}
-        </button>
-        {cancelLabel && (
-          <button
-            type="button"
-            onClick={() => {
-              window.history.back();
-            }}
-            disabled={submitting}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "transparent",
-              color: "var(--color-text-secondary)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              fontSize: "var(--text-sm)",
-              cursor: submitting ? "default" : "pointer",
-            }}
-          >
+        </Button>
+        {cancelLabel ? (
+          <Button variant="text" type="button" onClick={() => window.history.back()} disabled={submitting}>
             {cancelLabel}
-          </button>
-        )}
-      </div>
+          </Button>
+        ) : null}
+      </FormActions>
     </form>
   );
 }
-
-export const _INTERNAL_PERMISSION_CONSTANT_FOR_TESTS = COMMERCIAL_PERMISSIONS.create;

@@ -1,12 +1,12 @@
-// ============================================================
-// CommercialPriceTableNewPage — create a stable commercial table.
-// ============================================================
-
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommercialTableForm } from "../components/CommercialTableForm";
 import { createCommercialTable } from "../api/commercialPrices";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Alert } from "@/components/ui/Alert";
+import { FormAlert } from "@/components/ui/FormAlert";
 
 function Inner() {
   const navigate = useNavigate();
@@ -15,49 +15,49 @@ function Inner() {
 
   if (!can("pricing.commercial.create")) {
     return (
-      <div
-        style={{
-          padding: "var(--space-8)",
-          textAlign: "center",
-          color: "var(--color-text-secondary)",
-        }}
-      >
-        Você não tem permissão para criar tabelas comerciais.
-      </div>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova Tabela Comercial"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Tabelas Comerciais", to: "/pricing/commercial" },
+            { label: "Nova tabela" },
+          ]}
+        />
+        <FormAlert tone="error">Você não tem permissão para criar tabelas comerciais.</FormAlert>
+      </PageContainer>
     );
   }
 
   if (!orgId) {
     return (
-      <div
-        style={{
-          padding: "var(--space-8)",
-          textAlign: "center",
-          color: "var(--color-text-secondary)",
-        }}
-      >
-        Selecione uma organização ativa.
-      </div>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova Tabela Comercial"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Tabelas Comerciais", to: "/pricing/commercial" },
+            { label: "Nova tabela" },
+          ]}
+        />
+        <Alert tone="warning" title="Selecione uma organização ativa" />
+      </PageContainer>
     );
   }
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => navigate("/pricing/commercial")}
-        style={{
-          fontSize: "var(--text-xs)",
-          color: "var(--color-primary)",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          marginBottom: "var(--space-2)",
-        }}
-      >
-        ← Voltar para tabelas
-      </button>
+    <PageContainer>
+      <PageHeader
+        variant="compact"
+        title="Nova Tabela Comercial"
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Tabelas Comerciais", to: "/pricing/commercial" },
+          { label: "Nova tabela" },
+        ]}
+      />
       <CommercialTableForm
         onSubmit={async (data) => {
           await createCommercialTable({
@@ -70,7 +70,7 @@ function Inner() {
         }}
         onCancel={() => navigate("/pricing/commercial")}
       />
-    </div>
+    </PageContainer>
   );
 }
 

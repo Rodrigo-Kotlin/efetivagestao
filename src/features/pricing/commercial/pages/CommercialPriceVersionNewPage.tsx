@@ -1,7 +1,3 @@
-// ============================================================
-// CommercialPriceVersionNewPage — create empty or clone version.
-// ============================================================
-
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -9,6 +5,11 @@ import { CommercialVersionForm } from "../components/CommercialVersionForm";
 import { useCommercialTable } from "../hooks/useCommercial";
 import { cloneCommercialVersion, createCommercialVersion } from "../api/commercialPrices";
 import { todayIsoDate } from "../utils/format";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Alert } from "@/components/ui/Alert";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { Spinner } from "@/components/ui/Spinner";
 
 function Inner() {
   const { id } = useParams<{ id: string }>();
@@ -20,46 +21,52 @@ function Inner() {
 
   if (!can("pricing.commercial.create")) {
     return (
-      <div
-        style={{
-          padding: "var(--space-8)",
-          textAlign: "center",
-          color: "var(--color-text-secondary)",
-        }}
-      >
-        Você não tem permissão para criar versões.
-      </div>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova Versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Tabelas Comerciais", to: "/pricing/commercial" },
+            { label: "Nova versão" },
+          ]}
+        />
+        <FormAlert tone="error">Você não tem permissão para criar versões.</FormAlert>
+      </PageContainer>
     );
   }
 
   if (loading) {
     return (
-      <p
-        role="status"
-        style={{
-          padding: "var(--space-8)",
-          textAlign: "center",
-          color: "var(--color-text-secondary)",
-        }}
-      >
-        Carregando tabela...
-      </p>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova Versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Tabelas Comerciais", to: "/pricing/commercial" },
+            { label: "Carregando..." },
+          ]}
+        />
+        <Spinner label="Carregando tabela..." />
+      </PageContainer>
     );
   }
 
   if (error || !table) {
     return (
-      <div
-        role="alert"
-        style={{
-          backgroundColor: "#FEF2F2",
-          border: "1px solid #FECACA",
-          borderRadius: "var(--radius-lg)",
-          padding: "var(--space-4)",
-        }}
-      >
-        <p style={{ color: "#991B1B" }}>{error ?? "Tabela não encontrada."}</p>
-      </div>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova Versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Tabelas Comerciais", to: "/pricing/commercial" },
+            { label: "Erro" },
+          ]}
+        />
+        <Alert tone="negative" title={error ?? "Tabela não encontrada."} />
+      </PageContainer>
     );
   }
 
@@ -72,23 +79,17 @@ function Inner() {
     : undefined;
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => navigate(`/pricing/commercial/${table.id}`)}
-        style={{
-          fontSize: "var(--text-xs)",
-          color: "var(--color-primary)",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          marginBottom: "var(--space-2)",
-        }}
-      >
-        ← Voltar para a tabela
-      </button>
-
+    <PageContainer>
+      <PageHeader
+        variant="compact"
+        title={`Nova versão — ${table.name}`}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Tabelas Comerciais", to: "/pricing/commercial" },
+          { label: table.name, to: `/pricing/commercial/${table.id}` },
+          { label: "Nova versão" },
+        ]}
+      />
       <CommercialVersionForm
         defaultValidFrom={defaultValidFrom}
         defaultValidTo={null}
@@ -118,7 +119,7 @@ function Inner() {
         }}
         cancelLabel="Cancelar"
       />
-    </div>
+    </PageContainer>
   );
 }
 

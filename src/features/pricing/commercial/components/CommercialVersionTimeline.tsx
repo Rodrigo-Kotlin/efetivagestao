@@ -1,9 +1,5 @@
-// ============================================================
-// CommercialVersionTimeline — visualizes version lifecycle.
-// ============================================================
-
 import type { CommercialVersionStatus } from "../types/commercial.types";
-import { COMMERCIAL_VERSION_STATUSES } from "../types/commercial.types";
+import { Badge } from "@/components/ui/Badge";
 
 interface Props {
   currentStatus: CommercialVersionStatus;
@@ -21,13 +17,14 @@ const FLOW: CommercialVersionStatus[] = [
 export function CommercialVersionTimeline({ currentStatus }: Props) {
   const cancelled = currentStatus === "cancelled";
   const index = FLOW.indexOf(currentStatus);
+
   return (
     <ol
       aria-label="Linha do tempo da versão"
       style={{
         listStyle: "none",
         display: "flex",
-        gap: "var(--space-2)",
+        gap: "var(--md-sys-spacing-2)",
         padding: 0,
         margin: 0,
         overflowX: "auto",
@@ -35,40 +32,37 @@ export function CommercialVersionTimeline({ currentStatus }: Props) {
       }}
     >
       {FLOW.map((s, i) => {
-        const info = COMMERCIAL_VERSION_STATUSES.find((opt) => opt.value === s);
         const reached = index >= i && !cancelled;
+        const tone = reached ? "info" : "neutral";
         return (
-          <li
-            key={s}
-            style={{
-              padding: "var(--space-1) var(--space-3)",
-              borderRadius: "var(--radius-full)",
-              fontSize: "var(--text-xs)",
-              backgroundColor: reached ? `${info?.color ?? "#6B7280"}20` : "var(--color-surface-secondary, #F3F4F6)",
-              color: reached ? info?.color ?? "#6B7280" : "var(--color-text-secondary)",
-              border: currentStatus === s ? `2px solid ${info?.color ?? "#6B7280"}` : "2px solid transparent",
-              fontWeight: currentStatus === s ? "var(--font-semibold)" : "var(--font-medium)",
-            }}
-          >
-            {info?.label ?? s}
+          <li key={s}>
+            <Badge
+              tone={tone}
+              data-state={currentStatus === s ? "current" : reached ? "reached" : "future"}
+            >
+              {labelFor(s)}
+            </Badge>
           </li>
         );
       })}
-      {cancelled && (
-        <li
-          style={{
-            padding: "var(--space-1) var(--space-3)",
-            borderRadius: "var(--radius-full)",
-            fontSize: "var(--text-xs)",
-            backgroundColor: "#DC262620",
-            color: "#DC2626",
-            border: "2px solid #DC2626",
-            fontWeight: "var(--font-semibold)",
-          }}
-        >
-          Cancelada
+      {cancelled ? (
+        <li>
+          <Badge tone="negative" data-state="current">Cancelada</Badge>
         </li>
-      )}
+      ) : null}
     </ol>
   );
+}
+
+function labelFor(status: CommercialVersionStatus): string {
+  switch (status) {
+    case "draft": return "Rascunho";
+    case "under_review": return "Em revisão";
+    case "approved": return "Aprovada";
+    case "scheduled": return "Agendada";
+    case "active": return "Ativa";
+    case "superseded": return "Substituída";
+    case "cancelled": return "Cancelada";
+    default: return status;
+  }
 }
