@@ -524,3 +524,58 @@
 **Decisão:** Resolver preço final exige cumulativamente membership no tenant, `pricing.client.view` e `pricing.commercial.view`. Não criar permissão nova e não exigir `pricing.calculate`.
 **Contexto:** O resultado compõe os dois domínios comerciais verificados e não executa cálculo. Permissões de UI não substituem revalidação backend.
 **Consequência:** Custom roles precisam das duas permissões; falha de autenticação/membership/permissão é erro, não ausência. O payload mínimo não inclui PII corporativa, portanto `core.company.view` não integra o contrato base.
+
+## DEC-068 — MVP Product Simplification: Facade Over Existing Cost Model (MVP-PRICING-00)
+
+**Data:** 2026-08-22
+**Decisão:** A superfície de UX do módulo de Precificação é simplificada para 4 áreas visíveis (Fornecedores, Exames, Custos & Comparativo, Tabela de Preços), enquanto todo o backend avançado permanece intacto e oculto. A fonte de custo autoritativa permanece o modelo versionado existente (`supplier_cost_tables`/`supplier_cost_table_versions`/`supplier_cost_items`), acessado via uma nova fachada de backend, em vez de criar uma nova tabela de custo simplificada.
+**Contexto:** MVP-PRICING-00 — pivô de produto. A complexidade operacional (versionamento, workflows, tabelas comerciais, overrides) excede a necessidade atual da Efetiva. A UX deve ser simples; o backend pode permanecer robusto.
+**Consequência:**
+- Nenhuma nova tabela de dados; migrations 001–041 inalteradas
+- UIX-03D1 (Tabelas Comerciais) RETIDO mas classificado ADVANCED_HIDDEN
+- UIX-03D2 PAUSADO / SUPERSEDED
+- Sem rollback de código existente
+- Cálculo de preço recomendado: DERIVADO dinamicamente (custo atual + margem padrão), NÃO persistido em nova tabela
+- Fonte de custo ÚNICA preservada (sem duplicação)
+
+## DEC-069 — One Canonical Source Per Domain (MVP-PRICING-00)
+
+**Data:** 2026-08-22
+**Decisão:** Cada domínio do MVP mantém exatamente uma fonte canônica: fornecedores (`companies`+`supplier_profiles`), exames (`catalog_items`), mapeamento fornecedor↔exame (`supplier_catalog_items`), custos (modelo versionado PRC-03), margem (configuração organizacional). Preço recomendado, markup e lucro bruto são DERIVADOS, nunca persistidos como masters paralelos.
+**Contexto:** MVP-PRICING-00 — evitar criação de tabelas `mvp_suppliers`, `simple_exams`, `current_prices` ou qualquer dataset paralelo que crie risco de divergência.
+**Consequência:** Zero duplicação de dados mestre. Toda simplificação é pura fachada de apresentação sobre o modelo existente. Evolução futura pode usar tabelas comerciais, overrides e resolução final sem migração de dados.
+
+## DEC-070 — Recommended Price Is Derived, Not Persisted (MVP-PRICING-00)
+
+**Data:** 2026-08-22
+**Decisão:** A tabela de preços pesquisável do MVP é calculada dinamicamente a partir do custo confirmado mais baixo + margem padrão da organização. Nenhuma tabela de "preço publicado" é criada ou persistida para o MVP lookup.
+**Contexto:** MVP-PRICING-00 — persistir preço recomendado criaria registros duplicados e desatualizados. Cálculo dinâmico mantém single source of truth.
+**Consequência:** Tradeoff: consulta pode ser mais lenta que lookup em tabela persistida (mitigado por RPC set-based). Tabelas comerciais existentes (PRC-05) permanecem disponíveis para casos que exijam snapshot publicado.
+
+## DEC-071 — Lowest Confirmed Supplier Cost Rule (MVP-PRICING-00)
+
+**Data:** 2026-08-22
+**Decisão:** Para cada exame, na data de referência, o menor custo é selecionado dentre TODOS os fornecedores com `resolution_status = 'CONFIRMED'` (excluindo `not_provided`, `awaiting_quote`, `not_applicable`, `discontinued`). Empates são exibidos (não resolvidos arbitrariamente). Custo zero confirmado (`confirmed_zero`) é tratado como R$ 0,00 válido e participa da comparação.
+**Contexto:** MVP-PRICING-00 — regra simples de negócio para operador comum.
+**Consequência:** Sem tie-break arbitrário; sem fabricação de R$ 0,00 para custo desconhecido. A mesma regra se aplica à tabela de preços derivada e à comparação.
+
+## DEC-072 — Organization Default Margin (MVP-PRICING-00)
+
+**Data:** 2026-08-22
+**Decisão:** O MVP utiliza UM valor de margem de lucro padrão por organização (`default_target_margin_rate`), armazenado no nível organizacional (campo existente ou tabela dedicada mínima :1 a ser definida em MVP-PRICING-02). Margem é input do usuário; markup é DERIVADO. Sem margem por categoria, exame ou cliente no MVP.
+**Contexto:** MVP-PRICING-00 — a operação atual da Efetiva precisa de apenas uma margem global.
+**Consequência:** `price = total_cost / (1 - margin_rate)`. Markup = `(price - cost) / cost`. Distinção semântica estrita margem ≠ markup (reforço de DEC-031).
+
+## DEC-073 — Authoritative Calculation Reuses PostgreSQL Engine (MVP-PRICING-00)
+
+**Data:** 2026-08-22
+**Decisão:** O cálculo autoritativo de preço recomendado reutiliza o motor PostgreSQL existente (`fn_calculate_price` / `fn_simulate_price`) via uma fachada MVP, em vez de duplicar fórmulas em React. Se `fn_simulate_price` não for reusável diretamente (acoplamento a `pricing_policy_version_id`), uma RPC simples dedicada chama `fn_calculate_price` internamente.
+**Contexto:** MVP-PRICING-00 — DEC-032/040/041 estabelecem que o motor PostgreSQL é a autoridade numérica. Não recriar em frontend.
+**Consequência:** Backend é autoritativo para margem, markup, markup_pct, gross_profit e preço final. Frontend apenas formata.
+
+## DEC-074 — Advanced Modules Classified ADVANCED_HIDDEN (MVP-PRICING-00)
+
+**Data:** 2026-08-22
+**Decisão:** Políticas de Preço, Simulador, Tabelas Comerciais, Clientes/Pricing, Final Price Resolution, Overrides, Assignments e gerenciamento avançado de versões são classificados ADVANCED_HIDDEN. Rotas permanecem acessíveis via URL direta para administradores, mas não competem na navegação MVP ordinária. Nenhum card "Avançado" é adicionado ao /pricing home.
+**Contexto:** MVP-PRICING-00 — manter superfície genuinamente simples.
+**Consequência:** Código, testes, componentes e rotas NÃO são deletados. Classificação é puramente de navegação/UX. Acesso administrativo avançado pode permanecer via rota direta ou futura área Configurações.

@@ -33,14 +33,51 @@
 | PRC-07 | Motor de Resolução | **IN PROGRESS** |
 | PRC-07A | Final Price Resolution Model & Business Rules | **COMPLETED** |
 | PRC-07B | Final Price Resolver Backend & Security | **COMPLETED** |
-| PRC-07C | Final Price Resolution UI | NOT STARTED |
-| PRC-07D | End-to-End Hardening & Final Verification | NOT STARTED |
+| PRC-07C | Final Price Resolution UI | PAUSED — MVP PIVOT |
+| PRC-07D | End-to-End Hardening & Final Verification | PAUSED — MVP PIVOT |
 | PRC-08 | Importação | NOT STARTED |
 | PRC-09 | Conciliação | NOT STARTED |
 | PRC-10 | Inteligência de Mercado | NOT STARTED |
 | PRC-11 | Migração do Legado | NOT STARTED |
 | PRC-12 | Hardening | NOT STARTED |
 | PRC-13 | Homologação | NOT STARTED |
+| **MVP-PRICING-00** | **Arquitetura e Simplificação de Produto** | **COMPLETED** |
+| **MVP-PRICING-01** | **Navegação Simplificada e UX de Preços** | **DEFINED** |
+| **MVP-PRICING-02** | **Entrada de Preço Fornecedor e Comparação de Custos** | **DEFINED** |
+| **MVP-PRICING-03** | **Margem Padrão e Tabela de Preços Pesquisável** | **DEFINED** |
+| **MVP-PRICING-04** | **Hardening / E2E / QA Responsivo** | **DEFINED** |
+
+## UIX Phases
+
+| Fase | Descrição | Status |
+|------|-----------|--------|
+| UIX-00 | Design System Bootstrap | **COMPLETED** |
+| UIX-01 | Dashboard Migration | **COMPLETED** |
+| UIX-02 | Catalog Migration | **COMPLETED** |
+| UIX-02R1 | Catalog Refinement | **COMPLETED** |
+| UIX-03A | Policies & Simulator | **COMPLETED** |
+| UIX-03B | Costs Workflow | **COMPLETED** |
+| UIX-03C1 | Suppliers List/Detail | **COMPLETED** |
+| UIX-03C2 | Commercial Tables Components | **COMPLETED** |
+| UIX-03D1 | Commercial Tables Pages | **COMPLETED — RETAINED** |
+| UIX-03D2 | Commercial Version Workspace | **PAUSED — SUPERSEDED BY MVP PIVOT** |
+
+## MVP Pivot
+
+**Data:** 2026-08-22
+**Decisão:** Simplificação da superfície de UX do módulo de Precificação para 4 áreas visíveis (Fornecedores, Exames, Custos & Comparativo, Tabela de Preços). Backend avançado permanece intacto e oculto.
+
+MVP Phases:
+
+| Fase | Escopo | Status |
+|------|--------|--------|
+| MVP-PRICING-00 | Arquitetura e Simplificação de Produto | **COMPLETED** |
+| MVP-PRICING-01 | Navegação Simplificada e UX de Preços | DEFINIDO (futuro) |
+| MVP-PRICING-02 | Entrada de Preço Fornecedor e Comparação de Custos | DEFINIDO (futuro) |
+| MVP-PRICING-03 | Margem Padrão e Tabela de Preços Pesquisável | DEFINIDO (futuro) |
+| MVP-PRICING-04 | Hardening / E2E / QA Responsivo | DEFINIDO (futuro) |
+
+Referência: `docs/PRICING_MVP.md` · `docs/DECISION_REGISTER.md` (DEC-068..DEC-074)
 
 ## Primeiro Domínio Funcional
 
@@ -86,6 +123,8 @@ Controla:
 | CLIENT_PRICING_VERIFIED | PRC-06E | Atingido |
 | FINAL_PRICE_RESOLUTION_MODEL_DEFINED | PRC-07A | Atingido |
 | FINAL_PRICE_RESOLVER_VERIFIED | PRC-07B | Atingido |
+| UIX-03D1_VERIFIED | UIX-03D1 | Atingido |
+| MVP_ARCHITECTURE_DEFINED | MVP-PRICING-00 | Atingido |
 
 ## Gate de Continuidade
 
@@ -99,5 +138,8 @@ Controla:
 | FINAL_PRICE_RESOLUTION_MODEL_DEFINED | ATINGIDO |
 | PRC-07B | COMPLETED — migration 041; 11/11 suítes remotas FULL PASS |
 | FINAL_PRICE_RESOLVER_VERIFIED | ATINGIDO |
-| PRC-07C | NOT STARTED |
-| READY FOR PRC-07C | YES |
+| PRC-07C | PAUSED — MVP PIVOT |
+| UIX-03D1 | COMPLETED — RETAINED |
+| UIX-03D2 | PAUSED — SUPERSEDED BY MVP PIVOT |
+| MVP-PRICING-00 | COMPLETED — Architecture only |
+| READY FOR MVP-PRICING-01 | YES |
