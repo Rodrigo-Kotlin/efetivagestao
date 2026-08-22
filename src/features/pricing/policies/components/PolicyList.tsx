@@ -1,15 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePricingPolicies } from "../hooks/usePricingPolicies";
-import { useAuth } from "@/features/core/useAuth";
 import { POLICY_SCOPE_TYPES, POLICY_STATUSES } from "../types/pricing-policy.types";
-import { CodeBadge, PolicyScopeBadge, PolicyStatusBadge } from "./PolicyBadges";
+import { Button } from "@/components/ui/Button";
+import { SearchField } from "@/components/ui/SearchField";
+import { Select } from "@/components/ui/Select";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { Table } from "@/components/ui/Table";
+import { AppIcon } from "@/layouts/app-shell/AppIcon";
+import { formatDate } from "../utils/format";
 
 const PAGE_SIZE = 25;
 
 export function PolicyList() {
   const navigate = useNavigate();
-  const { can } = useAuth();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -37,250 +45,133 @@ export function PolicyList() {
     setPage(1);
   };
 
-  const hasFilters = search || scopeType || status;
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("pt-BR");
-  };
+  const hasFilters = !!search || !!scopeType || !!status;
+  const activeFilterCount = [search, scopeType, status].filter(Boolean).length;
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-6)", flexWrap: "wrap", gap: "var(--space-4)" }}>
-        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)" }}>
-          Políticas de Preço
-        </h1>
-        {can("pricing.policy.create") && (
-          <button
-            onClick={() => navigate("/pricing/policies/new")}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "var(--color-primary)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-              fontWeight: "var(--font-medium)",
-            }}
-          >
-            Nova Política
-          </button>
-        )}
-      </div>
-
-      <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-6)" }}>
-        <div style={{ display: "flex", gap: "var(--space-3)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--md-sys-spacing-5)" }}>
+      <div className="eg-toolbar" role="search" aria-label="Filtros de políticas de preço">
+        <div className="eg-toolbar__search">
+          <SearchField
+            label="Buscar"
             placeholder="Buscar por código ou nome..."
-            style={{
-              flex: 1,
-              minWidth: "200px",
-              padding: "var(--space-2) var(--space-3)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              fontSize: "var(--text-sm)",
-              outline: "none",
+            value={searchInput}
+            onChange={setSearchInput}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch();
             }}
             aria-label="Buscar políticas de preço"
           />
-          <button
-            onClick={handleSearch}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "var(--color-primary)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-            }}
-          >
-            Buscar
-          </button>
         </div>
-
-        <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "center" }}>
-          <select
+        <div className="eg-toolbar__filters">
+          <Button variant="filled" size="compact" onClick={handleSearch}>Buscar</Button>
+          <Select
+            label="Escopo"
+            density="compact"
             value={scopeType}
             onChange={(e) => { setScopeType(e.target.value); setPage(1); }}
-            style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", fontSize: "var(--text-sm)" }}
             aria-label="Filtrar por escopo"
           >
             <option value="">Todos os escopos</option>
             {POLICY_SCOPE_TYPES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
-          </select>
-
-          <select
+          </Select>
+          <Select
+            label="Status"
+            density="compact"
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", fontSize: "var(--text-sm)" }}
             aria-label="Filtrar por status"
           >
             <option value="">Todos os status</option>
             {POLICY_STATUSES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
-          </select>
-
-          {hasFilters && (
-            <button
-              onClick={handleClearFilters}
-              style={{
-                padding: "var(--space-2) var(--space-3)",
-                backgroundColor: "transparent",
-                color: "var(--color-text-secondary)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Limpar filtros
-            </button>
-          )}
+          </Select>
+          {hasFilters ? (
+            <Button variant="text" size="compact" onClick={handleClearFilters}>
+              Limpar{activeFilterCount > 1 ? ` (${activeFilterCount})` : ""}
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      {loading && (
-        <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-          Carregando políticas de preço...
-        </div>
-      )}
+      {loading ? <Spinner label="Carregando políticas de preço..." /> : null}
 
-      {error && !loading && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>Erro ao carregar políticas de preço</p>
-          <button
-            onClick={() => void refetch()}
-            style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-          >
-            Tentar novamente
-          </button>
-        </div>
-      )}
+      {error && !loading ? (
+        <Alert tone="negative" title="Erro ao carregar políticas de preço">
+          <Button variant="outlined" size="compact" onClick={() => void refetch()}>Tentar novamente</Button>
+        </Alert>
+      ) : null}
 
-      {!loading && !error && data.length === 0 && (
-        <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-8)", textAlign: "center" }}>
-          <p style={{ color: "var(--color-text-secondary)", marginBottom: hasFilters ? "var(--space-2)" : 0 }}>
-            {hasFilters ? "Nenhuma política de preço encontrada para os filtros aplicados." : "Nenhuma política de preço cadastrada."}
-          </p>
-          {!hasFilters && can("pricing.policy.create") && (
-            <button
-              onClick={() => navigate("/pricing/policies/new")}
-              style={{
-                marginTop: "var(--space-4)",
-                padding: "var(--space-2) var(--space-4)",
-                backgroundColor: "var(--color-primary)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-                fontWeight: "var(--font-medium)",
-              }}
-            >
-              Nova política de preço
-            </button>
-          )}
-        </div>
-      )}
+      {!loading && !error && data.length === 0 ? (
+        <EmptyState
+          title={hasFilters ? "Nenhuma política de preço encontrada para os filtros aplicados." : "Nenhuma política de preço cadastrada."}
+          description={hasFilters ? "Ajuste os filtros ou limpe a busca." : "Crie a primeira política de preço para a organização."}
+        />
+      ) : null}
 
-      {!loading && !error && data.length > 0 && (
+      {!loading && !error && data.length > 0 ? (
         <>
-          <div style={{ display: "block", overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Código</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Nome</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Escopo</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Status</th>
-                  <th style={{ textAlign: "left", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Atualizado</th>
-                  <th style={{ textAlign: "right", padding: "var(--space-3)", color: "var(--color-text-secondary)", fontWeight: "var(--font-medium)" }}>Ações</th>
+          <Table caption="Lista de políticas de preço" captionHidden>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Código</th>
+                <th style={{ textAlign: "left" }}>Nome</th>
+                <th style={{ textAlign: "left" }}>Escopo</th>
+                <th style={{ textAlign: "left" }}>Status</th>
+                <th style={{ textAlign: "left" }}>Atualizado</th>
+                <th style={{ textAlign: "right" }}><span className="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((pp) => (
+                <tr
+                  key={pp.id}
+                  onClick={() => navigate(`/pricing/policies/${pp.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/pricing/policies/${pp.id}`);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="link"
+                  aria-label={`Ver política ${pp.name}`}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td><Badge mono>{pp.code}</Badge></td>
+                  <td style={{ fontWeight: 500 }}>{pp.name}</td>
+                  <td>
+                    <Badge>{POLICY_SCOPE_TYPES.find((s) => s.value === pp.scope_type)?.label ?? pp.scope_type}</Badge>
+                  </td>
+                  <td><StatusBadge status={pp.status} /></td>
+                  <td style={{ fontSize: "var(--md-sys-typescale-body-medium-size)", color: "var(--md-sys-color-on-surface-variant)" }}>
+                    {formatDate(pp.updated_at)}
+                  </td>
+                  <td style={{ textAlign: "right", color: "var(--md-sys-color-on-surface-variant)" }} aria-hidden="true">
+                    <span className="eg-icon" data-size="small">
+                      <AppIcon name="arrow-right" />
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {data.map((pp) => (
-                  <tr
-                    key={pp.id}
-                    style={{ borderBottom: "1px solid var(--color-border)", cursor: "pointer" }}
-                    onClick={() => navigate(`/pricing/policies/${pp.id}`)}
-                  >
-                    <td style={{ padding: "var(--space-3)" }}>
-                      <CodeBadge code={pp.code} />
-                    </td>
-                    <td style={{ padding: "var(--space-3)", fontWeight: "var(--font-medium)" }}>{pp.name}</td>
-                    <td style={{ padding: "var(--space-3)" }}>
-                      <PolicyScopeBadge scopeType={pp.scope_type} />
-                    </td>
-                    <td style={{ padding: "var(--space-3)" }}>
-                      <PolicyStatusBadge status={pp.status} />
-                    </td>
-                    <td style={{ padding: "var(--space-3)", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>
-                      {formatDate(pp.updated_at)}
-                    </td>
-                    <td style={{ padding: "var(--space-3)", textAlign: "right" }}>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/pricing/policies/${pp.id}`); }}
-                        style={{ padding: "4px 8px", backgroundColor: "transparent", color: "var(--color-primary)", border: "1px solid var(--color-primary)", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-xs)" }}
-                      >
-                        Ver
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "var(--space-4)", padding: "var(--space-3) 0" }}>
-              <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+              ))}
+            </tbody>
+          </Table>
+          {totalPages > 1 ? (
+            <div className="eg-toolbar" aria-label="Paginação">
+              <span style={{ fontSize: "var(--md-sys-typescale-body-medium-size)", color: "var(--md-sys-color-on-surface-variant)" }}>
                 {total} {total === 1 ? "política" : "políticas"} — Página {page} de {totalPages}
               </span>
-              <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  style={{
-                    padding: "var(--space-2) var(--space-3)",
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-md)",
-                    cursor: page === 1 ? "default" : "pointer",
-                    opacity: page === 1 ? 0.5 : 1,
-                    fontSize: "var(--text-sm)",
-                  }}
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  style={{
-                    padding: "var(--space-2) var(--space-3)",
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-md)",
-                    cursor: page === totalPages ? "default" : "pointer",
-                    opacity: page === totalPages ? 0.5 : 1,
-                    fontSize: "var(--text-sm)",
-                  }}
-                >
-                  Próxima
-                </button>
+              <div className="eg-toolbar__actions">
+                <Button variant="outlined" size="compact" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Anterior</Button>
+                <Button variant="outlined" size="compact" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Próxima</Button>
               </div>
             </div>
-          )}
+          ) : null}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

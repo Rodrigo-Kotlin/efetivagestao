@@ -5,6 +5,13 @@ import type { PricingPolicyScopeType } from "../types/pricing-policy.types";
 import { fetchCatalogCategoriesForSelector, fetchCatalogItemsForSelector } from "../api/policies";
 import { normalizePolicyCode } from "../schemas/validation";
 import type { CatalogCategory, CatalogItem } from "@/types";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { TextField } from "@/components/ui/TextField";
+import { Select } from "@/components/ui/Select";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { Button } from "@/components/ui/Button";
 
 interface Props {
   initialData?: {
@@ -26,24 +33,6 @@ interface Props {
   onCancel: () => void;
   submitLabel?: string;
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "var(--space-2) var(--space-3)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  fontSize: "var(--text-sm)",
-  outline: "none",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "var(--text-xs)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "4px",
-};
-
-// UI-FORM01: default scope needs no category/item; category/item do.
 
 export function PolicyForm({ initialData, onSubmit, onCancel, submitLabel = "Criar Política" }: Props) {
   const { activeOrganization } = useAuth();
@@ -147,89 +136,62 @@ export function PolicyForm({ initialData, onSubmit, onCancel, submitLabel = "Cri
   };
 
   return (
-    <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)" }}>
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <label style={labelStyle}>Código *</label>
-        <input
-          type="text"
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
+      noValidate
+    >
+      <FormSection title="Dados da política">
+        <TextField
+          label="Código"
+          required
+          placeholder="Ex.: POL-PADRAO"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="Ex.: POL-PADRAO"
-          style={inputStyle}
-          aria-label="Código da política"
         />
-      </div>
-
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <label style={labelStyle}>Nome *</label>
-        <input
-          type="text"
+        <TextField
+          label="Nome"
+          required
+          placeholder="Ex.: Política padrão de margem"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ex.: Política padrão de margem"
-          style={inputStyle}
-          aria-label="Nome da política"
         />
-      </div>
-
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <label style={labelStyle}>Descrição</label>
-        <textarea
+        <TextField
+          label="Descrição"
+          placeholder="Descrição opcional da política"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          multiline
           rows={3}
-          style={{ ...inputStyle, resize: "vertical" }}
-          aria-label="Descrição da política"
         />
-      </div>
-
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <label style={labelStyle}>Escopo *</label>
-        <select
+        <Select
+          label="Escopo"
+          required
           value={scopeType}
           onChange={(e) => handleScopeChange(e.target.value as PricingPolicyScopeType)}
-          style={inputStyle}
-          aria-label="Escopo da política"
         >
           <option value="">Selecione o escopo...</option>
           {POLICY_SCOPE_TYPES.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
-        </select>
-      </div>
+        </Select>
+      </FormSection>
 
-      {scopeType === "category" && (
-        <div style={{ marginBottom: "var(--space-4)" }}>
-          <label style={labelStyle}>Categoria do catálogo *</label>
-          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-            <input
-              type="text"
-              value={categorySearch}
-              onChange={(e) => setCategorySearch(e.target.value)}
-              placeholder="Buscar categoria..."
-              style={inputStyle}
-              aria-label="Buscar categoria do catálogo"
-            />
-            <button
-              type="button"
-              onClick={() => void loadCategories()}
-              style={{
-                padding: "var(--space-2) var(--space-3)",
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Buscar
-            </button>
-          </div>
-          <select
+      {scopeType === "category" ? (
+        <FormSection title="Categoria do catálogo" description="Defina a categoria do catálogo à qual esta política se aplica.">
+          <TextField
+            label="Buscar categoria"
+            placeholder="Buscar categoria..."
+            value={categorySearch}
+            onChange={(e) => setCategorySearch(e.target.value)}
+          />
+          <Select
+            label="Categoria"
+            required
             value={catalogCategoryId}
             onChange={(e) => setCatalogCategoryId(e.target.value)}
-            style={inputStyle}
-            aria-label="Selecionar categoria do catálogo"
           >
             <option value="">Selecione a categoria...</option>
             {categoriesLoading ? (
@@ -239,42 +201,23 @@ export function PolicyForm({ initialData, onSubmit, onCancel, submitLabel = "Cri
                 <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
               ))
             )}
-          </select>
-        </div>
-      )}
+          </Select>
+        </FormSection>
+      ) : null}
 
-      {scopeType === "catalog_item" && (
-        <div style={{ marginBottom: "var(--space-4)" }}>
-          <label style={labelStyle}>Item do catálogo *</label>
-          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-            <input
-              type="text"
-              value={itemSearch}
-              onChange={(e) => setItemSearch(e.target.value)}
-              placeholder="Buscar item..."
-              style={inputStyle}
-              aria-label="Buscar item do catálogo"
-            />
-            <button
-              type="button"
-              onClick={() => void loadItems()}
-              style={{
-                padding: "var(--space-2) var(--space-3)",
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Buscar
-            </button>
-          </div>
-          <select
+      {scopeType === "catalog_item" ? (
+        <FormSection title="Item do catálogo" description="Defina o item do catálogo ao qual esta política se aplica.">
+          <TextField
+            label="Buscar item"
+            placeholder="Buscar item..."
+            value={itemSearch}
+            onChange={(e) => setItemSearch(e.target.value)}
+          />
+          <Select
+            label="Item"
+            required
             value={catalogItemId}
             onChange={(e) => setCatalogItemId(e.target.value)}
-            style={inputStyle}
-            aria-label="Selecionar item do catálogo"
           >
             <option value="">Selecione o item...</option>
             {itemsLoading ? (
@@ -284,49 +227,20 @@ export function PolicyForm({ initialData, onSubmit, onCancel, submitLabel = "Cri
                 <option key={i.id} value={i.id}>{i.code} — {i.name}</option>
               ))
             )}
-          </select>
-        </div>
-      )}
+          </Select>
+        </FormSection>
+      ) : null}
 
-      {error && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{error}</p>
-        </div>
-      )}
+      {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-      <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          onClick={onCancel}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-md)",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "var(--color-primary)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "var(--radius-md)",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-          }}
-        >
-          {submitLabel}
-        </button>
-      </div>
-    </div>
+      <FormActions>
+        <Button variant="text" type="button" onClick={onCancel}>Cancelar</Button>
+        <Button variant="filled" type="submit">{submitLabel}</Button>
+      </FormActions>
+
+      <FieldGroup hidden>
+        <input type="hidden" />
+      </FieldGroup>
+    </form>
   );
 }

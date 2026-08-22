@@ -69,11 +69,11 @@ describe("Policy form validation (UI-FORM01..02)", () => {
     const onSubmit = vi.fn();
     renderPolicyForm(onSubmit);
 
-    fireEvent.change(screen.getByLabelText("Código da política"), { target: { value: "POL teste 1" } });
-    fireEvent.change(screen.getByLabelText("Nome da política"), { target: { value: "Política padrão" } });
-    fireEvent.change(screen.getByLabelText("Escopo da política"), { target: { value: "default" } });
+    fireEvent.change(screen.getByLabelText(/^Código/), { target: { value: "POL teste 1" } });
+    fireEvent.change(screen.getByLabelText(/^Nome/), { target: { value: "Política padrão" } });
+    fireEvent.change(screen.getByLabelText(/^Escopo/), { target: { value: "default" } });
 
-    fireEvent.click(screen.getByText("Criar Política"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar Política" }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       code: "POL-TESTE-1",
@@ -85,11 +85,11 @@ describe("Policy form validation (UI-FORM01..02)", () => {
     const onSubmit = vi.fn();
     renderPolicyForm(onSubmit);
 
-    fireEvent.change(screen.getByLabelText("Código da política"), { target: { value: "POL-CAT" } });
-    fireEvent.change(screen.getByLabelText("Nome da política"), { target: { value: "Política por categoria" } });
-    fireEvent.change(screen.getByLabelText("Escopo da política"), { target: { value: "category" } });
+    fireEvent.change(screen.getByLabelText(/^Código/), { target: { value: "POL-CAT" } });
+    fireEvent.change(screen.getByLabelText(/^Nome/), { target: { value: "Política por categoria" } });
+    fireEvent.change(screen.getByLabelText(/^Escopo/), { target: { value: "category" } });
 
-    fireEvent.click(screen.getByText("Criar Política"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar Política" }));
 
     expect(screen.getByText("Selecione a categoria do catálogo para o escopo de categoria.")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -99,11 +99,11 @@ describe("Policy form validation (UI-FORM01..02)", () => {
     const onSubmit = vi.fn();
     renderPolicyForm(onSubmit);
 
-    fireEvent.change(screen.getByLabelText("Código da política"), { target: { value: "  pol preço #1  " } });
-    fireEvent.change(screen.getByLabelText("Nome da política"), { target: { value: "Política" } });
-    fireEvent.change(screen.getByLabelText("Escopo da política"), { target: { value: "default" } });
+    fireEvent.change(screen.getByLabelText(/^Código/), { target: { value: "  pol preço #1  " } });
+    fireEvent.change(screen.getByLabelText(/^Nome/), { target: { value: "Política" } });
+    fireEvent.change(screen.getByLabelText(/^Escopo/), { target: { value: "default" } });
 
-    fireEvent.click(screen.getByText("Criar Política"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar Política" }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ code: "POL-PREO-1" }));
   });
@@ -112,17 +112,16 @@ describe("Policy form validation (UI-FORM01..02)", () => {
     const onSubmit = vi.fn();
     renderPolicyForm(onSubmit);
 
-    fireEvent.change(screen.getByLabelText("Código da política"), { target: { value: "POL-X" } });
-    fireEvent.change(screen.getByLabelText("Nome da política"), { target: { value: "Política X" } });
-    fireEvent.change(screen.getByLabelText("Escopo da política"), { target: { value: "catalog_item" } });
+    fireEvent.change(screen.getByLabelText(/^Código/), { target: { value: "POL-X" } });
+    fireEvent.change(screen.getByLabelText(/^Nome/), { target: { value: "Política X" } });
+    fireEvent.change(screen.getByLabelText(/^Escopo/), { target: { value: "catalog_item" } });
 
-    expect(screen.getByText("Item do catálogo *")).toBeInTheDocument();
-    expect(screen.getByLabelText("Buscar item do catálogo")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Buscar item/)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Escopo da política"), { target: { value: "default" } });
+    fireEvent.change(screen.getByLabelText(/^Escopo/), { target: { value: "default" } });
 
-    expect(screen.queryByText("Item do catálogo *")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Buscar item do catálogo")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Buscar item/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Buscar categoria/)).not.toBeInTheDocument();
   });
 });
 
@@ -130,45 +129,42 @@ describe("Version form method-dependent fields (UI-FORM03..04)", () => {
   it("UI-FORM03: target_margin shows margem-alvo field only", () => {
     renderVersionForm(() => {});
 
-    fireEvent.change(screen.getByLabelText("Método de precificação"), { target: { value: "target_margin" } });
+    fireEvent.change(screen.getByLabelText(/^Método/), { target: { value: "target_margin" } });
 
-    expect(screen.getByText("Margem-alvo (%) *")).toBeInTheDocument();
-    expect(screen.getByLabelText("Margem-alvo em percentual")).toBeInTheDocument();
-    expect(screen.queryByText("Markup (%) *")).not.toBeInTheDocument();
-    expect(screen.queryByText("Preço fixo (R$) *")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Margem-alvo/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Markup/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Preço fixo/)).not.toBeInTheDocument();
   });
 
   it("UI-FORM03b: markup shows markup field only", () => {
     renderVersionForm(() => {});
 
-    fireEvent.change(screen.getByLabelText("Método de precificação"), { target: { value: "markup" } });
+    fireEvent.change(screen.getByLabelText(/^Método/), { target: { value: "markup" } });
 
-    expect(screen.getByText("Markup (%) *")).toBeInTheDocument();
-    expect(screen.getByLabelText("Markup em percentual")).toBeInTheDocument();
-    expect(screen.queryByText("Margem-alvo (%) *")).not.toBeInTheDocument();
-    expect(screen.queryByText("Preço fixo (R$) *")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Markup/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Margem-alvo/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Preço fixo/)).not.toBeInTheDocument();
   });
 
   it("UI-FORM03c: fixed_price shows preço fixo field only", () => {
     renderVersionForm(() => {});
 
-    fireEvent.change(screen.getByLabelText("Método de precificação"), { target: { value: "fixed_price" } });
+    fireEvent.change(screen.getByLabelText(/^Método/), { target: { value: "fixed_price" } });
 
-    expect(screen.getByText("Preço fixo (R$) *")).toBeInTheDocument();
-    expect(screen.getByLabelText("Preço fixo em reais")).toBeInTheDocument();
-    expect(screen.queryByText("Margem-alvo (%) *")).not.toBeInTheDocument();
-    expect(screen.queryByText("Markup (%) *")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Preço fixo/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Margem-alvo/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Markup/)).not.toBeInTheDocument();
   });
 
   it("UI-FORM04: percent input converts 20 → 0.20 and sends method-specific nulls", () => {
     const onSubmit = vi.fn();
     renderVersionForm(onSubmit);
 
-    fireEvent.change(screen.getByLabelText("Data de início de vigência"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Método de precificação"), { target: { value: "target_margin" } });
-    fireEvent.change(screen.getByLabelText("Margem-alvo em percentual"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText(/^Vigência inicial/), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText(/^Método/), { target: { value: "target_margin" } });
+    fireEvent.change(screen.getByLabelText(/^Margem-alvo/), { target: { value: "20" } });
 
-    fireEvent.click(screen.getByText("Criar Versão"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar Versão" }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       pricing_method: "target_margin",
@@ -182,11 +178,11 @@ describe("Version form method-dependent fields (UI-FORM03..04)", () => {
     const onSubmit = vi.fn();
     renderVersionForm(onSubmit);
 
-    fireEvent.change(screen.getByLabelText("Data de início de vigência"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Método de precificação"), { target: { value: "markup" } });
-    fireEvent.change(screen.getByLabelText("Markup em percentual"), { target: { value: "25" } });
+    fireEvent.change(screen.getByLabelText(/^Vigência inicial/), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText(/^Método/), { target: { value: "markup" } });
+    fireEvent.change(screen.getByLabelText(/^Markup/), { target: { value: "25" } });
 
-    fireEvent.click(screen.getByText("Criar Versão"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar Versão" }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       pricing_method: "markup",
@@ -200,18 +196,18 @@ describe("Version form method-dependent fields (UI-FORM03..04)", () => {
     const onSubmit = vi.fn();
     renderVersionForm(onSubmit);
 
-    fireEvent.change(screen.getByLabelText("Data de início de vigência"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Método de precificação"), { target: { value: "target_margin" } });
-    fireEvent.change(screen.getByLabelText("Margem-alvo em percentual"), { target: { value: "20" } });
-    fireEvent.change(screen.getByLabelText("Modo de arredondamento"), { target: { value: "nearest" } });
+    fireEvent.change(screen.getByLabelText(/^Vigência inicial/), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText(/^Método/), { target: { value: "target_margin" } });
+    fireEvent.change(screen.getByLabelText(/^Margem-alvo/), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText(/^Arredondamento/), { target: { value: "nearest" } });
 
-    fireEvent.click(screen.getByText("Criar Versão"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar Versão" }));
 
     expect(screen.getByText("Informe um passo de arredondamento maior que zero.")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Passo de arredondamento em reais"), { target: { value: "0.10" } });
-    fireEvent.click(screen.getByText("Criar Versão"));
+    fireEvent.change(screen.getByLabelText(/^Passo de arredondamento/), { target: { value: "0.10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar Versão" }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ rounding_mode: "nearest", rounding_step: 0.1 }));
   });
@@ -253,11 +249,11 @@ describe("Component editor type-dependent fields (UI-FORM05)", () => {
     const onAdd = vi.fn(() => Promise.resolve());
     renderEditor(onAdd);
 
-    fireEvent.change(screen.getByLabelText("Nome do componente"), { target: { value: "Logística" } });
-    fireEvent.change(screen.getByLabelText("Tipo do componente"), { target: { value: "fixed" } });
-    fireEvent.change(screen.getByLabelText("Valor fixo do componente em reais"), { target: { value: "3.50" } });
+    fireEvent.change(screen.getByLabelText(/^Nome/), { target: { value: "Logística" } });
+    fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "fixed" } });
+    fireEvent.change(screen.getByLabelText(/^Valor fixo/), { target: { value: "3.50" } });
 
-    fireEvent.click(screen.getByText("Adicionar componente"));
+    fireEvent.click(screen.getByRole("button", { name: /Adicionar componente/ }));
 
     await waitFor(() => {
       expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({
@@ -272,11 +268,11 @@ describe("Component editor type-dependent fields (UI-FORM05)", () => {
     const onAdd = vi.fn(() => Promise.resolve());
     renderEditor(onAdd);
 
-    fireEvent.change(screen.getByLabelText("Nome do componente"), { target: { value: "Sobretaxa" } });
-    fireEvent.change(screen.getByLabelText("Tipo do componente"), { target: { value: "percentage_of_base_cost" } });
-    fireEvent.change(screen.getByLabelText("Taxa percentual do componente"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText(/^Nome/), { target: { value: "Sobretaxa" } });
+    fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "percentage_of_base_cost" } });
+    fireEvent.change(screen.getByLabelText(/^Taxa percentual/), { target: { value: "5" } });
 
-    fireEvent.click(screen.getByText("Adicionar componente"));
+    fireEvent.click(screen.getByRole("button", { name: /Adicionar componente/ }));
 
     await waitFor(() => {
       expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({
@@ -291,10 +287,10 @@ describe("Component editor type-dependent fields (UI-FORM05)", () => {
     const onAdd = vi.fn(() => Promise.resolve());
     renderEditor(onAdd);
 
-    fireEvent.change(screen.getByLabelText("Nome do componente"), { target: { value: "Logística" } });
-    fireEvent.change(screen.getByLabelText("Tipo do componente"), { target: { value: "fixed" } });
+    fireEvent.change(screen.getByLabelText(/^Nome/), { target: { value: "Logística" } });
+    fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "fixed" } });
 
-    fireEvent.click(screen.getByText("Adicionar componente"));
+    fireEvent.click(screen.getByRole("button", { name: /Adicionar componente/ }));
 
     expect(await screen.findByText("Informe o valor fixo do componente.")).toBeInTheDocument();
     expect(onAdd).not.toHaveBeenCalled();

@@ -3,6 +3,13 @@ import { useAuth } from "@/features/core/useAuth";
 import { fetchCatalogItemsForSelector } from "../api/policies";
 import { supabase } from "@/lib/supabase";
 import type { CatalogItem, SupplierWithCompany } from "@/types";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { TextField } from "@/components/ui/TextField";
+import { Select } from "@/components/ui/Select";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { Button } from "@/components/ui/Button";
 
 interface Props {
   onSubmit: (input: {
@@ -14,22 +21,6 @@ interface Props {
   onClear: () => void;
   loading?: boolean;
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "var(--space-2) var(--space-3)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  fontSize: "var(--text-sm)",
-  outline: "none",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "var(--text-xs)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "4px",
-};
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -137,175 +128,99 @@ export function SimulationForm({ onSubmit, onClear, loading = false }: Props) {
   };
 
   return (
-    <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div>
-          <label style={labelStyle}>Item do catálogo *</label>
-          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-            <input
-              type="text"
-              value={itemSearch}
-              onChange={(e) => setItemSearch(e.target.value)}
-              placeholder="Buscar item..."
-              style={inputStyle}
-              aria-label="Buscar item do catálogo"
-            />
-            <button
-              type="button"
-              onClick={() => void loadItems()}
-              style={{
-                padding: "var(--space-2) var(--space-3)",
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Buscar
-            </button>
-          </div>
-          <select
-            value={selectedItemId}
-            onChange={(e) => setSelectedItemId(e.target.value)}
-            style={inputStyle}
-            aria-label="Selecionar item do catálogo"
-          >
-            <option value="">Selecione o item...</option>
-            {itemsLoading ? (
-              <option disabled>Carregando...</option>
-            ) : (
-              items.map((i) => (
-                <option key={i.id} value={i.id}>{i.code} — {i.name}</option>
-              ))
-            )}
-          </select>
-        </div>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
+      noValidate
+    >
+      <FormSection title="Item e fornecedor" description="Selecione o item do catálogo e o fornecedor do custo.">
+        <TextField
+          label="Buscar item do catálogo"
+          supportingText="Filtre por código ou nome."
+          placeholder="Buscar item..."
+          value={itemSearch}
+          onChange={(e) => setItemSearch(e.target.value)}
+        />
+        <Select
+          label="Item do catálogo"
+          required
+          value={selectedItemId}
+          onChange={(e) => setSelectedItemId(e.target.value)}
+        >
+          <option value="">Selecione o item...</option>
+          {itemsLoading ? (
+            <option disabled>Carregando...</option>
+          ) : (
+            items.map((i) => (
+              <option key={i.id} value={i.id}>{i.code} — {i.name}</option>
+            ))
+          )}
+        </Select>
 
-        <div>
-          <label style={labelStyle}>Fornecedor do custo *</label>
-          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-            <input
-              type="text"
-              value={supplierSearch}
-              onChange={(e) => setSupplierSearch(e.target.value)}
-              placeholder="Buscar fornecedor..."
-              style={inputStyle}
-              aria-label="Buscar fornecedor"
-            />
-            <button
-              type="button"
-              onClick={() => void loadSuppliers()}
-              style={{
-                padding: "var(--space-2) var(--space-3)",
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              Buscar
-            </button>
-          </div>
-          <select
-            value={selectedSupplierId}
-            onChange={(e) => setSelectedSupplierId(e.target.value)}
-            style={inputStyle}
-            aria-label="Selecionar fornecedor"
-          >
-            <option value="">Selecione o fornecedor...</option>
-            {suppliersLoading ? (
-              <option disabled>Carregando...</option>
-            ) : (
-              suppliers.map((s) => {
-                const company = s.company as { legal_name?: string; trade_name?: string } | null;
-                const name = company?.trade_name || company?.legal_name || "—";
-                return (
-                  <option key={s.company_id} value={s.company_id}>{name}</option>
-                );
-              })
-            )}
-          </select>
-        </div>
-      </div>
+        <TextField
+          label="Buscar fornecedor"
+          supportingText="Filtre por razão social ou nome fantasia."
+          placeholder="Buscar fornecedor..."
+          value={supplierSearch}
+          onChange={(e) => setSupplierSearch(e.target.value)}
+        />
+        <Select
+          label="Fornecedor do custo"
+          required
+          value={selectedSupplierId}
+          onChange={(e) => setSelectedSupplierId(e.target.value)}
+        >
+          <option value="">Selecione o fornecedor...</option>
+          {suppliersLoading ? (
+            <option disabled>Carregando...</option>
+          ) : (
+            suppliers.map((s) => {
+              const company = s.company as { legal_name?: string; trade_name?: string } | null;
+              const name = company?.trade_name || company?.legal_name || "—";
+              return (
+                <option key={s.company_id} value={s.company_id}>{name}</option>
+              );
+            })
+          )}
+        </Select>
+      </FormSection>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div>
-          <label style={labelStyle}>Data de referência *</label>
-          <input
+      <FormSection title="Parâmetros da simulação">
+        <FieldGroup columns={2}>
+          <TextField
+            label="Data de referência"
             type="date"
+            required
             value={referenceDate}
             onChange={(e) => setReferenceDate(e.target.value)}
-            style={inputStyle}
-            aria-label="Data de referência da simulação"
+            supportingText="Usada para resolver custo e política vigentes."
           />
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "4px" }}>
-            Usada para resolver custo e política vigentes.
-          </p>
-        </div>
-        <div>
-          <label style={labelStyle}>Desconto simulado (%)</label>
-          <input
+          <TextField
+            label="Desconto simulado (%)"
             type="number"
-            value={discountRate}
-            onChange={(e) => setDiscountRate(e.target.value)}
             min={0}
             max={100}
             step="0.01"
             placeholder="Ex.: 5"
-            style={inputStyle}
-            aria-label="Desconto simulado em percentual"
+            value={discountRate}
+            onChange={(e) => setDiscountRate(e.target.value)}
+            supportingText="Opcional. Aplicado após arredondamento; validado contra a política."
           />
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "4px" }}>
-            Opcional. Aplicado após arredondamento; validado contra a política.
-          </p>
-        </div>
-      </div>
+        </FieldGroup>
+      </FormSection>
 
-      {error && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{error}</p>
-        </div>
-      )}
+      {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-      <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          onClick={onClear}
-          disabled={loading}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-md)",
-            cursor: loading ? "default" : "pointer",
-            opacity: loading ? 0.5 : 1,
-            fontSize: "var(--text-sm)",
-          }}
-        >
+      <FormActions>
+        <Button variant="text" type="button" onClick={onClear} disabled={loading}>
           Limpar
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "var(--color-primary)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "var(--radius-md)",
-            cursor: loading ? "default" : "pointer",
-            opacity: loading ? 0.6 : 1,
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-          }}
-        >
+        </Button>
+        <Button variant="filled" type="submit" disabled={loading} loading={loading}>
           {loading ? "Calculando..." : "Simular preço"}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </FormActions>
+    </form>
   );
 }

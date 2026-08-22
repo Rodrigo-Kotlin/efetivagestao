@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import type {
   PricingPolicyVersionDetail,
 } from "../types/pricing-policy.types";
 import { PRICING_METHODS, ROUNDING_MODES } from "../types/pricing-policy.types";
-import { CodeBadge, PolicyVersionStatusBadge, PricingMethodBadge } from "./PolicyBadges";
+import { StatusBadge, Badge, Button } from "@/components/ui";
+import { DetailGrid, DetailField } from "@/components/ui/DetailGrid";
+import { Alert } from "@/components/ui/Alert";
+import { FormSection } from "@/components/ui/FormSection";
 import { PolicyVersionForm } from "./PolicyVersionForm";
 import { PolicyComponentEditor } from "./PolicyComponentEditor";
 import { PolicyWorkflowActions } from "./PolicyWorkflowActions";
@@ -45,35 +47,6 @@ interface Props {
   onDeleteComponent: (componentId: string) => Promise<void>;
 }
 
-const cardStyle: React.CSSProperties = {
-  backgroundColor: "var(--color-surface)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-lg)",
-  padding: "var(--space-6)",
-  marginBottom: "var(--space-6)",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: "var(--text-xs)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "2px",
-};
-
-const valueStyle: React.CSSProperties = {
-  fontSize: "var(--text-sm)",
-  color: "var(--color-text)",
-  fontWeight: "var(--font-medium)",
-};
-
-function metaItem(label: string, value: string) {
-  return (
-    <div>
-      <p style={labelStyle}>{label}</p>
-      <p style={valueStyle}>{value}</p>
-    </div>
-  );
-}
-
 export function PolicyVersionDetail({
   version,
   permissions,
@@ -84,7 +57,6 @@ export function PolicyVersionDetail({
   onAddComponent,
   onDeleteComponent,
 }: Props) {
-  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -114,60 +86,26 @@ export function PolicyVersionDetail({
   };
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--space-6)", flexWrap: "wrap", gap: "var(--space-4)" }}>
-        <div>
-          <button
-            onClick={() => navigate(`/pricing/policies/${version.pricing_policy_id}`)}
-            style={{ fontSize: "var(--text-xs)", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: "var(--space-2)" }}
-          >
-            ← Voltar para a política
-          </button>
-          <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", marginBottom: "var(--space-2)", flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)" }}>
-              Versão v{version.version_number}
-            </h1>
-            <PolicyVersionStatusBadge status={version.status} />
-          </div>
-          <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>{version.policy?.name ?? "Política"}</span>
-            {version.policy?.code && <CodeBadge code={version.policy.code} />}
-            <PricingMethodBadge method={version.pricing_method} />
-          </div>
-        </div>
-        {canEditDraft && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            style={{
-              padding: "var(--space-2) var(--space-4)",
-              backgroundColor: "transparent",
-              color: "var(--color-primary)",
-              border: "1px solid var(--color-primary)",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-              fontWeight: "var(--font-medium)",
-            }}
-          >
-            Editar rascunho
-          </button>
-        )}
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--md-sys-spacing-5)" }}>
+      <div className="eg-entity-chips">
+        <StatusBadge status={version.status} />
+        {version.policy?.code ? <Badge mono>{version.policy.code}</Badge> : null}
+        {version.pricing_method ? <Badge tone="accent">{methodLabel}</Badge> : null}
+        <span style={{ fontSize: "var(--md-sys-typescale-body-medium-size)", color: "var(--md-sys-color-on-surface-variant)" }}>
+          {version.policy?.name ?? "Política"}
+        </span>
       </div>
 
-      {workflowError && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{workflowError}</p>
-        </div>
-      )}
+      {workflowError ? <Alert tone="negative" title={workflowError} /> : null}
 
-      {saveError && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{saveError}</p>
+      {canEditDraft && !editing ? (
+        <div>
+          <Button variant="outlined" onClick={() => setEditing(true)}>Editar rascunho</Button>
         </div>
-      )}
+      ) : null}
 
       {editing && canEditDraft ? (
-        <div style={cardStyle}>
+        <FormSection title="Editar rascunho">
           <PolicyVersionForm
             initialData={{
               valid_from: version.valid_from,
@@ -186,32 +124,32 @@ export function PolicyVersionDetail({
             onCancel={() => setEditing(false)}
             submitLabel="Salvar alterações"
           />
-        </div>
+        </FormSection>
       ) : (
         <>
-          <div style={{ ...cardStyle, padding: "var(--space-4)" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "var(--space-4)" }}>
-              {metaItem("Método", methodLabel)}
-              {version.pricing_method === "target_margin" && metaItem("Margem-alvo", formatPercent(version.target_margin_rate))}
-              {version.pricing_method === "markup" && metaItem("Markup", formatPercent(version.markup_rate))}
-              {version.pricing_method === "fixed_price" && metaItem("Preço fixo", formatCurrency(version.fixed_price))}
-              {version.minimum_margin_rate !== null && metaItem("Margem mínima", formatPercent(version.minimum_margin_rate))}
-              {version.maximum_discount_rate !== null && metaItem("Desconto máximo", formatPercent(version.maximum_discount_rate))}
-              {metaItem("Arredondamento", version.rounding_mode === "none" ? "Sem arredondamento" : `${roundingLabel} (passo ${formatCurrency(version.rounding_step)})`)}
-              {metaItem("Vigência", `${formatDate(version.valid_from)} — ${formatDate(version.valid_to)}`)}
-              {metaItem("Criada em", formatDateTime(version.created_at))}
-              {version.approved_at && metaItem("Aprovada em", formatDateTime(version.approved_at))}
-              {version.published_at && metaItem("Publicada em", formatDateTime(version.published_at))}
-            </div>
-            {version.notes && (
-              <div style={{ marginTop: "var(--space-4)", borderTop: "1px solid var(--color-border)", paddingTop: "var(--space-4)" }}>
-                <p style={labelStyle}>Observações</p>
-                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text)", margin: 0 }}>{version.notes}</p>
-              </div>
-            )}
-          </div>
+          <section className="eg-section" aria-labelledby="version-meta">
+            <h3 id="version-meta" className="eg-section__title">Metadados da versão</h3>
+            <DetailGrid columns={3}>
+              <DetailField label="Método" value={methodLabel} />
+              {version.pricing_method === "target_margin" ? <DetailField label="Margem-alvo" value={formatPercent(version.target_margin_rate)} /> : null}
+              {version.pricing_method === "markup" ? <DetailField label="Markup" value={formatPercent(version.markup_rate)} /> : null}
+              {version.pricing_method === "fixed_price" ? <DetailField label="Preço fixo" value={formatCurrency(version.fixed_price)} /> : null}
+              {version.minimum_margin_rate !== null ? <DetailField label="Margem mínima" value={formatPercent(version.minimum_margin_rate)} /> : null}
+              {version.maximum_discount_rate !== null ? <DetailField label="Desconto máximo" value={formatPercent(version.maximum_discount_rate)} /> : null}
+              <DetailField
+                label="Arredondamento"
+                value={version.rounding_mode === "none" ? "Sem arredondamento" : `${roundingLabel} (passo ${formatCurrency(version.rounding_step)})`}
+              />
+              <DetailField label="Vigência" value={`${formatDate(version.valid_from)} — ${formatDate(version.valid_to)}`} span={2} />
+              <DetailField label="Criada em" value={formatDateTime(version.created_at)} />
+              {version.approved_at ? <DetailField label="Aprovada em" value={formatDateTime(version.approved_at)} /> : null}
+              {version.published_at ? <DetailField label="Publicada em" value={formatDateTime(version.published_at)} /> : null}
+              {version.notes ? <DetailField label="Observações" value={version.notes} span={3} /> : null}
+            </DetailGrid>
+          </section>
 
-          <div style={cardStyle}>
+          <section className="eg-section" aria-labelledby="version-components">
+            <h3 id="version-components" className="eg-section__title">Componentes de custo</h3>
             <PolicyComponentEditor
               versionId={version.id}
               components={version.components ?? []}
@@ -219,9 +157,11 @@ export function PolicyVersionDetail({
               onDelete={onDeleteComponent}
               disabled={!canEditDraft}
             />
-          </div>
+          </section>
         </>
       )}
+
+      {saveError ? <Alert tone="negative" title={saveError} /> : null}
 
       <PolicyWorkflowActions
         status={version.status}

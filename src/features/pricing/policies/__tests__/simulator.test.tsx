@@ -198,7 +198,7 @@ describe("Simulator result rendering (UI-SIM01..11)", () => {
   it("UI-SIM10: provenance section is rendered with policy and cost version", () => {
     render(<SimulationResultView result={makeResult()} />);
 
-    expect(screen.getByText("Proveniência do cálculo")).toBeInTheDocument();
+    expect(screen.getByText("Rastreabilidade do cálculo")).toBeInTheDocument();
     expect(screen.getByText("Política padrão")).toBeInTheDocument();
     expect(screen.getByText("POL-001")).toBeInTheDocument();
     expect(screen.getByText("v2")).toBeInTheDocument();

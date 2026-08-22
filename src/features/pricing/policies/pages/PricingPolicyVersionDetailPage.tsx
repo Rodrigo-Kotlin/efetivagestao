@@ -12,6 +12,11 @@ import {
   updateDraftPricingPolicyVersion,
 } from "../api/policies";
 import type { WorkflowActionKind } from "../types/pricing-policy.types";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
 
 const ACTION_CONFIRM: Record<WorkflowActionKind, string> = {
   submit: "Enviar a versão para revisão?",
@@ -29,41 +34,47 @@ function Inner() {
   const { version, loading, error, refetch } = usePricingPolicyVersion(id ?? null);
   const { run, pending, error: workflowError } = usePricingPolicyWorkflow();
 
+  const pageTitle = version?.policy?.name
+    ? `Versão v${version.version_number} — ${version.policy.name}`
+    : `Versão v${version?.version_number ?? ""}`;
+
   if (!can("pricing.policy.view")) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Você não tem permissão para acessar esta página.
-      </div>
+      <PageContainer>
+        <PageHeader title={pageTitle} />
+        <Alert tone="negative" title="Sem permissão">
+          Você não tem permissão para acessar esta página.
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (loading) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Carregando versão de política...
-      </div>
+      <PageContainer size="wide">
+        <PageHeader variant="entity" title="Versão" breadcrumbs={[{ label: "Versão" }]} />
+        <Spinner label="Carregando versão de política..." />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>{error}</p>
-        <button
-          onClick={() => void refetch()}
-          style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-        >
-          Tentar novamente
-        </button>
-      </div>
+      <PageContainer size="wide">
+        <PageHeader variant="entity" title="Versão" breadcrumbs={[{ label: "Erro" }]} />
+        <Alert tone="negative" title={error}>
+          <Button variant="outlined" onClick={() => void refetch()}>Tentar novamente</Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (!version) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Versão de política não encontrada.
-      </div>
+      <PageContainer size="wide">
+        <PageHeader variant="entity" title="Versão" breadcrumbs={[{ label: "Não encontrada" }]} />
+        <p style={{ color: "var(--md-sys-color-on-surface-variant)" }}>Versão de política não encontrada.</p>
+      </PageContainer>
     );
   }
 
@@ -135,21 +146,33 @@ function Inner() {
   };
 
   return (
-    <PolicyVersionDetail
-      version={version}
-      permissions={{
-        canEdit: can("pricing.policy.edit"),
-        canReview: can("pricing.policy.review"),
-        canApprove: can("pricing.policy.approve"),
-        canPublish: can("pricing.policy.publish"),
-      }}
-      workflowPending={pending}
-      workflowError={workflowError}
-      onWorkflowAction={handleWorkflowAction}
-      onSaveDraft={handleSaveDraft}
-      onAddComponent={handleAddComponent}
-      onDeleteComponent={handleDeleteComponent}
-    />
+    <PageContainer size="wide">
+      <PageHeader
+        variant="entity"
+        title={pageTitle}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Políticas", to: "/pricing/policies" },
+          { label: version.policy?.name ?? "Política", to: version.pricing_policy_id ? `/pricing/policies/${version.pricing_policy_id}` : undefined },
+          { label: `v${version.version_number}` },
+        ]}
+      />
+      <PolicyVersionDetail
+        version={version}
+        permissions={{
+          canEdit: can("pricing.policy.edit"),
+          canReview: can("pricing.policy.review"),
+          canApprove: can("pricing.policy.approve"),
+          canPublish: can("pricing.policy.publish"),
+        }}
+        workflowPending={pending}
+        workflowError={workflowError}
+        onWorkflowAction={handleWorkflowAction}
+        onSaveDraft={handleSaveDraft}
+        onAddComponent={handleAddComponent}
+        onDeleteComponent={handleDeleteComponent}
+      />
+    </PageContainer>
   );
 }
 

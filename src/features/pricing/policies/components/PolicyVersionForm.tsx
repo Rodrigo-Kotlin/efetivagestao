@@ -2,6 +2,13 @@ import { useState } from "react";
 import { PRICING_METHODS, ROUNDING_MODES } from "../types/pricing-policy.types";
 import type { PricingMethod, RoundingMode } from "../types/pricing-policy.types";
 import { parsePercent, parseNumber } from "../utils/format";
+import { FormSection } from "@/components/ui/FormSection";
+import { FormActions } from "@/components/ui/FormActions";
+import { FormAlert } from "@/components/ui/FormAlert";
+import { TextField } from "@/components/ui/TextField";
+import { Select } from "@/components/ui/Select";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { Button } from "@/components/ui/Button";
 
 interface Props {
   initialData?: {
@@ -34,22 +41,6 @@ interface Props {
   onCancel: () => void;
   submitLabel?: string;
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "var(--space-2) var(--space-3)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  fontSize: "var(--text-sm)",
-  outline: "none",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "var(--text-xs)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "4px",
-};
 
 // UI-FORM04: DB stores fractions (0.20); UI shows percentages ("20").
 function fractionToPercentInput(value: number | null): string {
@@ -183,217 +174,148 @@ export function PolicyVersionForm({ initialData, versionNumber, onSubmit, onCanc
   };
 
   return (
-    <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)" }}>
-      {versionNumber !== undefined && (
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-4)" }}>
-          Nova versão <strong>v{versionNumber}</strong> desta política.
-        </p>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div>
-          <label style={labelStyle}>Vigência inicial *</label>
-          <input
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
+      noValidate
+    >
+      <FormSection title="Vigência" description={versionNumber !== undefined ? `Nova versão v${versionNumber} desta política.` : "Período de validade desta versão."}>
+        <FieldGroup columns={2}>
+          <TextField
+            label="Vigência inicial"
             type="date"
+            required
             value={validFrom}
             onChange={(e) => setValidFrom(e.target.value)}
-            style={inputStyle}
-            aria-label="Data de início de vigência"
           />
-        </div>
-        <div>
-          <label style={labelStyle}>Vigência final</label>
-          <input
+          <TextField
+            label="Vigência final"
             type="date"
             value={validTo}
             onChange={(e) => setValidTo(e.target.value)}
-            style={inputStyle}
-            aria-label="Data de fim de vigência"
           />
-        </div>
-      </div>
+        </FieldGroup>
+      </FormSection>
 
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <label style={labelStyle}>Método de precificação *</label>
-        <select
+      <FormSection title="Método de precificação" description="Escolha como esta versão calcula o preço recomendado.">
+        <Select
+          label="Método"
+          required
           value={pricingMethod}
           onChange={(e) => setPricingMethod(e.target.value as PricingMethod)}
-          style={inputStyle}
-          aria-label="Método de precificação"
         >
           <option value="">Selecione o método...</option>
           {PRICING_METHODS.map((m) => (
             <option key={m.value} value={m.value}>{m.label}</option>
           ))}
-        </select>
-      </div>
+        </Select>
 
-      {method === "target_margin" && (
-        <div style={{ marginBottom: "var(--space-4)" }}>
-          <label style={labelStyle}>Margem-alvo (%) *</label>
-          <input
+        {method === "target_margin" ? (
+          <TextField
+            label="Margem-alvo (%)"
             type="number"
-            value={targetMarginRate}
-            onChange={(e) => setTargetMarginRate(e.target.value)}
+            required
             min={0}
             max={99.999}
             step="0.01"
             placeholder="Ex.: 20"
-            style={inputStyle}
-            aria-label="Margem-alvo em percentual"
+            value={targetMarginRate}
+            onChange={(e) => setTargetMarginRate(e.target.value)}
+            supportingText="Ex.: 20 equivale a 20% de margem sobre o preço."
           />
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "4px" }}>
-            Ex.: 20 equivale a 20% de margem sobre o preço.
-          </p>
-        </div>
-      )}
+        ) : null}
 
-      {method === "markup" && (
-        <div style={{ marginBottom: "var(--space-4)" }}>
-          <label style={labelStyle}>Markup (%) *</label>
-          <input
+        {method === "markup" ? (
+          <TextField
+            label="Markup (%)"
             type="number"
-            value={markupRate}
-            onChange={(e) => setMarkupRate(e.target.value)}
+            required
             min={0}
             step="0.01"
             placeholder="Ex.: 25"
-            style={inputStyle}
-            aria-label="Markup em percentual"
+            value={markupRate}
+            onChange={(e) => setMarkupRate(e.target.value)}
+            supportingText="Ex.: 25 equivale a 25% de acréscimo sobre o custo total."
           />
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "4px" }}>
-            Ex.: 25 equivale a 25% de acréscimo sobre o custo total.
-          </p>
-        </div>
-      )}
+        ) : null}
 
-      {method === "fixed_price" && (
-        <div style={{ marginBottom: "var(--space-4)" }}>
-          <label style={labelStyle}>Preço fixo (R$) *</label>
-          <input
+        {method === "fixed_price" ? (
+          <TextField
+            label="Preço fixo (R$)"
             type="number"
-            value={fixedPrice}
-            onChange={(e) => setFixedPrice(e.target.value)}
+            required
             min={0}
             step="0.01"
             placeholder="Ex.: 120.00"
-            style={inputStyle}
-            aria-label="Preço fixo em reais"
+            value={fixedPrice}
+            onChange={(e) => setFixedPrice(e.target.value)}
           />
-        </div>
-      )}
+        ) : null}
+      </FormSection>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div>
-          <label style={labelStyle}>Margem mínima (%)</label>
-          <input
+      <FormSection title="Limites e arredondamento">
+        <FieldGroup columns={2}>
+          <TextField
+            label="Margem mínima (%)"
             type="number"
-            value={minimumMarginRate}
-            onChange={(e) => setMinimumMarginRate(e.target.value)}
             min={0}
             max={99.999}
             step="0.01"
             placeholder="Ex.: 15"
-            style={inputStyle}
-            aria-label="Margem mínima em percentual"
+            value={minimumMarginRate}
+            onChange={(e) => setMinimumMarginRate(e.target.value)}
           />
-        </div>
-        <div>
-          <label style={labelStyle}>Desconto máximo (%)</label>
-          <input
+          <TextField
+            label="Desconto máximo (%)"
             type="number"
-            value={maximumDiscountRate}
-            onChange={(e) => setMaximumDiscountRate(e.target.value)}
             min={0}
             max={100}
             step="0.01"
             placeholder="Ex.: 10"
-            style={inputStyle}
-            aria-label="Desconto máximo em percentual"
+            value={maximumDiscountRate}
+            onChange={(e) => setMaximumDiscountRate(e.target.value)}
           />
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div>
-          <label style={labelStyle}>Arredondamento</label>
-          <select
+          <Select
+            label="Arredondamento"
             value={roundingMode}
             onChange={(e) => setRoundingMode(e.target.value as RoundingMode)}
-            style={inputStyle}
-            aria-label="Modo de arredondamento"
           >
             {ROUNDING_MODES.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>Passo de arredondamento (R$)</label>
-          <input
+          </Select>
+          <TextField
+            label="Passo de arredondamento (R$)"
             type="number"
-            value={roundingStep}
-            onChange={(e) => setRoundingStep(e.target.value)}
             min={0}
             step="0.01"
             placeholder="Ex.: 0.10"
+            value={roundingStep}
+            onChange={(e) => setRoundingStep(e.target.value)}
             disabled={roundingMode === "none"}
-            style={{ ...inputStyle, opacity: roundingMode === "none" ? 0.5 : 1 }}
-            aria-label="Passo de arredondamento em reais"
           />
-        </div>
-      </div>
+        </FieldGroup>
+      </FormSection>
 
-      <div style={{ marginBottom: "var(--space-4)" }}>
-        <label style={labelStyle}>Observações</label>
-        <textarea
+      <FormSection title="Observações">
+        <TextField
+          label="Observações"
+          placeholder="Observações sobre esta versão..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          multiline
           rows={3}
-          style={{ ...inputStyle, resize: "vertical" }}
-          aria-label="Observações da versão"
         />
-      </div>
+      </FormSection>
 
-      {error && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{error}</p>
-        </div>
-      )}
+      {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-      <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          onClick={onCancel}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-md)",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          style={{
-            padding: "var(--space-2) var(--space-4)",
-            backgroundColor: "var(--color-primary)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "var(--radius-md)",
-            cursor: "pointer",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-medium)",
-          }}
-        >
-          {submitLabel}
-        </button>
-      </div>
-    </div>
+      <FormActions>
+        <Button variant="text" type="button" onClick={onCancel}>Cancelar</Button>
+        <Button variant="filled" type="submit">{submitLabel}</Button>
+      </FormActions>
+    </form>
   );
 }

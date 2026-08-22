@@ -3,6 +3,12 @@ import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { usePricingPolicy } from "../hooks/usePricingPolicies";
 import { PolicyDetail } from "../components/PolicyDetail";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
 
 function Inner() {
   const { id } = useParams<{ id: string }>();
@@ -11,43 +17,90 @@ function Inner() {
 
   if (!can("pricing.policy.view")) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Você não tem permissão para acessar esta página.
-      </div>
+      <PageContainer>
+        <PageHeader
+          title="Política de Preço"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Políticas", to: "/pricing/policies" },
+            { label: "Sem permissão" },
+          ]}
+        />
+        <Alert tone="negative" title="Sem permissão">
+          Você não tem permissão para acessar esta página.
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (loading) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Carregando política de preço...
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Política de Preço"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Políticas", to: "/pricing/policies" },
+            { label: "Carregando..." },
+          ]}
+        />
+        <Spinner label="Carregando política de preço..." />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <p style={{ color: "#991B1B", marginBottom: "var(--space-2)" }}>{error}</p>
-        <button
-          onClick={() => void refetch()}
-          style={{ padding: "var(--space-2) var(--space-3)", backgroundColor: "#DC2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "var(--text-sm)" }}
-        >
-          Tentar novamente
-        </button>
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Política de Preço"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Políticas", to: "/pricing/policies" },
+            { label: "Erro" },
+          ]}
+        />
+        <Alert tone="negative" title={error}>
+          <Button variant="outlined" onClick={() => void refetch()}>Tentar novamente</Button>
+        </Alert>
+      </PageContainer>
     );
   }
 
   if (!policy) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Política de preço não encontrada.
-      </div>
+      <PageContainer size="wide">
+        <PageHeader
+          variant="entity"
+          title="Política de Preço"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Políticas", to: "/pricing/policies" },
+            { label: "Não encontrada" },
+          ]}
+        />
+        <p style={{ color: "var(--md-sys-color-on-surface-variant)" }}>Política de preço não encontrada.</p>
+      </PageContainer>
     );
   }
 
-  return <PolicyDetail policy={policy} canCreateVersion={can("pricing.policy.create")} />;
+  return (
+    <PageContainer size="wide">
+      <PageHeader
+        variant="entity"
+        title={policy.name}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Políticas", to: "/pricing/policies" },
+          { label: policy.name },
+        ]}
+        meta={<Badge mono>{policy.code}</Badge>}
+      />
+      <PolicyDetail policy={policy} canCreateVersion={can("pricing.policy.create")} />
+    </PageContainer>
+  );
 }
 
 export function PricingPolicyDetailPage() {

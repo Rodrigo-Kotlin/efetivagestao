@@ -4,7 +4,12 @@ import { useAuth } from "@/features/core/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { createPricingPolicyVersion, fetchPricingPolicy } from "../api/policies";
 import { PolicyVersionForm } from "../components/PolicyVersionForm";
-import { CodeBadge } from "../components/PolicyBadges";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
+import { FormAlert } from "@/components/ui/FormAlert";
 
 function Inner() {
   const { id } = useParams<{ id: string }>();
@@ -49,9 +54,18 @@ function Inner() {
 
   if (!can("pricing.policy.create")) {
     return (
-      <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-        Você não tem permissão para criar versões de política.
-      </div>
+      <PageContainer>
+        <PageHeader
+          variant="compact"
+          title="Nova versão"
+          breadcrumbs={[
+            { label: "Preços & Exames", to: "/pricing" },
+            { label: "Políticas", to: "/pricing/policies" },
+            { label: "Nova versão" },
+          ]}
+        />
+        <FormAlert tone="error">Você não tem permissão para criar versões de política.</FormAlert>
+      </PageContainer>
     );
   }
 
@@ -98,51 +112,34 @@ function Inner() {
   };
 
   return (
-    <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
-        <button
-          onClick={() => navigate(`/pricing/policies/${id}`)}
-          style={{ fontSize: "var(--text-xs)", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: "var(--space-2)" }}
-        >
-          ← Voltar para a política
-        </button>
-        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: "var(--font-bold)", color: "var(--color-text)", marginBottom: "var(--space-2)" }}>
-          Nova Versão de Política
-        </h1>
-        {policy && (
-          <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-            <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>{policy.name}</span>
-            <CodeBadge code={policy.code} />
-          </div>
-        )}
-      </div>
-
-      {loadError && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{loadError}</p>
-        </div>
-      )}
-
-      {saveError && (
-        <div style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-          <p style={{ color: "#991B1B", fontSize: "var(--text-sm)", margin: 0 }}>{saveError}</p>
-        </div>
-      )}
+    <PageContainer>
+      <PageHeader
+        variant="compact"
+        title={policy ? `Nova versão — ${policy.name}` : "Nova Versão de Política"}
+        breadcrumbs={[
+          { label: "Preços & Exames", to: "/pricing" },
+          { label: "Políticas", to: "/pricing/policies" },
+          { label: policy?.name ?? "Política", to: id ? `/pricing/policies/${id}` : undefined },
+          { label: "Nova versão" },
+        ]}
+        meta={policy ? <Badge mono>{policy.code}</Badge> : undefined}
+      />
 
       {loading ? (
-        <div style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-secondary)" }}>
-          Carregando política...
-        </div>
+        <Spinner label="Carregando política..." />
+      ) : loadError ? (
+        <Alert tone="negative" title={loadError} />
       ) : (
-        !loadError && (
+        <>
+          {saveError ? <FormAlert tone="error">{saveError}</FormAlert> : null}
           <PolicyVersionForm
             onSubmit={(data) => void handleSubmit(data)}
             onCancel={() => navigate(`/pricing/policies/${id}`)}
             submitLabel={saving ? "Criando..." : "Criar Versão"}
           />
-        )
+        </>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

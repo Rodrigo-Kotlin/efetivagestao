@@ -1,4 +1,4 @@
-import { Badge, StatusChip, statusTone } from "@/components/ui";
+import { StatusBadge, Badge } from "@/components/ui";
 import {
   POLICY_SCOPE_TYPES,
   POLICY_STATUSES,
@@ -11,13 +11,11 @@ import {
 } from "../types/pricing-policy.types";
 
 export function PolicyStatusBadge({ status }: { status: PricingPolicyStatus }) {
-  const info = POLICY_STATUSES.find((option) => option.value === status);
-  return <StatusChip tone={statusTone(status)}>{info?.label ?? "—"}</StatusChip>;
+  return <StatusBadge status={status} />;
 }
 
 export function PolicyVersionStatusBadge({ status }: { status: PricingPolicyVersionStatus }) {
-  const info = POLICY_VERSION_STATUSES.find((option) => option.value === status);
-  return <StatusChip tone={statusTone(status)}>{info?.label ?? "—"}</StatusChip>;
+  return <StatusBadge status={status} />;
 }
 
 export function PolicyScopeBadge({ scopeType }: { scopeType: PricingPolicyScopeType }) {
@@ -33,3 +31,7 @@ export function PricingMethodBadge({ method }: { method: PricingMethod }) {
 export function CodeBadge({ code }: { code: string }) {
   return <Badge mono>{code}</Badge>;
 }
+
+// Silence unused warning when POLICY_STATUSES / POLICY_VERSION_STATUSES are not directly referenced
+void POLICY_STATUSES;
+void POLICY_VERSION_STATUSES;

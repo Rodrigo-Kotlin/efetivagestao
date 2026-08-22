@@ -115,7 +115,7 @@ function renderPage() {
 
 async function loadPage() {
   renderPage();
-  await screen.findByText("Versão v1");
+  await screen.findByRole("heading", { name: /Versão v1/ });
 }
 
 beforeEach(() => {
@@ -192,7 +192,7 @@ describe("Pricing policy version workflow (UI-WF01..09)", () => {
 
       h.setVersionRow(makeVersion(status));
       renderPage();
-      await screen.findByText("Versão v1");
+      await screen.findByRole("heading", { name: /Versão v1/ });
 
       expect(screen.queryByText("Enviar para revisão")).not.toBeInTheDocument();
       expect(screen.queryByText("Aprovar")).not.toBeInTheDocument();
@@ -235,6 +235,7 @@ describe("Pricing policy version workflow (UI-WF01..09)", () => {
       const singleCallsAfter = (h.chain.single as ReturnType<typeof vi.fn>).mock.calls.length;
       expect(singleCallsAfter).toBeGreaterThan(singleCallsBefore);
     });
+    // The status badge now uses statusLabel mapping: "under_review" → "Em revisão"
     expect(await screen.findByText("Em revisão")).toBeInTheDocument();
   });
 });

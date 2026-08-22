@@ -129,7 +129,7 @@ describe("RBAC gating (UI-RBAC01..06)", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Você não tem permissão para acessar esta página.")).toBeInTheDocument();
+    expect(screen.getByText(/Você não tem permissão/)).toBeInTheDocument();
   });
 
   it("UI-RBAC02: create button hidden without pricing.policy.create", async () => {
@@ -144,7 +144,7 @@ describe("RBAC gating (UI-RBAC01..06)", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByText("Nova Política")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Nova política/i })).not.toBeInTheDocument();
     });
   });
 
@@ -158,7 +158,7 @@ describe("RBAC gating (UI-RBAC01..06)", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Nova Política")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Nova política/i })).toBeInTheDocument();
   });
 
   it("UI-RBAC03: draft edit button hidden without pricing.policy.edit", async () => {
@@ -171,7 +171,7 @@ describe("RBAC gating (UI-RBAC01..06)", () => {
       </MemoryRouter>
     );
 
-    await screen.findByText("Versão v1");
+    await screen.findByRole("heading", { name: /Versão v1/ });
     expect(screen.queryByText("Editar rascunho")).not.toBeInTheDocument();
     expect(screen.queryByText("Enviar para revisão")).not.toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe("RBAC gating (UI-RBAC01..06)", () => {
       </MemoryRouter>
     );
 
-    await screen.findByText("Versão v1");
+    await screen.findByRole("heading", { name: /Versão v1/ });
     expect(screen.queryByText("Voltar para rascunho")).not.toBeInTheDocument();
     expect(screen.queryByText("Aprovar")).not.toBeInTheDocument();
   });
@@ -201,7 +201,7 @@ describe("RBAC gating (UI-RBAC01..06)", () => {
       </MemoryRouter>
     );
 
-    await screen.findByText("Versão v1");
+    await screen.findByRole("heading", { name: /Versão v1/ });
     expect(screen.queryByText("Aprovar")).not.toBeInTheDocument();
     expect(screen.getByText("Voltar para rascunho")).toBeInTheDocument();
   });
@@ -214,6 +214,6 @@ describe("RBAC gating (UI-RBAC01..06)", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Você não tem permissão para simular preços.")).toBeInTheDocument();
+    expect(screen.getByText(/Você não tem permissão/)).toBeInTheDocument();
   });
 });
